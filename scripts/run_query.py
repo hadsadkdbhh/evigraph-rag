@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from evigraph.pipeline import EviGraphPipeline
+from evigraph.methods import METHODS, MethodRunner
 
 
 def load_config(path: str | None) -> dict[str, Any]:
@@ -61,11 +61,12 @@ def main() -> int:
     parser.add_argument("--query", required=True)
     parser.add_argument("--corpus", default=None)
     parser.add_argument("--config", default=str(ROOT / "configs" / "default.yaml"))
+    parser.add_argument("--method", default="full_evigraph", choices=METHODS)
     parser.add_argument("--top-k", type=int, default=8)
     args = parser.parse_args()
 
     config = load_config(args.config)
-    result = EviGraphPipeline(config).run(args.query, corpus_path=args.corpus, top_k=args.top_k)
+    result = MethodRunner(config).run(args.query, args.method, corpus_path=args.corpus, top_k=args.top_k)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0
 

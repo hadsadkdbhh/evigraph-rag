@@ -10,9 +10,10 @@ from evigraph.schema import Action, Answer, EvidenceNode
 
 
 class RunLogger:
-    def __init__(self, output_dir: str = "outputs/runs") -> None:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.run_dir = Path(output_dir) / timestamp
+    def __init__(self, output_dir: str = "outputs/runs", run_name: str | None = None) -> None:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        directory_name = f"{run_name}_{timestamp}" if run_name else timestamp
+        self.run_dir = Path(output_dir) / directory_name
         self.run_dir.mkdir(parents=True, exist_ok=True)
         self.trace_path = self.run_dir / "trace.jsonl"
 
