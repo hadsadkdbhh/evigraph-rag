@@ -121,3 +121,9 @@ PARSE_TABLE -> RUN_CALCULATION -> STOP -> VERIFY_CLAIM
 ```
 
 This trace is intended to feed paper case studies and failure analysis.
+
+Export any run directory as a case study:
+
+```powershell
+python scripts/export_case_study.py --run-dir outputs/runs/<run_id>
+```

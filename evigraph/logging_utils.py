@@ -7,6 +7,7 @@ from typing import Any
 
 from evigraph.evidence_graph import EvidenceGraph
 from evigraph.schema import Action, Answer, EvidenceNode
+from evigraph.case_study import CaseStudyExporter
 
 
 class RunLogger:
@@ -58,10 +59,12 @@ class RunLogger:
             "\n",
         ]
         (self.run_dir / "answer.md").write_text("".join(answer_md), encoding="utf-8")
+        case_study = CaseStudyExporter().export(self.run_dir)
         return {
             "run_dir": str(self.run_dir),
             "trace": str(self.trace_path),
             "answer": str(self.run_dir / "answer.md"),
+            "case_study": case_study,
         }
 
     def _write_json(self, name: str, payload: dict[str, Any]) -> None:
