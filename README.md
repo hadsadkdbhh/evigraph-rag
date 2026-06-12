@@ -77,3 +77,26 @@ python scripts/run_batch_eval.py --questions data/questions.jsonl --corpus outpu
 
 Supported local corpus formats are `.txt`, `.md`, `.jsonl`, `.json`, `.csv`,
 and `.pdf` when `pypdf` is installed.
+
+## LLM Judge Scoring
+
+The default scorer is rule-based so the repo runs without API keys. To enable an
+OpenAI-compatible judge, set environment variables and change
+`configs/default.yaml`:
+
+```powershell
+$env:LLM_PROVIDER="openai_compatible"
+$env:LLM_BASE_URL="https://your-endpoint/v1"
+$env:LLM_API_KEY="..."
+$env:LLM_MODEL="your-chat-model"
+```
+
+```yaml
+scoring:
+  provider: hybrid
+  llm_weight: 0.5
+  llm_provider: openai_compatible
+```
+
+Use `provider: llm` for pure LLM judging, or `provider: hybrid` to blend LLM and
+rule scores with automatic rule fallback.

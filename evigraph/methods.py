@@ -9,7 +9,7 @@ from evigraph.generator import SupportOnlyGenerator
 from evigraph.logging_utils import RunLogger
 from evigraph.retrieval import CorpusRetriever
 from evigraph.schema import Action, EvidenceNode, EvidenceScore
-from evigraph.scorer import RuleBasedUtilityRiskScorer
+from evigraph.scorer import make_scorer
 from evigraph.selector import EvidenceSetSelector
 from evigraph.support import SupportSubgraphExtractor
 from evigraph.verifier import ClaimVerifier
@@ -37,7 +37,7 @@ class MethodRunner:
         self.retriever = CorpusRetriever()
         self.converter = EvidenceConverter()
         self.graph_builder = EvidenceGraphBuilder()
-        self.scorer = RuleBasedUtilityRiskScorer()
+        self.scorer = make_scorer(config.get("scoring", {}))
         self.actions = EvidenceActionController()
         self.support_extractor = SupportSubgraphExtractor()
         self.generator = SupportOnlyGenerator()

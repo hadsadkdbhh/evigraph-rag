@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import math
 import re
+from typing import Any
 
+from evigraph.clients import LLMClient, make_llm_client
 from evigraph.evidence_graph import EvidenceGraph
 from evigraph.schema import EvidenceNode, EvidenceScore
 
@@ -98,3 +100,157 @@ class RuleBasedUtilityRiskScorer:
         if utility > 0.7:
             return "Useful candidate with answer-bearing content."
         return "Low-to-medium utility candidate."
+
+
+class LLMJudgeUtilityRiskScorer(RuleBasedUtilityRiskScorer):
+    def __init__(self, llm_client: LLMClient | None = None, config: dict[str, Any] | None = None) -> None:
+        self.llm_client = llm_client or make_llm_client(_llm_config(config or {}))
+
+    def score_node(self, query: str, node: EvidenceNode, graph: EvidenceGraph) -> EvidenceScore:
+        rule_score = super().score_node(query, node, graph)
+        try:
+            payload = self.llm_client.chat_json(self._messages(query, node))
+            return self._score_from_payload(payload, rule_score)
+        except Exception as exc:
+            fallback = rule_score
+            fallback.reason = f"LLM judge unavailable; rule fallback used. {exc}"
+            return fallback
+
+    def _messages(self, query: str, node: EvidenceNode) -> list[dict[str, str]]:
+        content_summary = node.text()
+        if len(content_summary) > 1800:
+            content_summary = content_summary[:1800] + "..."
+        return [
+            {
+                "role": "system",
+                "content": (
+                    "You are an evidence judge for a multimodal RAG system. "
+                    "Score candidate evidence for utility-risk selection. Return JSON only."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Query: {query}\n"
+                    f"Evidence id: {node.node_id}\n"
+                    f"Evidence type: {node.node_type}\n"
+                    f"Modality: {node.modality}\n"
+                    f"Source: {node.source_doc}\n"
+                    f"Evidence content: {content_summary}\n\n"
+                    "Return JSON with numbers from 0 to 1:\n"
+                    "{"
+                    '"relevance": ..., "utility": ..., "grounding": ..., '
+                    '"uncertainty": ..., "misleading_risk": ..., '
+                    '"contradiction_risk": ..., "source_reliability": ..., '
+                    '"reason": "..."'
+                    "}"
+                ),
+            },
+        ]
+
+    def _score_from_payload(self, payload: dict[str, Any], fallback: EvidenceScore) -> EvidenceScore:
+        relevance = _payload_float(payload, "relevance", fallback.relevance)
+        utility = _payload_float(payload, "utility", fallback.utility)
+        grounding = _payload_float(payload, "grounding", fallback.grounding)
+        uncertainty = _payload_float(payload, "uncertainty", fallback.uncertainty)
+        misleading_risk = _payload_float(payload, "misleading_risk", fallback.misleading_risk)
+        contradiction_risk = _payload_float(payload, "contradiction_risk", fallback.contradiction_risk)
+        source_reliability = _payload_float(payload, "source_reliability", fallback.source_reliability)
+        cost = fallback.cost
+        final_score = (
+            1.0 * relevance
+            + 1.5 * utility
+            + 1.2 * grounding
+            + 0.6 * source_reliability
+            - 1.0 * misleading_risk
+            - 1.0 * contradiction_risk
+            - 0.7 * uncertainty
+            - 0.4 * cost
+        )
+        return EvidenceScore(
+            relevance=relevance,
+            utility=utility,
+            grounding=grounding,
+            uncertainty=uncertainty,
+            misleading_risk=misleading_risk,
+            contradiction_risk=contradiction_risk,
+            source_reliability=source_reliability,
+            cost=cost,
+            final_score=round(final_score, 4),
+            reason=str(payload.get("reason") or "LLM judge score."),
+        )
+
+
+class HybridUtilityRiskScorer(RuleBasedUtilityRiskScorer):
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
+        self.rule_scorer = RuleBasedUtilityRiskScorer()
+        self.llm_scorer = LLMJudgeUtilityRiskScorer(config=config)
+        self.llm_weight = float((config or {}).get("llm_weight", 0.5))
+
+    def score_node(self, query: str, node: EvidenceNode, graph: EvidenceGraph) -> EvidenceScore:
+        rule = self.rule_scorer.score_node(query, node, graph)
+        llm = self.llm_scorer.score_node(query, node, graph)
+        if llm.reason.startswith("LLM judge unavailable"):
+            return llm
+        weight = max(0.0, min(1.0, self.llm_weight))
+        blended = {
+            field: (1 - weight) * getattr(rule, field) + weight * getattr(llm, field)
+            for field in [
+                "relevance",
+                "utility",
+                "grounding",
+                "uncertainty",
+                "misleading_risk",
+                "contradiction_risk",
+                "source_reliability",
+            ]
+        }
+        cost = rule.cost
+        final_score = (
+            1.0 * blended["relevance"]
+            + 1.5 * blended["utility"]
+            + 1.2 * blended["grounding"]
+            + 0.6 * blended["source_reliability"]
+            - 1.0 * blended["misleading_risk"]
+            - 1.0 * blended["contradiction_risk"]
+            - 0.7 * blended["uncertainty"]
+            - 0.4 * cost
+        )
+        return EvidenceScore(
+            **blended,
+            cost=cost,
+            final_score=round(final_score, 4),
+            reason=f"Hybrid score. Rule: {rule.reason} LLM: {llm.reason}",
+        )
+
+
+def make_scorer(config: dict[str, Any] | None = None) -> RuleBasedUtilityRiskScorer:
+    config = config or {}
+    provider = str(config.get("provider", "rule")).lower()
+    if provider in {"rule", "none", "null"}:
+        return RuleBasedUtilityRiskScorer()
+    if provider == "llm":
+        return LLMJudgeUtilityRiskScorer(config=config)
+    if provider == "hybrid":
+        return HybridUtilityRiskScorer(config=config)
+    raise ValueError(f"Unknown scoring provider: {provider}")
+
+
+def _payload_float(payload: dict[str, Any], key: str, default: float) -> float:
+    try:
+        return _clip(float(payload.get(key, default)))
+    except (TypeError, ValueError):
+        return default
+
+
+def _llm_config(config: dict[str, Any]) -> dict[str, Any]:
+    nested = dict(config.get("llm", {}))
+    if "llm_provider" in config:
+        nested["provider"] = config["llm_provider"]
+    if "llm_base_url" in config:
+        nested["base_url"] = config["llm_base_url"]
+    if "llm_api_key" in config:
+        nested["api_key"] = config["llm_api_key"]
+    if "llm_model" in config:
+        nested["model"] = config["llm_model"]
+    return nested

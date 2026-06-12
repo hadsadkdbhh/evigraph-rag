@@ -7,8 +7,11 @@ selection:
   risk_threshold: 0.65
   redundancy_threshold: 0.88
 scoring:
+  provider: rule
   lambda_cost: 0.4
   lambda_risk: 1.0
   lambda_uncertainty: 0.7
+  llm_weight: 0.5
+  llm_provider: none
 actions:
   enable_mock_actions: true
