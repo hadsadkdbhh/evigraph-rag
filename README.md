@@ -55,6 +55,12 @@ python scripts/run_pareto.py --questions data/questions.jsonl --output outputs/e
 CSV outputs include accuracy, support verification, citation correctness,
 misleading acceptance, selected input tokens, tool calls, and latency.
 
+Summarize one or more experiment CSV files as Markdown tables:
+
+```powershell
+python scripts/summarize_experiments.py --inputs outputs/eval/ablation.csv outputs/eval/pareto.csv --output outputs/eval/summary.md
+```
+
 ## Local Retrieval MVP-1
 
 Build a local JSON index from files under `data/corpus`:
