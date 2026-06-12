@@ -21,6 +21,7 @@ def main() -> int:
     parser.add_argument("--output", default=str(ROOT / "outputs" / "eval" / "results.csv"))
     parser.add_argument("--config", default=str(ROOT / "configs" / "default.yaml"))
     parser.add_argument("--methods", default="topk,full_context,utility_only,full_evigraph")
+    parser.add_argument("--corpus", default=None)
     args = parser.parse_args()
 
     output_path = Path(args.output)
@@ -56,7 +57,7 @@ def main() -> int:
         for line in input_handle:
             sample = json.loads(line)
             for method in methods:
-                result = MethodRunner(config).run(sample["query"], method)
+                result = MethodRunner(config).run(sample["query"], method, corpus_path=args.corpus)
                 metrics = summarize_result(result, sample.get("answer"))
                 writer.writerow(
                     {

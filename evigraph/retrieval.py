@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+import math
+import re
+from collections import Counter
+from pathlib import Path
+
+from evigraph.document_loader import DocumentChunk, DocumentLoader, load_chunks_from_index
 from evigraph.schema import EvidenceNode
 
 
@@ -79,3 +85,105 @@ class MockRetriever:
         if "chart" not in query_lower and "higher" not in query_lower:
             nodes = list(reversed(nodes))
         return nodes[:top_k]
+
+
+class BM25Retriever:
+    def __init__(self, chunks: list[DocumentChunk]) -> None:
+        self.chunks = chunks
+        self.tokenized = [_tokens(chunk.text) for chunk in chunks]
+        self.doc_freq = Counter(token for doc in self.tokenized for token in set(doc))
+        self.avg_doc_len = sum(len(doc) for doc in self.tokenized) / max(1, len(self.tokenized))
+
+    def retrieve(self, query: str, top_k: int = 8) -> list[EvidenceNode]:
+        query_terms = _tokens(query)
+        scored = []
+        for chunk, doc_terms in zip(self.chunks, self.tokenized):
+            score = self._score(query_terms, doc_terms)
+            if score > 0:
+                scored.append((score, chunk))
+        if not scored:
+            scored = [(0.0, chunk) for chunk in self.chunks]
+
+        nodes = []
+        for rank, (score, chunk) in enumerate(sorted(scored, key=lambda item: item[0], reverse=True)[:top_k], start=1):
+            node_type, modality, content = _infer_node_content(chunk.text)
+            nodes.append(
+                EvidenceNode(
+                    node_id=f"retrieved_{rank}_{chunk.chunk_id}",
+                    node_type=node_type,
+                    content=content,
+                    source_doc=chunk.source_doc,
+                    page_number=chunk.page_number,
+                    modality=modality,
+                    confidence=1.0,
+                    cost={
+                        "tokens": max(1, len(chunk.text.split())),
+                        "tool_calls": 0,
+                        "latency_ms": 10,
+                    },
+                    metadata={
+                        "retrieval_score": round(score, 4),
+                        "chunk_id": chunk.chunk_id,
+                        **(chunk.metadata or {}),
+                    },
+                )
+            )
+        return nodes
+
+    def _score(self, query_terms: list[str], doc_terms: list[str]) -> float:
+        k1 = 1.5
+        b = 0.75
+        counts = Counter(doc_terms)
+        doc_len = len(doc_terms)
+        score = 0.0
+        for term in query_terms:
+            if term not in counts:
+                continue
+            df = self.doc_freq.get(term, 0)
+            idf = math.log(1 + (len(self.chunks) - df + 0.5) / (df + 0.5))
+            tf = counts[term]
+            denom = tf + k1 * (1 - b + b * doc_len / max(1, self.avg_doc_len))
+            score += idf * (tf * (k1 + 1) / denom)
+        return score
+
+
+class CorpusRetriever:
+    def retrieve(self, query: str, corpus_path: str | None = None, top_k: int = 8) -> list[EvidenceNode]:
+        if not corpus_path:
+            return MockRetriever().retrieve(query, corpus_path, top_k)
+
+        path = Path(corpus_path)
+        if path.is_file() and path.suffix.lower() == ".json":
+            chunks = load_chunks_from_index(path)
+        else:
+            chunks = DocumentLoader().load(path)
+        return BM25Retriever(chunks).retrieve(query, top_k=top_k)
+
+
+def _tokens(text: str) -> list[str]:
+    return [token for token in re.findall(r"[A-Za-z0-9_]+", text.lower()) if len(token) > 1]
+
+
+def _infer_node_content(text: str) -> tuple[str, str, str | dict]:
+    values: dict[str, float] = {}
+    for line in text.splitlines():
+        row_match = re.search(r"\|\s*(20\d{2})\s*\|\s*(\d+(?:\.\d+)?)\s*\|", line)
+        if row_match:
+            values[row_match.group(1)] = float(row_match.group(2))
+
+    if not values:
+        for year, value in re.findall(r"\b(20\d{2})\b[^\n\r|]{0,20}[|,\s]+(\d+(?:\.\d+)?)", text):
+            values.setdefault(year, float(value))
+
+    if "2022" in values and "2023" in values:
+        return (
+            "table",
+            "table",
+            {
+                "columns": ["year", "value"],
+                "rows": [[year, str(value)] for year, value in sorted(values.items())],
+                "raw_text": text,
+            },
+        )
+
+    return "text", "text", text

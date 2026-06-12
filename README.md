@@ -54,3 +54,26 @@ python scripts/run_pareto.py --questions data/questions.jsonl --output outputs/e
 
 CSV outputs include accuracy, support verification, citation correctness,
 misleading acceptance, selected input tokens, tool calls, and latency.
+
+## Local Retrieval MVP-1
+
+Build a local JSON index from files under `data/corpus`:
+
+```powershell
+python scripts/build_index.py --corpus data/corpus --output outputs/index/index.json
+```
+
+Run the same pipeline against that index:
+
+```powershell
+python scripts/run_query.py --method full_evigraph --corpus outputs/index/index.json --query "According to the chart, how much higher was 2023 than 2022?"
+```
+
+Run batch baselines against the same index:
+
+```powershell
+python scripts/run_batch_eval.py --questions data/questions.jsonl --corpus outputs/index/index.json --output outputs/eval/local_smoke.csv
+```
+
+Supported local corpus formats are `.txt`, `.md`, `.jsonl`, `.json`, `.csv`,
+and `.pdf` when `pypdf` is installed.

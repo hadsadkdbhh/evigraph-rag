@@ -7,7 +7,7 @@ from evigraph.evidence_converter import EvidenceConverter
 from evigraph.evidence_graph import EvidenceGraph, EvidenceGraphBuilder
 from evigraph.generator import SupportOnlyGenerator
 from evigraph.logging_utils import RunLogger
-from evigraph.retrieval import MockRetriever
+from evigraph.retrieval import CorpusRetriever
 from evigraph.schema import Action, EvidenceNode, EvidenceScore
 from evigraph.scorer import RuleBasedUtilityRiskScorer
 from evigraph.selector import EvidenceSetSelector
@@ -34,7 +34,7 @@ class MethodRunner:
         self.max_nodes = int(selection_config.get("max_nodes", 4))
         self.risk_threshold = float(selection_config.get("risk_threshold", 0.65))
         self.output_dir = str(config.get("run", {}).get("output_dir", "outputs/runs"))
-        self.retriever = MockRetriever()
+        self.retriever = CorpusRetriever()
         self.converter = EvidenceConverter()
         self.graph_builder = EvidenceGraphBuilder()
         self.scorer = RuleBasedUtilityRiskScorer()

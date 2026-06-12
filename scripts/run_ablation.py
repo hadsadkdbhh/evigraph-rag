@@ -15,6 +15,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Run default EviGraph ablation methods.")
     parser.add_argument("--questions", default=str(ROOT / "data" / "questions.jsonl"))
     parser.add_argument("--output", default=str(ROOT / "outputs" / "eval" / "ablation.csv"))
+    parser.add_argument("--corpus", default=None)
     args = parser.parse_args()
 
     sys.argv = [
@@ -26,6 +27,8 @@ def main() -> int:
         "--methods",
         "topk,utility_only,evigraph_wo_risk,evigraph_wo_verifier,evigraph_wo_support,full_evigraph",
     ]
+    if args.corpus:
+        sys.argv.extend(["--corpus", args.corpus])
     return run_batch_eval()
 
 

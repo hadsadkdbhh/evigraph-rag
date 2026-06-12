@@ -21,6 +21,7 @@ def main() -> int:
     parser.add_argument("--output", default=str(ROOT / "outputs" / "eval" / "pareto.csv"))
     parser.add_argument("--config", default=str(ROOT / "configs" / "default.yaml"))
     parser.add_argument("--budgets", default="1,2,4,8")
+    parser.add_argument("--corpus", default=None)
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -41,7 +42,7 @@ def main() -> int:
             config.setdefault("selection", {})["max_nodes"] = budget
             runner = MethodRunner(config)
             for sample in samples:
-                result = runner.run(sample["query"], "full_evigraph")
+                result = runner.run(sample["query"], "full_evigraph", corpus_path=args.corpus)
                 metrics = summarize_result(result, sample.get("answer"))
                 writer.writerow(
                     {
