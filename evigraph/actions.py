@@ -40,7 +40,7 @@ class EvidenceActionController:
                 )
             )
 
-        actions.append(Action(action_type="STOP", target_node_ids=[], reason="Selected evidence is sufficient for MVP-0."))
+        actions.append(Action(action_type="STOP", target_node_ids=[], reason="Selected evidence is sufficient."))
         return selected, graph, actions
 
     def _requires_calculation(self, query_lower: str) -> bool:

@@ -100,3 +100,15 @@ scoring:
 
 Use `provider: llm` for pure LLM judging, or `provider: hybrid` to blend LLM and
 rule scores with automatic rule fallback.
+
+## Feasibility Check
+
+Run the current end-to-end feasibility suite:
+
+```powershell
+python scripts/run_feasibility.py --corpus data/corpus --report outputs/eval/feasibility_report.json
+```
+
+The check verifies local index construction, misleading-evidence rejection,
+grounded numeric support, calculation action triggering, and hybrid scorer
+fallback.
