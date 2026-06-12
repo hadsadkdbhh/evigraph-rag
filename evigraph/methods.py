@@ -69,6 +69,14 @@ class MethodRunner:
             verification = self._skipped_verification(answer)
         else:
             verification = self.verifier.verify(query, answer, support_graph)
+            verify_action = Action(
+                "VERIFY_CLAIM",
+                target_node_ids=list(answer.citations),
+                estimated_cost={"tool_calls": 1, "latency_ms": 20},
+                reason="Check answer claims against the minimal support subgraph.",
+            )
+            actions.append(verify_action)
+            self._add_verifier_judgment_node(support_graph, verification)
 
         cost = self._cost(selected, actions)
         self._trace(logger, "select", {"selected_ids": [node.node_id for node in selected]})
@@ -160,3 +168,17 @@ class MethodRunner:
     def _trace(self, logger: RunLogger | None, step: str, payload: dict[str, Any]) -> None:
         if logger:
             logger.trace(step, payload)
+
+    def _add_verifier_judgment_node(self, support_graph: EvidenceGraph, verification: dict[str, Any]) -> None:
+        judgment = EvidenceNode(
+            node_id="verifier_judgment",
+            node_type="verifier_judgment",
+            content=verification,
+            modality="text",
+            confidence=float(verification.get("confidence", 0.0)),
+            cost={"tokens": 20, "tool_calls": 1, "latency_ms": 20},
+            metadata={"selection_status": "selected"},
+        )
+        support_graph.add_node(judgment)
+        for citation in verification.get("checked_citations", []):
+            support_graph.add_edge(judgment.node_id, citation, "support", 1.0)

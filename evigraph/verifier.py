@@ -25,6 +25,7 @@ class ClaimVerifier:
             "citation_correct": citation_nodes_exist,
             "confidence": 0.85 if answer_supported else 0.35,
             "context_utilization": "numeric_and_citation_checked" if numeric_supported else "citation_only",
+            "checked_citations": list(answer.citations),
         }
 
     def _numeric_claim_supported(self, answer_text: str, support_graph: EvidenceGraph) -> bool:

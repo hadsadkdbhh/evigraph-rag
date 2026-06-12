@@ -40,6 +40,8 @@ class RunLogger:
                 "selected_tokens": sum(float(node.cost.get("tokens", 0)) for node in selected),
                 "tool_calls": sum(float(node.cost.get("tool_calls", 0)) for node in selected)
                 + sum(float(action.estimated_cost.get("tool_calls", 0)) for action in actions),
+                "latency_ms": sum(float(node.cost.get("latency_ms", 0)) for node in selected)
+                + sum(float(action.estimated_cost.get("latency_ms", 0)) for action in actions),
                 "actions": [action.to_dict() for action in actions],
             },
         )

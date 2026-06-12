@@ -77,6 +77,18 @@ def main() -> int:
         any(action["action_type"] == "RUN_CALCULATION" for action in local_result["actions"]),
         {"actions": local_result["actions"]},
     )
+    _check(
+        report,
+        "local_bm25_triggers_table_parse",
+        any(action["action_type"] == "PARSE_TABLE" for action in local_result["actions"]),
+        {"actions": local_result["actions"]},
+    )
+    _check(
+        report,
+        "local_bm25_triggers_claim_verification",
+        any(action["action_type"] == "VERIFY_CLAIM" for action in local_result["actions"]),
+        {"actions": local_result["actions"]},
+    )
 
     hybrid_result = MethodRunner(hybrid_fallback_config).run(QUERY, "full_evigraph", corpus_path=args.index, log_run=False)
     hybrid_metrics = summarize_result(hybrid_result, GOLD)

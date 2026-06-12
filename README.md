@@ -112,3 +112,12 @@ python scripts/run_feasibility.py --corpus data/corpus --report outputs/eval/fea
 The check verifies local index construction, misleading-evidence rejection,
 grounded numeric support, calculation action triggering, and hybrid scorer
 fallback.
+
+For the local smoke corpus, the full EviGraph path should expose an action trace
+like:
+
+```text
+PARSE_TABLE -> RUN_CALCULATION -> STOP -> VERIFY_CLAIM
+```
+
+This trace is intended to feed paper case studies and failure analysis.
