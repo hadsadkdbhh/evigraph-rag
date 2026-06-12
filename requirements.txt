@@ -1,0 +1,3 @@
+# MVP-0 uses only the Python standard library.
+# Later MVPs can add pymupdf, pdfplumber, faiss-cpu, sentence-transformers,
+# pytesseract/easyocr, and provider SDKs behind evigraph/clients.py.
