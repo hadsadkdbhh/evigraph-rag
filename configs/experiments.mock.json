@@ -1,0 +1,36 @@
+{
+  "title": "EviGraph Mock Evidence Study",
+  "config": "configs/default.yaml",
+  "output_dir": "outputs/eval/manifest",
+  "datasets": [
+    {
+      "name": "mock_report",
+      "questions": "data/questions.jsonl",
+      "corpus": "data/corpus",
+      "build_index": true,
+      "index": "outputs/index/mock_report_manifest.json",
+      "chunk_size": 900,
+      "chunk_overlap": 120
+    }
+  ],
+  "experiments": [
+    {
+      "name": "ablation",
+      "type": "batch",
+      "methods": [
+        "topk",
+        "utility_only",
+        "evigraph_wo_risk",
+        "evigraph_wo_verifier",
+        "evigraph_wo_support",
+        "full_evigraph"
+      ]
+    },
+    {
+      "name": "pareto",
+      "type": "pareto",
+      "method": "full_evigraph",
+      "budgets": [1, 2, 4, 8]
+    }
+  ]
+}

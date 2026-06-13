@@ -61,6 +61,13 @@ Summarize one or more experiment CSV files as Markdown tables:
 python scripts/summarize_experiments.py --inputs outputs/eval/ablation.csv outputs/eval/pareto.csv --output outputs/eval/summary.md
 ```
 
+Run an end-to-end experiment manifest that builds the local index, runs
+ablation and Pareto sweeps, and writes a Markdown summary:
+
+```powershell
+python scripts/run_manifest.py --manifest configs/experiments.mock.json
+```
+
 ## Local Retrieval MVP-1
 
 Build a local JSON index from files under `data/corpus`:

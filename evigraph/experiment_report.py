@@ -76,7 +76,7 @@ class ExperimentReport:
         if not rows:
             return []
         first = rows[0]
-        columns = ["method"]
+        columns = ["dataset", "method"]
         if "budget_nodes" in first:
             columns.append("budget_nodes")
         return [column for column in columns if column in first]
