@@ -129,6 +129,12 @@ rule scores with automatic rule fallback.
 
 ## Feasibility Check
 
+Run the unit and smoke tests:
+
+```powershell
+python scripts/run_tests.py
+```
+
 Run the current end-to-end feasibility suite:
 
 ```powershell
