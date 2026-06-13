@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from evigraph.experiment_report import ExperimentReport
+from evigraph.experiment_card import ExperimentCard
 from evigraph.indexing import LocalIndexBuilder
 from evigraph.dataset_adapter import DatasetAdapter
 from evigraph.methods import METHODS, MethodRunner
@@ -33,7 +34,7 @@ class ManifestRunner:
 
     def run(self) -> dict[str, Any]:
         config = self._read_config(self.manifest.get("config", "configs/default.yaml"))
-        artifacts: dict[str, Any] = {"converted": [], "indexes": [], "evaluations": [], "summary": None}
+        artifacts: dict[str, Any] = {"converted": [], "indexes": [], "evaluations": [], "summary": None, "card": None}
         summary_inputs: list[Path] = []
 
         for dataset in self.manifest.get("datasets", []):
@@ -54,6 +55,8 @@ class ManifestRunner:
             summary_path = self.output_dir / "summary.md"
             ExperimentReport().write(summary_inputs, summary_path, title=self.manifest.get("title", "EviGraph Manifest Summary"))
             artifacts["summary"] = str(summary_path)
+        card_path = self.output_dir / "experiment_card.md"
+        artifacts["card"] = ExperimentCard().write(self.manifest_path, self.manifest, artifacts, card_path)
         return artifacts
 
     def _run_experiment(

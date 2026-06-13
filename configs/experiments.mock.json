@@ -40,5 +40,11 @@
       "method": "full_evigraph",
       "budgets": [1, 2, 4, 8]
     }
+  ],
+  "limitations": [
+    "The mock dataset has one example and is only a pipeline smoke test.",
+    "The local corpus is a tiny surrogate, not a real benchmark corpus.",
+    "Retrieval is lexical BM25-style rather than dense or multimodal retrieval.",
+    "Chart and table evidence is represented through text/table surrogates."
   ]
 }

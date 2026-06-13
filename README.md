@@ -68,6 +68,10 @@ ablation and Pareto sweeps, and writes a Markdown summary:
 python scripts/run_manifest.py --manifest configs/experiments.mock.json
 ```
 
+The manifest runner also writes `outputs/eval/manifest/experiment_card.md`,
+which records datasets, methods, result files, environment details, git commit,
+and current limitations for paper auditing.
+
 Convert external benchmark files into the internal JSONL question format:
 
 ```powershell
