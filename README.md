@@ -68,6 +68,15 @@ ablation and Pareto sweeps, and writes a Markdown summary:
 python scripts/run_manifest.py --manifest configs/experiments.mock.json
 ```
 
+Convert external benchmark files into the internal JSONL question format:
+
+```powershell
+python scripts/convert_dataset.py --input data/raw/mock_external.jsonl --output outputs/eval/converted_questions.jsonl --dataset-name mock_report
+```
+
+Manifests may also set `raw_questions` and `field_map` to run this conversion
+automatically before evaluation.
+
 ## Local Retrieval MVP-1
 
 Build a local JSON index from files under `data/corpus`:

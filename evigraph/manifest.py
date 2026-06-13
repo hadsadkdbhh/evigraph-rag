@@ -8,6 +8,7 @@ from typing import Any
 
 from evigraph.experiment_report import ExperimentReport
 from evigraph.indexing import LocalIndexBuilder
+from evigraph.dataset_adapter import DatasetAdapter
 from evigraph.methods import METHODS, MethodRunner
 from evigraph.metrics import summarize_result
 
@@ -32,12 +33,12 @@ class ManifestRunner:
 
     def run(self) -> dict[str, Any]:
         config = self._read_config(self.manifest.get("config", "configs/default.yaml"))
-        artifacts: dict[str, Any] = {"indexes": [], "evaluations": [], "summary": None}
+        artifacts: dict[str, Any] = {"converted": [], "indexes": [], "evaluations": [], "summary": None}
         summary_inputs: list[Path] = []
 
         for dataset in self.manifest.get("datasets", []):
             dataset_name = dataset["name"]
-            questions_path = self._resolve(dataset["questions"])
+            questions_path = self._prepare_questions(dataset)
             corpus_path = self._prepare_corpus(dataset)
             for experiment in self.manifest.get("experiments", []):
                 output_path = self.output_dir / f"{dataset_name}_{experiment['name']}.csv"
@@ -46,6 +47,8 @@ class ManifestRunner:
                 summary_inputs.append(output_path)
             if dataset.get("build_index"):
                 artifacts["indexes"].append(str(self._resolve(dataset["index"])))
+            if dataset.get("raw_questions"):
+                artifacts["converted"].append(str(questions_path))
 
         if summary_inputs:
             summary_path = self.output_dir / "summary.md"
@@ -185,6 +188,19 @@ class ManifestRunner:
             ).build(corpus_path, index_path)
             return index_path
         return corpus_path
+
+    def _prepare_questions(self, dataset: dict[str, Any]) -> Path:
+        if not dataset.get("raw_questions"):
+            return self._resolve(dataset["questions"])
+        output_path = self._resolve(dataset.get("questions", f"outputs/eval/manifest/{dataset['name']}_questions.jsonl"))
+        DatasetAdapter().convert(
+            self._resolve(dataset["raw_questions"]),
+            output_path,
+            field_map=dataset.get("field_map"),
+            default_task_type=dataset.get("default_task_type"),
+            dataset_name=dataset.get("name"),
+        )
+        return output_path
 
     def _validate_methods(self, methods: list[str]) -> None:
         unknown = [method for method in methods if method not in METHODS]

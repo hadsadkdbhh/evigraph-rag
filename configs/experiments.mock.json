@@ -5,7 +5,15 @@
   "datasets": [
     {
       "name": "mock_report",
-      "questions": "data/questions.jsonl",
+      "raw_questions": "data/raw/mock_external.jsonl",
+      "questions": "outputs/eval/manifest/mock_report_questions.jsonl",
+      "field_map": {
+        "id": "qid",
+        "query": "question",
+        "answer": "gold_answer",
+        "source_doc": "document",
+        "task_type": "category"
+      },
       "corpus": "data/corpus",
       "build_index": true,
       "index": "outputs/index/mock_report_manifest.json",
