@@ -81,6 +81,12 @@ python scripts/convert_dataset.py --input data/raw/mock_external.jsonl --output 
 Manifests may also set `raw_questions` and `field_map` to run this conversion
 automatically before evaluation.
 
+Inspect converted benchmark questions before reporting results:
+
+```powershell
+python scripts/inspect_dataset.py --questions outputs/eval/converted_questions.jsonl --corpus data/corpus --md-output outputs/eval/dataset_inspection.md
+```
+
 Run the synthetic stress suite with official reports plus high-relevance
 forecast, draft, and press distractors:
 

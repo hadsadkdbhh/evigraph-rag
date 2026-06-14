@@ -10,6 +10,7 @@ from evigraph.experiment_report import ExperimentReport
 from evigraph.experiment_card import ExperimentCard
 from evigraph.indexing import LocalIndexBuilder
 from evigraph.dataset_adapter import DatasetAdapter
+from evigraph.dataset_inspector import DatasetInspector
 from evigraph.methods import METHODS, MethodRunner
 from evigraph.metrics import summarize_result
 
@@ -34,13 +35,21 @@ class ManifestRunner:
 
     def run(self) -> dict[str, Any]:
         config = self._read_config(self.manifest.get("config", "configs/default.yaml"))
-        artifacts: dict[str, Any] = {"converted": [], "indexes": [], "evaluations": [], "summary": None, "card": None}
+        artifacts: dict[str, Any] = {
+            "converted": [],
+            "inspections": [],
+            "indexes": [],
+            "evaluations": [],
+            "summary": None,
+            "card": None,
+        }
         summary_inputs: list[Path] = []
 
         for dataset in self.manifest.get("datasets", []):
             dataset_name = dataset["name"]
             questions_path = self._prepare_questions(dataset)
             corpus_path = self._prepare_corpus(dataset)
+            artifacts["inspections"].append(str(self._inspect_dataset(dataset_name, questions_path, corpus_path)))
             for experiment in self.manifest.get("experiments", []):
                 output_path = self.output_dir / f"{dataset_name}_{experiment['name']}.csv"
                 self._run_experiment(experiment, dataset_name, questions_path, corpus_path, config, output_path)
@@ -204,6 +213,15 @@ class ManifestRunner:
             dataset_name=dataset.get("name"),
         )
         return output_path
+
+    def _inspect_dataset(self, dataset_name: str, questions_path: Path, corpus_path: Path | None) -> Path:
+        inspector = DatasetInspector()
+        report = inspector.inspect(questions_path, corpus_path)
+        report_path = self.output_dir / f"{dataset_name}_inspection.json"
+        markdown_path = self.output_dir / f"{dataset_name}_inspection.md"
+        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+        inspector.write_markdown(report, markdown_path)
+        return markdown_path
 
     def _validate_methods(self, methods: list[str]) -> None:
         unknown = [method for method in methods if method not in METHODS]

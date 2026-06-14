@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from evigraph.dataset_adapter import DatasetAdapter
+from evigraph.dataset_inspector import DatasetInspector
 
 
 class DatasetAdapterTest(unittest.TestCase):
@@ -59,6 +60,59 @@ class DatasetAdapterTest(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "no query"):
                 DatasetAdapter().convert(input_path, output_path)
+
+    def test_inspector_reports_source_doc_coverage(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            corpus = root / "corpus"
+            corpus.mkdir()
+            (corpus / "chart_001.txt").write_text("chart text", encoding="utf-8")
+            questions = root / "questions.jsonl"
+            questions.write_text(
+                "\n".join(
+                    [
+                        json.dumps({"id": "q1", "query": "Q1", "answer": "A1", "source_doc": "chart_001.txt"}),
+                        json.dumps({"id": "q2", "query": "Q2", "answer": "A2", "source_doc": "missing.txt"}),
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            report = DatasetInspector().inspect(questions, corpus)
+
+            self.assertEqual(report["records"], 2)
+            self.assertEqual(report["missing_query"], 0)
+            self.assertEqual(report["missing_answer"], 0)
+            self.assertEqual(report["source_doc_coverage"], 0.5)
+            self.assertEqual(report["missing_corpus_sources"], ["missing.txt"])
+
+    def test_inspector_reads_sources_from_index_json(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            index_path = root / "index.json"
+            index_path.write_text(
+                json.dumps({"chunks": [{"source_doc": str(root / "case_alpha_report.md"), "text": "x"}]}),
+                encoding="utf-8",
+            )
+            questions = root / "questions.jsonl"
+            questions.write_text(
+                json.dumps(
+                    {
+                        "id": "q1",
+                        "query": "Q1",
+                        "answer": "A1",
+                        "source_doc": "case_alpha_report.md",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            report = DatasetInspector().inspect(questions, index_path)
+
+            self.assertEqual(report["source_doc_coverage"], 1.0)
+            self.assertEqual(report["missing_corpus_sources"], [])
 
 
 if __name__ == "__main__":

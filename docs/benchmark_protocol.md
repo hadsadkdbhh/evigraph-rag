@@ -11,6 +11,7 @@ Each benchmark subset should provide:
 - A raw annotation file in `.jsonl`, `.json`, or `.csv`.
 - A corpus directory containing the evidence available to retrieval.
 - A manifest that records field mapping, corpus path, methods, budgets, and limitations.
+- A dataset inspection report with source-document coverage.
 - A generated experiment card from `scripts/run_manifest.py`.
 
 ## Internal Question Schema
@@ -43,6 +44,7 @@ Before a result is used in the paper, it should pass:
 ```powershell
 python scripts/run_tests.py
 python scripts/run_feasibility.py --corpus data/corpus --report outputs/eval/feasibility_report.json
+python scripts/inspect_dataset.py --questions outputs/eval/<benchmark>/questions.jsonl --corpus data/<benchmark>_corpus --md-output outputs/eval/<benchmark>/inspection.md
 python scripts/run_manifest.py --manifest configs/<benchmark>.json
 ```
 

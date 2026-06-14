@@ -117,7 +117,7 @@ class ExperimentCard:
             "| kind | path |",
             "| --- | --- |",
         ]
-        for key in ("converted", "indexes", "evaluations"):
+        for key in ("converted", "inspections", "indexes", "evaluations"):
             for path in artifacts.get(key, []):
                 lines.append(f"| {key} | `{self._display_path(path)}` |")
         if artifacts.get("summary"):
