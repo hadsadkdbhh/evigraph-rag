@@ -1,1 +1,1 @@
-{"id":"toy_chart_001","query":"According to the chart, how much higher was 2023 than 2022?","answer":"12.5","source_doc":"mock_report.pdf","task_type":"chart"}
+{"id":"toy_chart_001","query":"According to the chart, how much higher was 2023 than 2022?","answer":"12.5","source_doc":"mock_report.md","task_type":"chart"}

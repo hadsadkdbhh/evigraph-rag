@@ -9,6 +9,9 @@ from evigraph.dataset_adapter import DatasetAdapter
 from evigraph.dataset_inspector import DatasetInspector
 
 
+ROOT = Path(__file__).resolve().parents[1]
+
+
 class DatasetAdapterTest(unittest.TestCase):
     def test_converts_jsonl_with_explicit_field_map(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -113,6 +116,13 @@ class DatasetAdapterTest(unittest.TestCase):
 
             self.assertEqual(report["source_doc_coverage"], 1.0)
             self.assertEqual(report["missing_corpus_sources"], [])
+
+    def test_repository_mock_questions_match_corpus_sources(self) -> None:
+        report = DatasetInspector().inspect(ROOT / "data" / "questions.jsonl", ROOT / "data" / "corpus")
+
+        self.assertEqual(report["records"], 1)
+        self.assertEqual(report["source_doc_coverage"], 1.0)
+        self.assertEqual(report["missing_corpus_sources"], [])
 
 
 if __name__ == "__main__":
