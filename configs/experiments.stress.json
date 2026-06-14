@@ -1,0 +1,50 @@
+{
+  "title": "EviGraph Stress Evidence Study",
+  "config": "configs/default.yaml",
+  "output_dir": "outputs/eval/stress",
+  "datasets": [
+    {
+      "name": "stress_numeric",
+      "raw_questions": "data/raw/stress_external.jsonl",
+      "questions": "outputs/eval/stress/stress_questions.jsonl",
+      "field_map": {
+        "id": "qid",
+        "query": "question",
+        "answer": "gold_answer",
+        "source_doc": "document",
+        "task_type": "category"
+      },
+      "corpus": "data/stress_corpus",
+      "build_index": true,
+      "index": "outputs/index/stress_manifest.json",
+      "chunk_size": 900,
+      "chunk_overlap": 120
+    }
+  ],
+  "experiments": [
+    {
+      "name": "ablation",
+      "type": "batch",
+      "methods": [
+        "topk",
+        "utility_only",
+        "evigraph_wo_risk",
+        "evigraph_wo_verifier",
+        "evigraph_wo_support",
+        "full_evigraph"
+      ]
+    },
+    {
+      "name": "pareto",
+      "type": "pareto",
+      "method": "full_evigraph",
+      "budgets": [1, 2, 4, 8]
+    }
+  ],
+  "limitations": [
+    "This is a synthetic stress suite, not a public benchmark.",
+    "Each question is numeric and table-centered.",
+    "Distractor documents are hand-authored to exercise risk filtering.",
+    "The suite is intended to expose method behavior before running real datasets."
+  ]
+}

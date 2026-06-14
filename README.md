@@ -81,6 +81,18 @@ python scripts/convert_dataset.py --input data/raw/mock_external.jsonl --output 
 Manifests may also set `raw_questions` and `field_map` to run this conversion
 automatically before evaluation.
 
+Run the synthetic stress suite with official reports plus high-relevance
+forecast, draft, and press distractors:
+
+```powershell
+python scripts/run_manifest.py --manifest configs/experiments.stress.json
+```
+
+On the current stress suite, `full_evigraph` reaches perfect numeric accuracy
+and rejects noisy evidence, while `topk` and `utility_only` fail on two of three
+questions because they accept distracting evidence. This is a stress test, not a
+public benchmark result.
+
 ## Local Retrieval MVP-1
 
 Build a local JSON index from files under `data/corpus`:

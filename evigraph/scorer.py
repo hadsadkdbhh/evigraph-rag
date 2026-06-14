@@ -30,19 +30,34 @@ class RuleBasedUtilityRiskScorer:
         query_tokens = _tokens(query)
         node_tokens = _tokens(node.text())
         overlap = len(query_tokens & node_tokens) / max(1, len(query_tokens))
+        entity_alignment = self._entity_alignment(query, node)
         modality_bonus = 0.25 if self._modality_matches(query, node) else 0.0
-        relevance = _clip(0.35 + overlap + modality_bonus)
+        relevance = _clip(0.35 + overlap + modality_bonus + entity_alignment)
 
         has_numbers = bool(re.search(r"\d", node.text()))
+        text_lower = node.text().lower()
+        source_lower = str(node.source_doc or "").lower()
+        reliable_content = any(marker in text_lower for marker in ["official", "audited", "final", "supersedes"])
+        unreliable_source = any(marker in source_lower for marker in ["draft", "forecast", "press", "excerpt"])
+        unreliable_content = (
+            any(
+                marker in text_lower
+                for marker in ["preliminary forecast", "draft forecast", "press excerpt", "early draft", "expected"]
+            )
+            and not reliable_content
+        )
         utility = _clip(0.25 + 0.45 * relevance + (0.25 if has_numbers else 0.0) + modality_bonus)
         grounding = _clip(0.2 + (0.35 if has_numbers else 0.0) + (0.25 if node.source_doc else 0.0) + modality_bonus)
-        uncertainty = _clip(1.0 - node.confidence + (0.2 if "forecast" in node.text().lower() else 0.0))
+        uncertainty = _clip(1.0 - node.confidence + (0.2 if unreliable_source or unreliable_content else 0.0))
         misleading_risk = _clip(
             (0.75 if node.metadata.get("is_misleading") else 0.0)
             + (0.25 if node.metadata.get("source_quality") in {"draft", "third_party"} else 0.0)
-            + (0.15 if "forecast" in node.text().lower() else 0.0)
+            + (0.65 if unreliable_source or unreliable_content else 0.0)
         )
-        contradiction_risk = _clip(0.8 if node.metadata.get("is_conflicting") else 0.0)
+        contradiction_risk = _clip(
+            (0.8 if node.metadata.get("is_conflicting") else 0.0)
+            + (0.65 if ("press" in source_lower or "press excerpt" in text_lower) and not reliable_content else 0.0)
+        )
         source_reliability = self._source_reliability(node)
         cost = self._normalized_cost(node)
         final_score = (
@@ -75,6 +90,19 @@ class RuleBasedUtilityRiskScorer:
         if any(word in query_lower for word in ["table", "cell", "row"]):
             return node.modality == "table"
         return node.modality == "text"
+
+    def _entity_alignment(self, query: str, node: EvidenceNode) -> float:
+        query_label = self._case_label(query)
+        if not query_label:
+            return 0.0
+        node_label = self._case_label(f"{node.source_doc} {node.text()}")
+        if not node_label:
+            return -0.15
+        return 0.35 if node_label == query_label else -0.45
+
+    def _case_label(self, text: str) -> str | None:
+        match = re.search(r"\bcase\s+([a-z]+)\b", text.lower())
+        return match.group(1) if match else None
 
     def _source_reliability(self, node: EvidenceNode) -> float:
         quality = node.metadata.get("source_quality")

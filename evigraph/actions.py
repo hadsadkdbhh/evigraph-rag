@@ -18,11 +18,13 @@ class EvidenceActionController:
         parsed_nodes = self._parse_structured_nodes(selected, graph, actions)
         selected.extend(parsed_nodes)
 
+        calculation_pair = self._calculation_pair(query_lower)
         calculation_inputs = self._calculation_inputs(selected)
-        if self._requires_calculation(query_lower) and calculation_inputs:
+        if calculation_pair and self._requires_calculation(query_lower) and calculation_inputs:
             action = Action(
                 action_type="RUN_CALCULATION",
                 target_node_ids=[node.node_id for node in calculation_inputs],
+                params={"target_year": calculation_pair[0], "base_year": calculation_pair[1]},
                 estimated_cost={"tool_calls": 1, "latency_ms": 20},
                 reason="Query asks for a numerical comparison.",
             )
@@ -50,6 +52,16 @@ class EvidenceActionController:
 
     def _requires_calculation(self, query_lower: str) -> bool:
         return any(phrase in query_lower for phrase in ["how much higher", "difference", "increase", "decrease"])
+
+    def _calculation_pair(self, query_lower: str) -> tuple[str, str] | None:
+        import re
+
+        years = re.findall(r"\b(20\d{2})\b", query_lower)
+        if len(years) < 2:
+            return None
+        if " from " in query_lower and " to " in query_lower:
+            return years[1], years[0]
+        return years[0], years[1]
 
     def _has_numeric_evidence(self, selected: list[EvidenceNode]) -> bool:
         return any(node.modality in {"chart", "table"} for node in selected)
@@ -103,15 +115,24 @@ class EvidenceActionController:
         return [node for node in selected if node.modality in {"chart", "table"} and self._extract_values(node)]
 
     def _run_mock_calculation(self, action: Action, graph: EvidenceGraph) -> EvidenceNode | None:
+        target_year = str(action.params.get("target_year", "2023"))
+        base_year = str(action.params.get("base_year", "2022"))
         for target_id in action.target_node_ids:
             node = graph.nodes[target_id]
             values = self._extract_values(node)
-            if values and "2022" in values and "2023" in values:
-                diff = float(values["2023"]) - float(values["2022"])
+            if values and base_year in values and target_year in values:
+                diff = float(values[target_year]) - float(values[base_year])
                 calc_node = EvidenceNode(
-                    node_id="calc_2023_minus_2022",
+                    node_id=f"calc_{target_year}_minus_{base_year}",
                     node_type="calculation",
-                    content={"expression": "2023 - 2022", "result": diff},
+                    content={
+                        "expression": f"{target_year} - {base_year}",
+                        "target_year": target_year,
+                        "base_year": base_year,
+                        "target_value": float(values[target_year]),
+                        "base_value": float(values[base_year]),
+                        "result": diff,
+                    },
                     source_doc=node.source_doc,
                     modality="calculation",
                     cost={"tokens": 8, "tool_calls": 1, "latency_ms": 20},

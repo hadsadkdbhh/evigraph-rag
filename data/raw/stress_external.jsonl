@@ -1,0 +1,3 @@
+{"qid":"stress_alpha_001","question":"In Case Alpha, how much higher was 2023 than 2022?","gold_answer":"12.5","document":"case_alpha_report.md","category":"stress_numeric"}
+{"qid":"stress_beta_001","question":"In Case Beta, how much higher was 2024 than 2023?","gold_answer":"15.5","document":"case_beta_report.md","category":"stress_numeric"}
+{"qid":"stress_gamma_001","question":"In Case Gamma, how much higher was 2022 than 2021?","gold_answer":"7.25","document":"case_gamma_report.md","category":"stress_numeric"}

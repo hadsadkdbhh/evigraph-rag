@@ -14,9 +14,14 @@ class SupportOnlyGenerator:
         ]
 
         if calc_nodes:
-            result = calc_nodes[0].content.get("result") if isinstance(calc_nodes[0].content, dict) else None
-            text = f"2023 is higher than 2022 by {result:g}."
-            calculations = [f"{calc_nodes[0].node_id}: 100.0 - 87.5 = {result:g}"]
+            content = calc_nodes[0].content if isinstance(calc_nodes[0].content, dict) else {}
+            result = content.get("result")
+            target_year = content.get("target_year", "2023")
+            base_year = content.get("base_year", "2022")
+            target_value = content.get("target_value", 100.0)
+            base_value = content.get("base_value", 87.5)
+            text = f"{target_year} is higher than {base_year} by {result:g}."
+            calculations = [f"{calc_nodes[0].node_id}: {target_value:g} - {base_value:g} = {result:g}"]
             return Answer(text=text, citations=citations, calculations=calculations)
 
         derived = self._derive_difference_from_values(support_graph)

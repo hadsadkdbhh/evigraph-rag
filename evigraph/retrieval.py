@@ -175,7 +175,7 @@ def _infer_node_content(text: str) -> tuple[str, str, str | dict]:
         for year, value in re.findall(r"\b(20\d{2})\b[^\n\r|]{0,20}[|,\s]+(\d+(?:\.\d+)?)", text):
             values.setdefault(year, float(value))
 
-    if "2022" in values and "2023" in values:
+    if len(values) >= 2:
         return (
             "table",
             "table",

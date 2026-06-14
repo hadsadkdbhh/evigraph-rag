@@ -8,6 +8,7 @@ This file tracks what the current repository can and cannot support as paper evi
 - The pipeline creates candidate evidence, scores utility and risk, selects a support subgraph, executes explicit evidence actions, verifies claims, and logs artifacts.
 - The manifest runner can build a local index, convert raw question files, run ablations, run a budget sweep, summarize results, and write an experiment card.
 - The current smoke tests verify misleading-evidence rejection, table parsing, calculation triggering, and claim verification on the mock setup.
+- The synthetic stress suite shows that risk-aware evidence selection can reject hand-authored forecast, draft, and press distractors while simple top-k and utility-only baselines accept noisy evidence.
 
 ## Claims Not Yet Supported
 
@@ -15,7 +16,8 @@ This file tracks what the current repository can and cannot support as paper evi
 - Do not claim robustness on real multimodal documents.
 - Do not claim superiority over strong dense-retrieval or agentic RAG baselines.
 - Do not claim statistical significance.
-- Do not claim generality beyond the current controlled smoke task.
+- Do not claim generality beyond the current controlled mock and stress tasks.
+- Do not present the synthetic stress suite as a public benchmark.
 
 ## Evidence Needed Before Submission
 
@@ -24,9 +26,10 @@ This file tracks what the current repository can and cannot support as paper evi
 - Add task-appropriate metrics beyond numeric exact match.
 - Add failure analysis and qualitative case studies from real examples.
 - Add reproducibility checks that can run from a clean checkout.
+- Replace hand-authored stress distractors with real retrieval confounders from benchmark corpora.
 
 ## Next Engineering Step
 
 Connect a small real chart/table QA benchmark subset through `scripts/convert_dataset.py`
-and `configs/experiments.mock.json`-style manifests, then inspect whether the current
-selector/action/verifier design still works without toy assumptions.
+and `configs/experiments.stress.json`-style manifests, then inspect whether the current
+selector/action/verifier design still works without synthetic assumptions.
