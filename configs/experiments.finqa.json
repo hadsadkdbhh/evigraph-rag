@@ -1,0 +1,54 @@
+{
+  "title": "EviGraph FinQA Real Subset Study",
+  "config": "configs/default.yaml",
+  "output_dir": "outputs/eval/finqa",
+  "datasets": [
+    {
+      "name": "finqa_subset",
+      "raw_questions": "data/raw/finqa_subset.jsonl",
+      "questions": "outputs/eval/finqa/finqa_questions.jsonl",
+      "field_map": {
+        "id": "id",
+        "query": "question",
+        "answer": "answer",
+        "source_doc": "source_doc",
+        "task_type": "task_type"
+      },
+      "corpus": "data/finqa_corpus",
+      "build_index": true,
+      "index": "outputs/index/finqa_subset.json",
+      "chunk_size": 1200,
+      "chunk_overlap": 160,
+      "gate": {
+        "min_records": 20,
+        "min_source_doc_coverage": 1.0,
+        "fail_on_error": true
+      }
+    }
+  ],
+  "experiments": [
+    {
+      "name": "ablation",
+      "type": "batch",
+      "methods": [
+        "topk",
+        "utility_only",
+        "evigraph_wo_risk",
+        "evigraph_wo_verifier",
+        "evigraph_wo_support",
+        "full_evigraph"
+      ]
+    },
+    {
+      "name": "pareto",
+      "type": "pareto",
+      "method": "full_evigraph",
+      "budgets": [1, 2, 4, 8]
+    }
+  ],
+  "limitations": [
+    "This is a real FinQA validation subset fetched from Hugging Face Dataset Viewer with a fixed seed.",
+    "The current MVP uses text and table evidence serialized to Markdown, not native PDF layout.",
+    "The generated corpus excludes the gold answer and gold evidence annotations."
+  ]
+}

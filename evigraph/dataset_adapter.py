@@ -29,6 +29,13 @@ FIELD_MAP_PROFILES = {
         "source_doc": "document",
         "task_type": "category",
     },
+    "finqa": {
+        "id": "id",
+        "query": "question",
+        "answer": "answer",
+        "source_doc": "source_doc",
+        "task_type": "task_type",
+    },
 }
 
 

@@ -108,6 +108,18 @@ and rejects noisy evidence, while `topk` and `utility_only` fail on two of three
 questions because they accept distracting evidence. This is a stress test, not a
 public benchmark result.
 
+Run the real FinQA validation subset:
+
+```powershell
+python scripts/download_finqa_subset.py --split validation --pool-size 100 --sample-size 20 --seed 13
+python scripts/run_manifest.py --manifest configs/experiments.finqa.json
+```
+
+The checked-in FinQA subset uses `dreamerdeo/finqa`, validation split, pool size
+100, sample size 20, and seed 13. The generated corpus serializes the source
+pre-text, table, and post-text to Markdown and excludes the gold answer and gold
+evidence annotations from retrieval.
+
 Before reporting real benchmark numbers, follow the protocol in
 `docs/benchmark_protocol.md`. A ChartQA-style manifest template is available at
 `configs/experiments.chartqa.example.json`; populate `data/raw/chartqa_subset.jsonl`
