@@ -48,6 +48,7 @@ class MethodRunner:
         query: str,
         method: str = "full_evigraph",
         corpus_path: str | None = None,
+        source_doc: str | None = None,
         top_k: int = 8,
         log_run: bool = True,
     ) -> dict[str, Any]:
@@ -55,7 +56,7 @@ class MethodRunner:
             raise ValueError(f"Unknown method {method!r}. Expected one of: {', '.join(METHODS)}")
 
         logger = RunLogger(self.output_dir, run_name=method) if log_run else None
-        candidates = self.retriever.retrieve(query, corpus_path, top_k=top_k)
+        candidates = self.retriever.retrieve(query, corpus_path, top_k=top_k, source_doc=source_doc)
         self._trace(logger, "retrieve", {"method": method, "candidate_ids": [node.node_id for node in candidates]})
 
         nodes = self.converter.to_evidence_nodes(candidates)

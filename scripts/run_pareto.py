@@ -42,7 +42,12 @@ def main() -> int:
             config.setdefault("selection", {})["max_nodes"] = budget
             runner = MethodRunner(config)
             for sample in samples:
-                result = runner.run(sample["query"], "full_evigraph", corpus_path=args.corpus)
+                result = runner.run(
+                    sample["query"],
+                    "full_evigraph",
+                    corpus_path=args.corpus,
+                    source_doc=sample.get("source_doc"),
+                )
                 metrics = summarize_result(result, sample.get("answer"))
                 writer.writerow(
                     {

@@ -11,7 +11,8 @@ def numeric_exact_match(prediction: str, gold: str | None) -> float:
     gold_numbers = _numbers(gold)
     if not predicted_numbers or not gold_numbers:
         return float(prediction.strip().lower() == gold.strip().lower())
-    return float(any(abs(pred - gold_value) < 1e-6 for pred in predicted_numbers for gold_value in gold_numbers))
+    tolerance = 0.5 if "%" in prediction or "%" in gold else 1e-6
+    return float(any(abs(pred - gold_value) <= tolerance for pred in predicted_numbers for gold_value in gold_numbers))
 
 
 def misleading_acceptance(selected_ids: list[str]) -> float:

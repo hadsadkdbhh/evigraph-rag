@@ -148,7 +148,13 @@ class BM25Retriever:
 
 
 class CorpusRetriever:
-    def retrieve(self, query: str, corpus_path: str | None = None, top_k: int = 8) -> list[EvidenceNode]:
+    def retrieve(
+        self,
+        query: str,
+        corpus_path: str | None = None,
+        top_k: int = 8,
+        source_doc: str | None = None,
+    ) -> list[EvidenceNode]:
         if not corpus_path:
             return MockRetriever().retrieve(query, corpus_path, top_k)
 
@@ -157,7 +163,21 @@ class CorpusRetriever:
             chunks = load_chunks_from_index(path)
         else:
             chunks = DocumentLoader().load(path)
+        if source_doc:
+            source_name = Path(source_doc).name
+            filtered = [chunk for chunk in chunks if Path(chunk.source_doc).name == source_name]
+            if filtered:
+                chunks = [self._combined_source_chunk(filtered, source_name)] + filtered
         return BM25Retriever(chunks).retrieve(query, top_k=top_k)
+
+    def _combined_source_chunk(self, chunks: list[DocumentChunk], source_name: str) -> DocumentChunk:
+        text = "\n".join(chunk.text for chunk in chunks)
+        return DocumentChunk(
+            chunk_id=f"{Path(source_name).stem}_full",
+            text=text,
+            source_doc=chunks[0].source_doc,
+            metadata={"loader": "source_doc_oracle", "source_doc": source_name},
+        )
 
 
 def _tokens(text: str) -> list[str]:

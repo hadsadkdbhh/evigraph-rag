@@ -123,7 +123,10 @@ class ManifestRunner:
                 sample = json.loads(line)
                 for method in methods:
                     result = MethodRunner(deepcopy(base_config)).run(
-                        sample["query"], method, corpus_path=str(corpus_path) if corpus_path else None
+                        sample["query"],
+                        method,
+                        corpus_path=str(corpus_path) if corpus_path else None,
+                        source_doc=sample.get("source_doc"),
                     )
                     metrics = summarize_result(result, sample.get("answer"))
                     writer.writerow(
@@ -177,7 +180,12 @@ class ManifestRunner:
                 config.setdefault("selection", {})["max_nodes"] = budget
                 runner = MethodRunner(config)
                 for sample in samples:
-                    result = runner.run(sample["query"], method, corpus_path=str(corpus_path) if corpus_path else None)
+                    result = runner.run(
+                        sample["query"],
+                        method,
+                        corpus_path=str(corpus_path) if corpus_path else None,
+                        source_doc=sample.get("source_doc"),
+                    )
                     metrics = summarize_result(result, sample.get("answer"))
                     writer.writerow(
                         {

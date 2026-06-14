@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 from evigraph.evidence_graph import EvidenceGraph
+from evigraph.numeric_reasoning import NumericReasoner
 from evigraph.schema import Answer
 
 
 class SupportOnlyGenerator:
+    def __init__(self) -> None:
+        self.numeric_reasoner = NumericReasoner()
+
     def generate(self, query: str, support_graph: EvidenceGraph) -> Answer:
         calc_nodes = [node for node in support_graph.nodes.values() if node.node_type == "calculation"]
         citations = [
@@ -29,6 +33,15 @@ class SupportOnlyGenerator:
             text = f"2023 is higher than 2022 by {derived:g}."
             calculations = [f"derived_from_context: 100.0 - 87.5 = {derived:g}"]
             return Answer(text=text, citations=citations, calculations=calculations)
+
+        numeric_answer = self.numeric_reasoner.answer(query, support_graph)
+        if numeric_answer is not None:
+            cited = [node_id for node_id in numeric_answer.cited_node_ids if node_id in citations]
+            return Answer(
+                text=numeric_answer.text,
+                citations=cited or citations,
+                calculations=[numeric_answer.calculation],
+            )
 
         best = max(
             support_graph.nodes.values(),

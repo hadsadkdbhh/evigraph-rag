@@ -10,6 +10,7 @@ This file tracks what the current repository can and cannot support as paper evi
 - The current smoke tests verify misleading-evidence rejection, table parsing, calculation triggering, and claim verification on the mock setup.
 - The synthetic stress suite shows that risk-aware evidence selection can reject hand-authored forecast, draft, and press distractors while simple top-k and utility-only baselines accept noisy evidence.
 - A 20-example real FinQA validation subset is checked in with deterministic sampling metadata and a retrieval corpus built from source pre-text, tables, and post-text.
+- On the checked-in FinQA smoke subset, the current oracle-document setting reaches 5/20 numeric exact-match accuracy with transparent calculations for ratio, percent-change, row-average, and difference cases.
 
 ## Claims Not Yet Supported
 
@@ -19,6 +20,7 @@ This file tracks what the current repository can and cannot support as paper evi
 - Do not claim statistical significance.
 - Do not claim generality beyond the current controlled mock, synthetic stress, and small FinQA smoke tasks.
 - Do not present the synthetic stress suite as a public benchmark.
+- Do not present the current FinQA result as open-retrieval performance; the manifest uses the provided `source_doc` to constrain retrieval to the gold source document.
 
 ## Evidence Needed Before Submission
 
@@ -29,6 +31,7 @@ This file tracks what the current repository can and cannot support as paper evi
 - Add reproducibility checks that can run from a clean checkout.
 - Replace hand-authored stress distractors with real retrieval confounders from benchmark corpora.
 - Improve real-table numerical reasoning; the current rule generator does not solve the FinQA subset yet.
+- Separate oracle-document reasoning from open-document retrieval in future benchmark tables.
 
 ## Next Engineering Step
 

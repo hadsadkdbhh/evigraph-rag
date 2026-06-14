@@ -57,7 +57,12 @@ def main() -> int:
         for line in input_handle:
             sample = json.loads(line)
             for method in methods:
-                result = MethodRunner(config).run(sample["query"], method, corpus_path=args.corpus)
+                result = MethodRunner(config).run(
+                    sample["query"],
+                    method,
+                    corpus_path=args.corpus,
+                    source_doc=sample.get("source_doc"),
+                )
                 metrics = summarize_result(result, sample.get("answer"))
                 writer.writerow(
                     {

@@ -120,6 +120,11 @@ The checked-in FinQA subset uses `dreamerdeo/finqa`, validation split, pool size
 pre-text, table, and post-text to Markdown and excludes the gold answer and gold
 evidence annotations from retrieval.
 
+The current manifest uses the sample `source_doc` field to evaluate
+oracle-document reasoning before open retrieval. On this smoke subset,
+`full_evigraph` currently reaches 5/20 numeric exact matches with transparent
+calculation traces.
+
 Before reporting real benchmark numbers, follow the protocol in
 `docs/benchmark_protocol.md`. A ChartQA-style manifest template is available at
 `configs/experiments.chartqa.example.json`; populate `data/raw/chartqa_subset.jsonl`

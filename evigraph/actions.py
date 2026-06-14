@@ -15,6 +15,7 @@ class EvidenceActionController:
         query_lower = query.lower()
         selected = list(selected)
 
+        selected.extend(self._expand_source_context(selected, graph, actions))
         parsed_nodes = self._parse_structured_nodes(selected, graph, actions)
         selected.extend(parsed_nodes)
 
@@ -50,7 +51,38 @@ class EvidenceActionController:
         actions.append(Action(action_type="STOP", target_node_ids=[], reason="Selected evidence is sufficient."))
         return selected, graph, actions
 
+    def _expand_source_context(
+        self,
+        selected: list[EvidenceNode],
+        graph: EvidenceGraph,
+        actions: list[Action],
+    ) -> list[EvidenceNode]:
+        selected_ids = {node.node_id for node in selected}
+        selected_sources = {node.source_doc for node in selected if node.source_doc}
+        expanded = []
+        for node in graph.nodes.values():
+            if node.node_id in selected_ids:
+                continue
+            if node.source_doc not in selected_sources:
+                continue
+            if node.metadata.get("loader") != "source_doc_oracle":
+                continue
+            node.metadata["selection_status"] = "selected"
+            expanded.append(node)
+        if expanded:
+            actions.append(
+                Action(
+                    action_type="EXPAND_SOURCE_CONTEXT",
+                    target_node_ids=[node.node_id for node in expanded],
+                    estimated_cost={"tool_calls": 0, "latency_ms": 5},
+                    reason="Oracle source_doc evaluation includes the full source context for numerical evidence.",
+                )
+            )
+        return expanded
+
     def _requires_calculation(self, query_lower: str) -> bool:
+        if "percent" in query_lower or "percentage" in query_lower or "growth rate" in query_lower:
+            return False
         return any(phrase in query_lower for phrase in ["how much higher", "difference", "increase", "decrease"])
 
     def _calculation_pair(self, query_lower: str) -> tuple[str, str] | None:
