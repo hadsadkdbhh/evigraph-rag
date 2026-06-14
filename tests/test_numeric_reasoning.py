@@ -83,6 +83,33 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "127.40")
         self.assertIn("row_average", answer.calculations[0])
 
+    def test_year_range_average_from_rows(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| year | amortization amount ( in millions ) |\n"
+                    "| --- | --- |\n"
+                    "| 2015 | $ 45 |\n"
+                    "| 2016 | $ 45 |\n"
+                    "| 2017 | $ 45 |\n"
+                    "| 2018 | $ 45 |\n"
+                    "| 2019 | $ 44 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the average amortization amount , in millions , from 2015-2019?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "44.8")
+        self.assertIn("year_range_average", answer.calculations[0])
+
     def test_percentage_exact_match_allows_rounding(self) -> None:
         self.assertEqual(numeric_exact_match("86.8%", "87%"), 1.0)
 

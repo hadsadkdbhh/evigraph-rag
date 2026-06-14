@@ -10,7 +10,8 @@ This file tracks what the current repository can and cannot support as paper evi
 - The current smoke tests verify misleading-evidence rejection, table parsing, calculation triggering, and claim verification on the mock setup.
 - The synthetic stress suite shows that risk-aware evidence selection can reject hand-authored forecast, draft, and press distractors while simple top-k and utility-only baselines accept noisy evidence.
 - A 20-example real FinQA validation subset is checked in with deterministic sampling metadata and a retrieval corpus built from source pre-text, tables, and post-text.
-- On the checked-in FinQA smoke subset, the current oracle-document setting reaches 5/20 numeric exact-match accuracy with transparent calculations for ratio, percent-change, row-average, and difference cases.
+- On the checked-in FinQA smoke subset, the current oracle-document setting reaches 7/20 numeric exact-match accuracy with transparent calculations for ratio, percent-change, row-average, year-range-average, and difference cases.
+- The manifest runner writes a failure report for batch experiments, grouping unresolved examples by error category for paper-oriented failure analysis.
 
 ## Claims Not Yet Supported
 

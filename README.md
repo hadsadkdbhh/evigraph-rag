@@ -122,8 +122,14 @@ evidence annotations from retrieval.
 
 The current manifest uses the sample `source_doc` field to evaluate
 oracle-document reasoning before open retrieval. On this smoke subset,
-`full_evigraph` currently reaches 5/20 numeric exact matches with transparent
+`full_evigraph` currently reaches 7/20 numeric exact matches with transparent
 calculation traces.
+
+Generate a failure report for the FinQA ablation output:
+
+```powershell
+python scripts/analyze_failures.py --csv outputs/eval/finqa/finqa_subset_ablation.csv --method full_evigraph --output outputs/eval/finqa/finqa_subset_ablation_failures.md
+```
 
 Before reporting real benchmark numbers, follow the protocol in
 `docs/benchmark_protocol.md`. A ChartQA-style manifest template is available at

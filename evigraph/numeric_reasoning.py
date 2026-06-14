@@ -41,11 +41,35 @@ class NumericReasoner:
             if answer:
                 return answer
 
+        if "average" in query_lower:
+            answer = self._year_range_average(query_lower, contexts)
+            if answer:
+                return answer
+
         if "post closing adjustments" in query_lower or "post-closing adjustments" in query_lower:
             answer = self._difference_between_nearby_amounts(contexts)
             if answer:
                 return answer
 
+        return None
+
+    def _year_range_average(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
+        range_match = re.search(r"\b(20\d{2})\s*[-–]\s*(20\d{2})\b", query_lower)
+        if not range_match:
+            return None
+        start_year, end_year = (int(range_match.group(1)), int(range_match.group(2)))
+        years = [str(year) for year in range(start_year, end_year + 1)]
+        for node_id, text in contexts:
+            rows = dict(self._label_value_rows(text))
+            values = [rows[year] for year in years if year in rows]
+            if len(values) != len(years):
+                continue
+            result = sum(values) / len(values)
+            return NumericAnswer(
+                text=f"{result:.1f}",
+                calculation=f"year_range_average: ({' + '.join(f'{value:g}' for value in values)}) / {len(values)} = {result:.1f}",
+                cited_node_ids=[node_id],
+            )
         return None
 
     def _row_average(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
@@ -324,6 +348,14 @@ class NumericReasoner:
             "after",
             "represented",
             "total",
+            "is",
+            "an",
+            "from",
+            "to",
+            "rate",
+            "return",
+            "investment",
+            "change",
         }
         return [token for token in re.findall(r"[a-z0-9]+", text.lower()) if token not in stop][:5]
 
