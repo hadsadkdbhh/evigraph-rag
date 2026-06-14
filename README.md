@@ -116,14 +116,15 @@ python scripts/run_manifest.py --manifest configs/experiments.finqa.json
 ```
 
 The checked-in FinQA subset uses `dreamerdeo/finqa`, validation split, pool size
-100, sample size 20, and seed 13. The generated corpus serializes the source
+100, sample size 100, and seed 13. The generated corpus serializes the source
 pre-text, table, and post-text to Markdown and excludes the gold answer and gold
 evidence annotations from retrieval.
 
 The current manifest uses the sample `source_doc` field to evaluate
 oracle-document reasoning before open retrieval. On this smoke subset,
-`full_evigraph` currently reaches 7/20 numeric exact matches with transparent
-calculation traces.
+`full_evigraph` currently reaches 12/100 numeric exact matches in oracle-doc
+mode, 9/100 in open BM25 mode, and 10/100 in source-rerank mode. These are
+diagnostic baselines, not final benchmark claims.
 
 Generate a failure report for the FinQA ablation output:
 

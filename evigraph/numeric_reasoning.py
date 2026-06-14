@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from evigraph.evidence_graph import EvidenceGraph
 from evigraph.schema import EvidenceNode
+from evigraph.table_executor import TableOperationExecutor
 
 
 @dataclass
@@ -15,6 +16,9 @@ class NumericAnswer:
 
 
 class NumericReasoner:
+    def __init__(self) -> None:
+        self.executor = TableOperationExecutor()
+
     def answer(self, query: str, support_graph: EvidenceGraph) -> NumericAnswer | None:
         query_lower = self._normalize_query(query)
         contexts = self._contexts(support_graph)
@@ -64,10 +68,13 @@ class NumericReasoner:
             values = [rows[year] for year in years if year in rows]
             if len(values) != len(years):
                 continue
-            result = sum(values) / len(values)
+            operation = self.executor.average(values)
+            if operation is None:
+                continue
+            result = operation.value
             return NumericAnswer(
                 text=f"{result:.1f}",
-                calculation=f"year_range_average: ({' + '.join(f'{value:g}' for value in values)}) / {len(values)} = {result:.1f}",
+                calculation=f"year_range_average: {operation.expression}",
                 cited_node_ids=[node_id],
             )
         return None
@@ -92,10 +99,13 @@ class NumericReasoner:
                 denominator = self._first_number(row[denominator_index])
                 if numerator is None or denominator in {None, 0}:
                     continue
-                result = numerator / denominator
+                operation = self.executor.ratio(numerator, denominator)
+                if operation is None:
+                    continue
+                result = operation.value
                 return NumericAnswer(
                     text=f"{result:.2f}",
-                    calculation=f"row_average: {numerator:g} / {denominator:g} = {result:.2f}",
+                    calculation=f"row_average: {operation.expression}",
                     cited_node_ids=[node_id],
                 )
         return None
@@ -109,13 +119,13 @@ class NumericReasoner:
             values = self._table_year_values(query_lower, text, base_year, target_year) or self._year_values(text)
             if base_year not in values or target_year not in values or values[base_year] == 0:
                 continue
-            result = (values[target_year] - values[base_year]) / abs(values[base_year]) * 100.0
+            operation = self.executor.percent_change(values[target_year], values[base_year])
+            if operation is None:
+                continue
+            result = operation.value
             return NumericAnswer(
                 text=f"{result:.1f}%",
-                calculation=(
-                    f"percent_change: ({values[target_year]:g} - {values[base_year]:g}) "
-                    f"/ {abs(values[base_year]):g} * 100 = {result:.1f}%"
-                ),
+                calculation=f"percent_change: {operation.expression}",
                 cited_node_ids=[node_id],
             )
         return None
@@ -179,7 +189,10 @@ class NumericReasoner:
             if numerator is None or denominator in {None, 0}:
                 continue
 
-            result = numerator / denominator * 100.0
+            operation = self.executor.ratio(numerator, denominator)
+            if operation is None:
+                continue
+            result = operation.value * 100.0
             return NumericAnswer(
                 text=self._format_percent(result),
                 calculation=f"ratio_percent: {numerator:g} / {denominator:g} * 100 = {result:.1f}%",
@@ -243,9 +256,10 @@ class NumericReasoner:
                         best_gap = gap
                         best_pair = (left, right)
             if best_pair and best_gap is not None:
+                operation = self.executor.difference(best_pair[1], best_pair[0])
                 return NumericAnswer(
-                    text=f"{best_gap:g}",
-                    calculation=f"difference: {best_pair[1]:g} - {best_pair[0]:g} = {best_gap:g}",
+                    text=f"{operation.value:g}",
+                    calculation=f"difference: {operation.expression}",
                     cited_node_ids=[node_id],
                 )
         return None

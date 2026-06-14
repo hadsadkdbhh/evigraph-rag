@@ -22,6 +22,7 @@ def main() -> int:
     parser.add_argument("--config", default=str(ROOT / "configs" / "default.yaml"))
     parser.add_argument("--budgets", default="1,2,4,8")
     parser.add_argument("--corpus", default=None)
+    parser.add_argument("--retrieval-mode", default="oracle_doc", choices=["oracle_doc", "open", "source_rerank"])
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -47,6 +48,7 @@ def main() -> int:
                     "full_evigraph",
                     corpus_path=args.corpus,
                     source_doc=sample.get("source_doc"),
+                    retrieval_mode=args.retrieval_mode,
                 )
                 metrics = summarize_result(result, sample.get("answer"))
                 writer.writerow(

@@ -154,6 +154,7 @@ class CorpusRetriever:
         corpus_path: str | None = None,
         top_k: int = 8,
         source_doc: str | None = None,
+        retrieval_mode: str = "oracle_doc",
     ) -> list[EvidenceNode]:
         if not corpus_path:
             return MockRetriever().retrieve(query, corpus_path, top_k)
@@ -163,6 +164,12 @@ class CorpusRetriever:
             chunks = load_chunks_from_index(path)
         else:
             chunks = DocumentLoader().load(path)
+        if retrieval_mode == "open":
+            return BM25Retriever(chunks).retrieve(query, top_k=top_k)
+
+        if source_doc and retrieval_mode == "source_rerank":
+            return self._source_rerank(query, chunks, source_doc, top_k)
+
         if source_doc:
             source_name = Path(source_doc).name
             filtered = [chunk for chunk in chunks if Path(chunk.source_doc).name == source_name]
@@ -178,6 +185,36 @@ class CorpusRetriever:
             source_doc=chunks[0].source_doc,
             metadata={"loader": "source_doc_oracle", "source_doc": source_name},
         )
+
+    def _source_rerank(
+        self,
+        query: str,
+        chunks: list[DocumentChunk],
+        source_doc: str,
+        top_k: int,
+    ) -> list[EvidenceNode]:
+        source_name = Path(source_doc).name
+        open_candidates = BM25Retriever(chunks).retrieve(query, top_k=max(top_k * 4, top_k))
+        source_chunks = [chunk for chunk in chunks if Path(chunk.source_doc).name == source_name]
+        source_candidates = []
+        if source_chunks:
+            source_candidates = BM25Retriever(
+                [self._combined_source_chunk(source_chunks, source_name)] + source_chunks
+            ).retrieve(query, top_k=top_k)
+        candidates_by_id = {node.node_id: node for node in [*open_candidates, *source_candidates]}
+        candidates = list(candidates_by_id.values())
+        reranked = sorted(
+            candidates,
+            key=lambda node: (
+                Path(str(node.source_doc)).name == source_name,
+                float(node.metadata.get("retrieval_score", 0.0)),
+            ),
+            reverse=True,
+        )
+        for node in reranked:
+            if Path(str(node.source_doc)).name == source_name:
+                node.metadata["rerank_boost"] = "source_doc_match"
+        return reranked[:top_k]
 
 
 def _tokens(text: str) -> list[str]:

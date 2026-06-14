@@ -10,7 +10,8 @@ This file tracks what the current repository can and cannot support as paper evi
 - The current smoke tests verify misleading-evidence rejection, table parsing, calculation triggering, and claim verification on the mock setup.
 - The synthetic stress suite shows that risk-aware evidence selection can reject hand-authored forecast, draft, and press distractors while simple top-k and utility-only baselines accept noisy evidence.
 - A 20-example real FinQA validation subset is checked in with deterministic sampling metadata and a retrieval corpus built from source pre-text, tables, and post-text.
-- On the checked-in FinQA smoke subset, the current oracle-document setting reaches 7/20 numeric exact-match accuracy with transparent calculations for ratio, percent-change, row-average, year-range-average, and difference cases.
+- On the checked-in 100-example FinQA smoke subset, the current oracle-document setting reaches 12/100 numeric exact-match accuracy with transparent calculations for ratio, percent-change, row-average, year-range-average, and difference cases.
+- Open BM25 reaches 9/100 and source-rerank reaches 10/100 for full EviGraph on the same subset; these are diagnostic baselines, not final claims.
 - The manifest runner writes a failure report for batch experiments, grouping unresolved examples by error category for paper-oriented failure analysis.
 
 ## Claims Not Yet Supported
@@ -33,6 +34,7 @@ This file tracks what the current repository can and cannot support as paper evi
 - Replace hand-authored stress distractors with real retrieval confounders from benchmark corpora.
 - Improve real-table numerical reasoning; the current rule generator does not solve the FinQA subset yet.
 - Separate oracle-document reasoning from open-document retrieval in future benchmark tables.
+- Improve table operation coverage before using FinQA results as a positive performance claim; current top-k can still outperform full EviGraph in oracle-doc accuracy.
 
 ## Next Engineering Step
 

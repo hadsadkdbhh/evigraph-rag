@@ -4,6 +4,7 @@ import argparse
 import json
 import random
 import re
+import shutil
 import sys
 import urllib.parse
 import urllib.request
@@ -28,6 +29,7 @@ def main() -> int:
     parser.add_argument("--seed", type=int, default=13)
     parser.add_argument("--raw-output", default="data/raw/finqa_subset.jsonl")
     parser.add_argument("--corpus-output", default="data/finqa_corpus")
+    parser.add_argument("--clean-corpus", action="store_true")
     args = parser.parse_args()
 
     rows = fetch_rows(args.split, args.pool_size)
@@ -41,6 +43,8 @@ def main() -> int:
     raw_path = ROOT / args.raw_output
     corpus_path = ROOT / args.corpus_output
     raw_path.parent.mkdir(parents=True, exist_ok=True)
+    if args.clean_corpus and corpus_path.exists():
+        shutil.rmtree(corpus_path)
     corpus_path.mkdir(parents=True, exist_ok=True)
 
     raw_records = []
@@ -75,6 +79,7 @@ def main() -> int:
                 "pool_size": args.pool_size,
                 "sample_size": args.sample_size,
                 "seed": args.seed,
+                "clean_corpus": args.clean_corpus,
                 "raw_output": str(raw_path),
                 "corpus_output": str(corpus_path),
             },

@@ -8,7 +8,7 @@ This directory contains a deterministic 20-example smoke subset from the
 - Split: `validation`
 - Dataset Viewer endpoint: `https://datasets-server.huggingface.co`
 - Pool: first 100 validation rows
-- Sample size: 20
+- Sample size: 100
 - Seed: 13
 - Raw questions: `data/raw/finqa_subset.jsonl`
 - Retrieval corpus: `data/finqa_corpus/`
@@ -16,7 +16,7 @@ This directory contains a deterministic 20-example smoke subset from the
 Regenerate the files with:
 
 ```powershell
-python scripts/download_finqa_subset.py --split validation --pool-size 100 --sample-size 20 --seed 13
+python scripts/download_finqa_subset.py --split validation --pool-size 100 --sample-size 100 --seed 13 --clean-corpus
 ```
 
 The corpus Markdown files include the source pre-text, table, and post-text.

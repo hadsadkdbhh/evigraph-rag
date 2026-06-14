@@ -22,6 +22,7 @@ def main() -> int:
     parser.add_argument("--config", default=str(ROOT / "configs" / "default.yaml"))
     parser.add_argument("--methods", default="topk,full_context,utility_only,full_evigraph")
     parser.add_argument("--corpus", default=None)
+    parser.add_argument("--retrieval-mode", default="oracle_doc", choices=["oracle_doc", "open", "source_rerank"])
     args = parser.parse_args()
 
     output_path = Path(args.output)
@@ -62,6 +63,7 @@ def main() -> int:
                     method,
                     corpus_path=args.corpus,
                     source_doc=sample.get("source_doc"),
+                    retrieval_mode=args.retrieval_mode,
                 )
                 metrics = summarize_result(result, sample.get("answer"))
                 writer.writerow(

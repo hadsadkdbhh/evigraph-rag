@@ -57,7 +57,16 @@ class ManifestRunner:
             artifacts["gates"].append(str(inspection_artifacts["gate"]))
             for experiment in self.manifest.get("experiments", []):
                 output_path = self.output_dir / f"{dataset_name}_{experiment['name']}.csv"
-                self._run_experiment(experiment, dataset_name, questions_path, corpus_path, config, output_path)
+                retrieval_mode = experiment.get("retrieval_mode", dataset.get("retrieval_mode", "oracle_doc"))
+                self._run_experiment(
+                    experiment,
+                    dataset_name,
+                    questions_path,
+                    corpus_path,
+                    config,
+                    output_path,
+                    retrieval_mode,
+                )
                 artifacts["evaluations"].append(str(output_path))
                 summary_inputs.append(output_path)
                 if experiment.get("type", "batch") != "pareto":
@@ -85,12 +94,13 @@ class ManifestRunner:
         corpus_path: Path | None,
         base_config: dict[str, Any],
         output_path: Path,
+        retrieval_mode: str,
     ) -> None:
         kind = experiment.get("type", "batch")
         if kind == "pareto":
-            self._run_pareto(experiment, dataset_name, questions_path, corpus_path, base_config, output_path)
+            self._run_pareto(experiment, dataset_name, questions_path, corpus_path, base_config, output_path, retrieval_mode)
             return
-        self._run_batch(experiment, dataset_name, questions_path, corpus_path, base_config, output_path)
+        self._run_batch(experiment, dataset_name, questions_path, corpus_path, base_config, output_path, retrieval_mode)
 
     def _run_batch(
         self,
@@ -100,6 +110,7 @@ class ManifestRunner:
         corpus_path: Path | None,
         base_config: dict[str, Any],
         output_path: Path,
+        retrieval_mode: str,
     ) -> None:
         methods = experiment.get("methods", DEFAULT_ABLATION_METHODS)
         self._validate_methods(methods)
@@ -133,6 +144,7 @@ class ManifestRunner:
                         method,
                         corpus_path=str(corpus_path) if corpus_path else None,
                         source_doc=sample.get("source_doc"),
+                        retrieval_mode=retrieval_mode,
                     )
                     metrics = summarize_result(result, sample.get("answer"))
                     writer.writerow(
@@ -157,6 +169,7 @@ class ManifestRunner:
         corpus_path: Path | None,
         base_config: dict[str, Any],
         output_path: Path,
+        retrieval_mode: str,
     ) -> None:
         budgets = [int(value) for value in experiment.get("budgets", [1, 2, 4, 8])]
         method = experiment.get("method", "full_evigraph")
@@ -191,6 +204,7 @@ class ManifestRunner:
                         method,
                         corpus_path=str(corpus_path) if corpus_path else None,
                         source_doc=sample.get("source_doc"),
+                        retrieval_mode=retrieval_mode,
                     )
                     metrics = summarize_result(result, sample.get("answer"))
                     writer.writerow(
