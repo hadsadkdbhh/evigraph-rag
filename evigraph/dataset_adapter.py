@@ -14,6 +14,32 @@ DEFAULT_FIELD_MAP = {
     "task_type": ["task_type", "type", "category", "dataset"],
 }
 
+FIELD_MAP_PROFILES = {
+    "chartqa": {
+        "id": "id",
+        "query": "question",
+        "answer": "answer",
+        "source_doc": "image",
+        "task_type": "type",
+    },
+    "stress": {
+        "id": "qid",
+        "query": "question",
+        "answer": "gold_answer",
+        "source_doc": "document",
+        "task_type": "category",
+    },
+}
+
+
+def field_map_for_profile(profile: str | None) -> dict[str, str]:
+    if not profile:
+        return {}
+    key = profile.lower()
+    if key not in FIELD_MAP_PROFILES:
+        raise ValueError(f"Unknown dataset profile: {profile}")
+    return dict(FIELD_MAP_PROFILES[key])
+
 
 class DatasetAdapter:
     def convert(

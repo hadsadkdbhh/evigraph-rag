@@ -9,6 +9,7 @@ unless it can be reproduced through a manifest in `configs/`.
 Each benchmark subset should provide:
 
 - A raw annotation file in `.jsonl`, `.json`, or `.csv`.
+- A deterministic subset command with sample size, seed, and source-document filtering.
 - A corpus directory containing the evidence available to retrieval.
 - A manifest that records field mapping, corpus path, methods, budgets, and limitations.
 - A dataset inspection report with source-document coverage.
@@ -45,6 +46,7 @@ Before a result is used in the paper, it should pass:
 ```powershell
 python scripts/run_tests.py
 python scripts/run_feasibility.py --corpus data/corpus --report outputs/eval/feasibility_report.json
+python scripts/build_subset.py --input data/raw/<full_annotations>.jsonl --output data/raw/<benchmark>_subset.jsonl --corpus data/<benchmark>_corpus --sample-size 20 --seed 13 --require-source-doc --profile chartqa
 python scripts/inspect_dataset.py --questions outputs/eval/<benchmark>/questions.jsonl --corpus data/<benchmark>_corpus --md-output outputs/eval/<benchmark>/inspection.md --gate-output outputs/eval/<benchmark>/gate.md --fail-on-gate
 python scripts/run_manifest.py --manifest configs/<benchmark>.json
 ```

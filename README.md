@@ -81,6 +81,12 @@ python scripts/convert_dataset.py --input data/raw/mock_external.jsonl --output 
 Manifests may also set `raw_questions` and `field_map` to run this conversion
 automatically before evaluation.
 
+Build a deterministic benchmark subset before conversion:
+
+```powershell
+python scripts/build_subset.py --input data/raw/full_annotations.jsonl --output data/raw/chartqa_subset.jsonl --corpus data/chartqa_corpus --sample-size 20 --seed 13 --require-source-doc --profile chartqa
+```
+
 Inspect converted benchmark questions before reporting results:
 
 ```powershell

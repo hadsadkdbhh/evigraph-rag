@@ -5,8 +5,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from evigraph.dataset_adapter import DatasetAdapter
+from evigraph.dataset_adapter import DatasetAdapter, field_map_for_profile
 from evigraph.dataset_inspector import BenchmarkGate, DatasetInspector
+from evigraph.subset_builder import BenchmarkSubsetBuilder
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -152,6 +153,59 @@ class DatasetAdapterTest(unittest.TestCase):
         gate = BenchmarkGate().evaluate(report, min_records=20, min_source_doc_coverage=1.0)
 
         self.assertTrue(gate["passed"])
+
+    def test_subset_builder_filters_unmatched_sources(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            corpus = root / "corpus"
+            corpus.mkdir()
+            (corpus / "chart_a.txt").write_text("a", encoding="utf-8")
+            (corpus / "chart_b.txt").write_text("b", encoding="utf-8")
+            raw = root / "raw.jsonl"
+            raw.write_text(
+                "\n".join(
+                    [
+                        json.dumps({"id": "a", "question": "A?", "answer": "1", "image": "chart_a.txt"}),
+                        json.dumps({"id": "b", "question": "B?", "answer": "2", "image": "chart_b.txt"}),
+                        json.dumps({"id": "c", "question": "C?", "answer": "3", "image": "missing.txt"}),
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            output = root / "subset.jsonl"
+
+            result = BenchmarkSubsetBuilder().build(
+                raw,
+                output,
+                field_map={"source_doc": "image"},
+                corpus_path=corpus,
+                sample_size=2,
+                seed=7,
+                require_source_doc=True,
+            )
+            subset = [json.loads(line) for line in output.read_text(encoding="utf-8").splitlines()]
+
+            self.assertEqual(result["eligible_records"], 2)
+            self.assertEqual(result["sampled_records"], 2)
+            self.assertEqual(result["skipped_unmatched_source_doc"], 1)
+            self.assertEqual({record["image"] for record in subset}, {"chart_a.txt", "chart_b.txt"})
+
+    def test_chartqa_profile_maps_image_to_source_doc(self) -> None:
+        field_map = field_map_for_profile("chartqa")
+        record = {
+            "id": "chartqa_001",
+            "question": "What is the value?",
+            "answer": "10",
+            "image": "chart_001.png",
+            "type": "human",
+        }
+
+        converted = DatasetAdapter()._convert_record(1, record, field_map, None, "chartqa")
+
+        self.assertEqual(converted["source_doc"], "chart_001.png")
+        self.assertEqual(converted["task_type"], "human")
+        self.assertEqual(converted["dataset"], "chartqa")
 
 
 if __name__ == "__main__":
