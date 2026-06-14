@@ -124,3 +124,58 @@ class DatasetInspector:
         if not items:
             return "None."
         return "\n".join(f"- `{item}`" for item in items)
+
+
+class BenchmarkGate:
+    def evaluate(
+        self,
+        report: dict[str, Any],
+        min_records: int = 1,
+        min_source_doc_coverage: float = 1.0,
+        allow_missing_source_doc: bool = False,
+    ) -> dict[str, Any]:
+        checks = [
+            self._check("min_records", report["records"] >= min_records, report["records"], min_records),
+            self._check("no_duplicate_ids", report["duplicate_ids"] == 0, report["duplicate_ids"], 0),
+            self._check("no_missing_query", report["missing_query"] == 0, report["missing_query"], 0),
+            self._check("no_missing_answer", report["missing_answer"] == 0, report["missing_answer"], 0),
+            self._check(
+                "source_doc_present",
+                allow_missing_source_doc or report["missing_source_doc"] == 0,
+                report["missing_source_doc"],
+                0,
+            ),
+            self._check(
+                "source_doc_coverage",
+                float(report["source_doc_coverage"]) >= min_source_doc_coverage,
+                round(float(report["source_doc_coverage"]), 6),
+                min_source_doc_coverage,
+            ),
+        ]
+        return {
+            "passed": all(check["passed"] for check in checks),
+            "checks": checks,
+        }
+
+    def render_markdown(self, gate: dict[str, Any]) -> str:
+        lines = [
+            "# Benchmark Gate",
+            "",
+            f"- Passed: `{gate['passed']}`",
+            "",
+            "| check | passed | actual | expected |",
+            "| --- | --- | ---: | ---: |",
+        ]
+        for check in gate["checks"]:
+            lines.append(
+                f"| {check['name']} | {check['passed']} | {check['actual']} | {check['expected']} |"
+            )
+        return "\n".join(lines) + "\n"
+
+    def _check(self, name: str, passed: bool, actual: Any, expected: Any) -> dict[str, Any]:
+        return {
+            "name": name,
+            "passed": bool(passed),
+            "actual": actual,
+            "expected": expected,
+        }

@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 from evigraph.dataset_adapter import DatasetAdapter
-from evigraph.dataset_inspector import DatasetInspector
+from evigraph.dataset_inspector import BenchmarkGate, DatasetInspector
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -123,6 +123,35 @@ class DatasetAdapterTest(unittest.TestCase):
         self.assertEqual(report["records"], 1)
         self.assertEqual(report["source_doc_coverage"], 1.0)
         self.assertEqual(report["missing_corpus_sources"], [])
+
+    def test_benchmark_gate_fails_on_low_coverage(self) -> None:
+        report = {
+            "records": 10,
+            "duplicate_ids": 0,
+            "missing_query": 0,
+            "missing_answer": 0,
+            "missing_source_doc": 0,
+            "source_doc_coverage": 0.8,
+        }
+
+        gate = BenchmarkGate().evaluate(report, min_records=10, min_source_doc_coverage=1.0)
+
+        self.assertFalse(gate["passed"])
+        self.assertIn("source_doc_coverage", [check["name"] for check in gate["checks"] if not check["passed"]])
+
+    def test_benchmark_gate_passes_clean_report(self) -> None:
+        report = {
+            "records": 20,
+            "duplicate_ids": 0,
+            "missing_query": 0,
+            "missing_answer": 0,
+            "missing_source_doc": 0,
+            "source_doc_coverage": 1.0,
+        }
+
+        gate = BenchmarkGate().evaluate(report, min_records=20, min_source_doc_coverage=1.0)
+
+        self.assertTrue(gate["passed"])
 
 
 if __name__ == "__main__":

@@ -87,6 +87,9 @@ Inspect converted benchmark questions before reporting results:
 python scripts/inspect_dataset.py --questions outputs/eval/converted_questions.jsonl --corpus data/corpus --md-output outputs/eval/dataset_inspection.md
 ```
 
+Use `--fail-on-gate` to make inspection fail when records, required fields, or
+source-document coverage do not meet the configured threshold.
+
 Run the synthetic stress suite with official reports plus high-relevance
 forecast, draft, and press distractors:
 

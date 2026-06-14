@@ -18,7 +18,12 @@
       "build_index": true,
       "index": "outputs/index/chartqa_subset.json",
       "chunk_size": 900,
-      "chunk_overlap": 120
+      "chunk_overlap": 120,
+      "gate": {
+        "min_records": 20,
+        "min_source_doc_coverage": 1.0,
+        "fail_on_error": true
+      }
     }
   ],
   "experiments": [

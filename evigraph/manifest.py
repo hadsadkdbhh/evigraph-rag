@@ -10,7 +10,7 @@ from evigraph.experiment_report import ExperimentReport
 from evigraph.experiment_card import ExperimentCard
 from evigraph.indexing import LocalIndexBuilder
 from evigraph.dataset_adapter import DatasetAdapter
-from evigraph.dataset_inspector import DatasetInspector
+from evigraph.dataset_inspector import BenchmarkGate, DatasetInspector
 from evigraph.methods import METHODS, MethodRunner
 from evigraph.metrics import summarize_result
 
@@ -38,6 +38,7 @@ class ManifestRunner:
         artifacts: dict[str, Any] = {
             "converted": [],
             "inspections": [],
+            "gates": [],
             "indexes": [],
             "evaluations": [],
             "summary": None,
@@ -49,7 +50,9 @@ class ManifestRunner:
             dataset_name = dataset["name"]
             questions_path = self._prepare_questions(dataset)
             corpus_path = self._prepare_corpus(dataset)
-            artifacts["inspections"].append(str(self._inspect_dataset(dataset_name, questions_path, corpus_path)))
+            inspection_artifacts = self._inspect_dataset(dataset, questions_path, corpus_path)
+            artifacts["inspections"].append(str(inspection_artifacts["inspection"]))
+            artifacts["gates"].append(str(inspection_artifacts["gate"]))
             for experiment in self.manifest.get("experiments", []):
                 output_path = self.output_dir / f"{dataset_name}_{experiment['name']}.csv"
                 self._run_experiment(experiment, dataset_name, questions_path, corpus_path, config, output_path)
@@ -214,14 +217,26 @@ class ManifestRunner:
         )
         return output_path
 
-    def _inspect_dataset(self, dataset_name: str, questions_path: Path, corpus_path: Path | None) -> Path:
+    def _inspect_dataset(self, dataset: dict[str, Any], questions_path: Path, corpus_path: Path | None) -> dict[str, Path]:
+        dataset_name = dataset["name"]
         inspector = DatasetInspector()
         report = inspector.inspect(questions_path, corpus_path)
         report_path = self.output_dir / f"{dataset_name}_inspection.json"
         markdown_path = self.output_dir / f"{dataset_name}_inspection.md"
+        gate_path = self.output_dir / f"{dataset_name}_gate.md"
+        gate_config = dict(dataset.get("gate", {}))
+        gate = BenchmarkGate().evaluate(
+            report,
+            min_records=int(gate_config.get("min_records", 1)),
+            min_source_doc_coverage=float(gate_config.get("min_source_doc_coverage", 1.0)),
+            allow_missing_source_doc=bool(gate_config.get("allow_missing_source_doc", False)),
+        )
         report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
         inspector.write_markdown(report, markdown_path)
-        return markdown_path
+        gate_path.write_text(BenchmarkGate().render_markdown(gate), encoding="utf-8")
+        if gate_config.get("fail_on_error", False) and not gate["passed"]:
+            raise ValueError(f"Benchmark gate failed for dataset {dataset_name}: {gate}")
+        return {"inspection": markdown_path, "gate": gate_path}
 
     def _validate_methods(self, methods: list[str]) -> None:
         unknown = [method for method in methods if method not in METHODS]
