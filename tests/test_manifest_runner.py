@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from evigraph.manifest import ManifestRunner
+from evigraph.methods import MethodRunner
 
 
 class ManifestRunnerTest(unittest.TestCase):
@@ -78,6 +79,25 @@ class ManifestRunnerTest(unittest.TestCase):
             self.assertTrue(Path(artifacts["summary"]).exists())
             self.assertTrue(Path(artifacts["card"]).exists())
             self.assertIn("Temp Manifest", Path(artifacts["card"]).read_text(encoding="utf-8"))
+
+    def test_full_evigraph_handles_non_default_year_pair(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            corpus_dir = root / "corpus"
+            corpus_dir.mkdir()
+            (corpus_dir / "case_beta_report.md").write_text(
+                "# Case Beta Official Report\n\n| year | value |\n| --- | ---: |\n| 2023 | 42.0 |\n| 2024 | 57.5 |\n",
+                encoding="utf-8",
+            )
+
+            result = MethodRunner({"run": {"output_dir": str(root / "runs")}}).run(
+                "In Case Beta, how much higher was 2024 than 2023?",
+                "full_evigraph",
+                corpus_path=str(corpus_dir),
+            )
+
+            self.assertEqual(result["answer"]["text"], "2024 is higher than 2023 by 15.5.")
+            self.assertIn("calc_2024_minus_2023", result["selected_ids"])
 
 
 if __name__ == "__main__":

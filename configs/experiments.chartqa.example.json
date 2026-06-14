@@ -1,0 +1,49 @@
+{
+  "title": "EviGraph ChartQA Subset Study",
+  "config": "configs/default.yaml",
+  "output_dir": "outputs/eval/chartqa",
+  "datasets": [
+    {
+      "name": "chartqa_subset",
+      "raw_questions": "data/raw/chartqa_subset.jsonl",
+      "questions": "outputs/eval/chartqa/chartqa_questions.jsonl",
+      "field_map": {
+        "id": "id",
+        "query": "question",
+        "answer": "answer",
+        "source_doc": "image",
+        "task_type": "type"
+      },
+      "corpus": "data/chartqa_corpus",
+      "build_index": true,
+      "index": "outputs/index/chartqa_subset.json",
+      "chunk_size": 900,
+      "chunk_overlap": 120
+    }
+  ],
+  "experiments": [
+    {
+      "name": "ablation",
+      "type": "batch",
+      "methods": [
+        "topk",
+        "utility_only",
+        "evigraph_wo_risk",
+        "evigraph_wo_verifier",
+        "evigraph_wo_support",
+        "full_evigraph"
+      ]
+    },
+    {
+      "name": "pareto",
+      "type": "pareto",
+      "method": "full_evigraph",
+      "budgets": [1, 2, 4, 8]
+    }
+  ],
+  "limitations": [
+    "This is a template and should not be run until data/raw/chartqa_subset.jsonl and data/chartqa_corpus are populated.",
+    "The MVP loader expects extracted chart/table text or OCR output in the corpus directory.",
+    "Native chart image parsing is not implemented in the current MVP."
+  ]
+}

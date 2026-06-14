@@ -93,6 +93,11 @@ and rejects noisy evidence, while `topk` and `utility_only` fail on two of three
 questions because they accept distracting evidence. This is a stress test, not a
 public benchmark result.
 
+Before reporting real benchmark numbers, follow the protocol in
+`docs/benchmark_protocol.md`. A ChartQA-style manifest template is available at
+`configs/experiments.chartqa.example.json`; populate `data/raw/chartqa_subset.jsonl`
+and `data/chartqa_corpus` before running it.
+
 ## Local Retrieval MVP-1
 
 Build a local JSON index from files under `data/corpus`:
