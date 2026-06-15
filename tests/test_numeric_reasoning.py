@@ -60,6 +60,105 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "16.1%")
         self.assertIn("ratio_percent", answer.calculations[0])
 
+    def test_ratio_percent_represented_by_row(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| current assets | $ 28.1 |\n"
+                    "| --- | --- |\n"
+                    "| ipr&d | 190.0 |\n"
+                    "| total cash purchase price net of cash acquired | $ 320.1 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what percentage of the total cash purchase price net of cash acquired was represented by ipr&d?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "59.4%")
+        self.assertIn("ratio_percent", answer.calculations[0])
+
+    def test_ratio_percent_allocated_to_year_row(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "|  | 2011 | 2010 |\n"
+                    "| --- | --- | --- |\n"
+                    "| money market funds | $ 17187 | $ 1840 |\n"
+                    "| mutual funds | 9223 | 6850 |\n"
+                    "| total deferred compensation plan investments | $ 26410 | $ 8690 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what portion of the total investment is allocated to mutual funds in 2011?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "34.9%")
+        self.assertIn("ratio_percent", answer.calculations[0])
+
+    def test_ratio_percent_due_after_total(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "|  | ( in thousands ) |\n"
+                    "| --- | --- |\n"
+                    "| 2010 | $ 6951 |\n"
+                    "| thereafter | 25048 |\n"
+                    "| total | $ 44572 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what percentage of total purchase commitments are due after 2014?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "56.2%")
+        self.assertIn("ratio_percent", answer.calculations[0])
+
+    def test_ratio_percent_due_to_row_for_year(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| in millions | 2008 | 2009 | thereafter |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| lease obligations | $ 136 | $ 116 | $ 92 |\n"
+                    "| purchase obligations ( a ) | 1953 | 294 | 1480 |\n"
+                    "| total | $ 2089 | $ 410 | $ 1572 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what percentage of december 31 , 2007 , total future minimum commitments under existing non-cancelable operating leases and purchase obligations were due to purchase obligations for the year of 2008?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "93.5%")
+        self.assertIn("ratio_percent", answer.calculations[0])
+
     def test_row_average_from_entity_table(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

@@ -35,7 +35,12 @@ class NumericReasoner:
             if answer:
                 return answer
 
-        if "what percentage" in query_lower or "what percent" in query_lower:
+        if (
+            "what percentage" in query_lower
+            or "what percent" in query_lower
+            or "what portion" in query_lower
+            or "what share" in query_lower
+        ):
             answer = self._ratio_percent(query_lower, contexts)
             if answer:
                 return answer
@@ -272,25 +277,28 @@ class NumericReasoner:
 
     def _ratio_percent(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
         years = re.findall(r"\b(20\d{2})\b", query_lower)
-        query_year = years[0] if years else None
+        query_year = self._ratio_year(query_lower, years)
+        denominator_terms = self._denominator_terms(query_lower)
+        numerator_terms = self._ratio_numerator_terms(query_lower)
         for node_id, text in contexts:
             rows = self._label_value_rows(text)
             if not rows and not self._markdown_table(text):
                 continue
 
-            denominator_terms = self._denominator_terms(query_lower)
             denominator = None
             if query_year:
                 denominator = self._table_value_for_terms_year(text, denominator_terms, query_year)
             if denominator is None:
                 denominator = self._matching_value(rows, denominator_terms)
             numerator = None
-            if "after 2012" in query_lower or "due after" in query_lower:
+            if "due after" in query_lower:
                 numerator = self._matching_value(rows, ["thereafter"])
-            if numerator is None and "represented by" in query_lower and query_year:
-                numerator = self._prose_value_for_terms_year(text, self._numerator_terms(query_lower), query_year)
+            if numerator is None and query_year:
+                numerator = self._table_value_for_terms_year(text, numerator_terms, query_year, allow_partial=False)
+            if numerator is None and query_year:
+                numerator = self._prose_value_for_terms_year(text, numerator_terms, query_year)
             if numerator is None:
-                numerator = self._matching_value(rows, self._numerator_terms(query_lower))
+                numerator = self._matching_value(rows, numerator_terms)
             if numerator is None or denominator in {None, 0}:
                 continue
 
@@ -305,7 +313,23 @@ class NumericReasoner:
             )
         return None
 
-    def _table_value_for_terms_year(self, text: str, terms: list[str], year: str) -> float | None:
+    def _ratio_year(self, query_lower: str, years: list[str]) -> str | None:
+        if "due after" in query_lower:
+            return None
+        year_of_match = re.search(r"\byear\s+of\s+(20\d{2})\b", query_lower)
+        if year_of_match:
+            return year_of_match.group(1)
+        if len(years) == 1:
+            return years[0]
+        return None
+
+    def _table_value_for_terms_year(
+        self,
+        text: str,
+        terms: list[str],
+        year: str,
+        allow_partial: bool = True,
+    ) -> float | None:
         table = self._markdown_table(text)
         if not table:
             return None
@@ -319,6 +343,8 @@ class NumericReasoner:
             label = row[0].lower()
             if all(term in label for term in terms):
                 return self._first_number(row[year_index])
+        if not allow_partial:
+            return None
         for row in rows:
             if year_index >= len(row):
                 continue
@@ -439,16 +465,63 @@ class NumericReasoner:
         return None
 
     def _denominator_terms(self, query_lower: str) -> list[str]:
-        if " of " not in query_lower:
+        if " as a percentage of " in query_lower:
+            return self._keywords(query_lower.split(" as a percentage of ", 1)[1])
+        if " compared to " in query_lower:
+            return self._keywords(query_lower.split(" compared to ", 1)[1])
+        if "portion of " in query_lower:
+            tail = query_lower.split("portion of ", 1)[1]
+        elif "share of " in query_lower:
+            tail = query_lower.split("share of ", 1)[1]
+        elif "percentage of " in query_lower:
+            tail = query_lower.split("percentage of ", 1)[1]
+        elif "percent of " in query_lower:
+            tail = query_lower.split("percent of ", 1)[1]
+        elif " of " in query_lower:
+            tail = query_lower.split(" of ", 1)[1]
+        else:
             return []
-        tail = query_lower.split(" of ", 1)[1]
+        tail = re.split(
+            r"\b(was|were|is|are|comes from|represented by|allocated to|related to|due to|due after)\b",
+            tail,
+            maxsplit=1,
+        )[0]
         tail = re.sub(r"\bare due\b.*", "", tail)
         tail = re.sub(r"\bwere represented\b.*", "", tail)
-        return self._keywords(tail)
+        terms = self._keywords(tail)
+        if "total" in tail and "total" not in terms:
+            return ["total", *terms]
+        return terms
 
-    def _numerator_terms(self, query_lower: str) -> list[str]:
-        if "represented by" in query_lower:
-            return self._keywords(query_lower.split("represented by", 1)[1])
+    def _ratio_numerator_terms(self, query_lower: str) -> list[str]:
+        patterns = [
+            r"represented by\s+(.+?)\??$",
+            r"allocated to\s+(.+?)(?:\s+in\s+20\d{2})?\??$",
+            r"comes from\s+(.+?)\??$",
+            r"due to\s+(.+?)(?:\s+for\s+the\s+year|\??$)",
+            r"related to\s+(.+?)\??$",
+            r"composed of\s+(.+?)\??$",
+            r"among\s+the\s+(.+?)\??$",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, query_lower)
+            if match:
+                return self._keywords(match.group(1))
+        if "due after" in query_lower:
+            return ["thereafter"]
+        if "percentage increase" in query_lower:
+            return self._keywords(query_lower.split("percentage increase", 1)[1])
+        if "percent increase" in query_lower:
+            return self._keywords(query_lower.split("percent increase", 1)[1])
+        if "what percentage of " in query_lower:
+            tail = query_lower.split("what percentage of ", 1)[1]
+            return self._keywords(tail)
+        if "what percent of " in query_lower:
+            tail = query_lower.split("what percent of ", 1)[1]
+            return self._keywords(tail)
+        if "what portion of " in query_lower:
+            tail = query_lower.split("what portion of ", 1)[1]
+            return self._keywords(tail)
         return []
 
     def _keywords(self, text: str) -> list[str]:
