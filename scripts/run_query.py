@@ -63,10 +63,19 @@ def main() -> int:
     parser.add_argument("--config", default=str(ROOT / "configs" / "default.yaml"))
     parser.add_argument("--method", default="full_evigraph", choices=METHODS)
     parser.add_argument("--top-k", type=int, default=8)
+    parser.add_argument("--source-doc", default=None)
+    parser.add_argument("--retrieval-mode", default="oracle_doc", choices=["oracle_doc", "open", "source_rerank"])
     args = parser.parse_args()
 
     config = load_config(args.config)
-    result = MethodRunner(config).run(args.query, args.method, corpus_path=args.corpus, top_k=args.top_k)
+    result = MethodRunner(config).run(
+        args.query,
+        args.method,
+        corpus_path=args.corpus,
+        source_doc=args.source_doc,
+        retrieval_mode=args.retrieval_mode,
+        top_k=args.top_k,
+    )
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0
 

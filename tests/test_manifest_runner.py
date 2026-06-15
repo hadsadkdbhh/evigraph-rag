@@ -7,6 +7,7 @@ from pathlib import Path
 
 from evigraph.manifest import ManifestRunner
 from evigraph.methods import MethodRunner
+from scripts.run_query import load_config
 
 
 class ManifestRunnerTest(unittest.TestCase):
@@ -98,6 +99,12 @@ class ManifestRunnerTest(unittest.TestCase):
 
             self.assertEqual(result["answer"]["text"], "2024 is higher than 2023 by 15.5.")
             self.assertIn("calc_2024_minus_2023", result["selected_ids"])
+
+    def test_default_llm_planner_config_parses_boolean_enabled(self) -> None:
+        config = load_config("configs/default_llm_planner.yaml")
+
+        self.assertIs(config["numeric_planner"]["enabled"], True)
+        self.assertEqual(config["numeric_planner"]["llm_provider"], "openai_compatible")
 
 
 if __name__ == "__main__":
