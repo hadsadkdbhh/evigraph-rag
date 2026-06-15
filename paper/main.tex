@@ -112,9 +112,9 @@ TODO: add stronger retrieve-then-read and dense retrieval baselines.
 Setting & Method & Acc. & Arith. & OpSem & Sem. & Tokens \\
 \midrule
 Oracle-doc & Top-k & 0.37 & 0.90 & 0.74 & 0.55 & 1433.58 \\
-Oracle-doc & Full EviGraph & 0.35 & 0.91 & 0.70 & 0.67 & 1082.29 \\
-Open BM25 & Full EviGraph & 0.18 & 0.94 & 0.63 & 0.59 & 790.78 \\
-Source rerank & Full EviGraph & 0.31 & 0.96 & 0.71 & 0.67 & 1231.74 \\
+Oracle-doc & Full EviGraph & 0.37 & 0.92 & 0.73 & 0.69 & 1081.72 \\
+Open BM25 & Full EviGraph & 0.19 & 0.95 & 0.63 & 0.59 & 790.78 \\
+Source rerank & Full EviGraph & 0.33 & 0.95 & 0.73 & 0.69 & 1231.17 \\
 \bottomrule
 \end{tabular}
 \caption{Current FinQA 100-example diagnostic results from \texttt{outputs/eval/finqa/summary.md}. Accuracy is numeric exact match; Arith., OpSem, and Sem. are verifier diagnostics for arithmetic support, operation-semantics checking, and heuristic semantic grounding. These numbers expose the current table-operation bottleneck and should not yet be presented as final benchmark performance.}
@@ -125,7 +125,7 @@ Source rerank & Full EviGraph & 0.31 & 0.96 & 0.71 & 0.67 & 1231.74 \\
 
 The manifest runner emits a failure report that groups unresolved examples by error category.
 Current categories include missing numeric answer, wrong row/operation, additive lookup failures, ratio failures, and percent-operation failures.
-For oracle-doc full EviGraph, the current 100-example failure report has 65 failures: 24 percent-operation failures, 21 other missing numeric answers, 6 wrong operation or row selections, 5 additive-or-lookup failures, 5 ratio failures, and 4 unsupported textual predictions.
+For oracle-doc full EviGraph, the current 100-example failure report has 63 failures: 22 percent-operation failures, 21 other missing numeric answers, 7 wrong operation or row selections, 5 ratio failures, 4 additive-or-lookup failures, and 4 unsupported textual predictions.
 
 \section{Conclusion}
 

@@ -39,12 +39,14 @@ class RuleBasedUtilityRiskScorer:
         source_lower = str(node.source_doc or "").lower()
         reliable_content = any(marker in text_lower for marker in ["official", "audited", "final", "supersedes"])
         unreliable_source = any(marker in source_lower for marker in ["draft", "forecast", "press", "excerpt"])
+        is_oracle_source = node.metadata.get("loader") == "source_doc_oracle"
         unreliable_content = (
             any(
                 marker in text_lower
                 for marker in ["preliminary forecast", "draft forecast", "press excerpt", "early draft", "expected"]
             )
             and not reliable_content
+            and not is_oracle_source
         )
         utility = _clip(0.25 + 0.45 * relevance + (0.25 if has_numbers else 0.0) + modality_bonus)
         grounding = _clip(0.2 + (0.35 if has_numbers else 0.0) + (0.25 if node.source_doc else 0.0) + modality_bonus)
