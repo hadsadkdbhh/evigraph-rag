@@ -197,6 +197,35 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "16.7%")
         self.assertIn("percent_change", answer.calculations[0])
 
+    def test_percent_change_respectively_ignores_preceding_table_years(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "| 2011 | $ 62465 |\n"
+                    "| --- | --- |\n"
+                    "| 2012 | 54236 |\n"
+                    "| 2013 | 47860 |\n"
+                    "| 2014 | 37660 |\n"
+                    "| 2015 | 28622 |\n"
+                    "rental expense for operating leases was approximately $66.9 million, "
+                    "$57.2 million and $49.0 million during the years ended December 31, "
+                    "2010, 2009 and 2008, respectively."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the percentage change in rental expense for operating leases from 2008 to 2009?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "16.7%")
+        self.assertIn("percent_change", answer.calculations[0])
+
     def test_growth_rate_uses_latest_two_table_years_when_query_has_no_years(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
@@ -435,6 +464,53 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertIn("row=entergy arkansas", answer.calculations[0])
         self.assertIn("denominator_row=entergy louisiana", answer.calculations[0])
 
+    def test_ratio_percent_from_prose_amounts_near_query_terms(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "Operating companies income increased $119 million, due primarily to higher net pricing "
+                    "and research savings reflecting cost reduction initiatives ($198 million)."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what are the cost reduction initiatives as a percentage of the operating companies income increase?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "166.4%")
+        self.assertIn("ratio_percent", answer.calculations[0])
+
+    def test_ratio_percent_mixes_table_numerator_and_prose_denominator(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="mixed",
+                node_type="text",
+                content=(
+                    "Gross operating revenues increased primarily due to an increase of $98.0 million "
+                    "in fuel cost recovery revenues due to higher fuel rates.\n"
+                    "| | ( in millions ) |\n"
+                    "| --- | --- |\n"
+                    "| deferred fuel cost revisions | 59.1 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what are the deferred fuel cost revisions as a percentage of the increase in fuel cost recovery revenues?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "60.3%")
+        self.assertIn("ratio_percent", answer.calculations[0])
+
     def test_row_average_from_entity_table(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
@@ -484,6 +560,28 @@ class NumericReasoningTest(unittest.TestCase):
 
         self.assertEqual(answer.text, "44.8")
         self.assertIn("year_range_average", answer.calculations[0])
+
+    def test_ratio_between_years_from_respectively_sentence(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "The u.s. pension trust had assets of $1572 million and $1739 million "
+                    "as of December 31, 2018 and 2017, respectively."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the ratio of the pension trust assets for 2017 to 2018",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "1.11")
+        self.assertIn("ratio_between_years", answer.calculations[0])
 
     def test_change_from_year_columns(self) -> None:
         graph = EvidenceGraph()

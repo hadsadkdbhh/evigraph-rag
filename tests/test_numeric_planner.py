@@ -45,7 +45,7 @@ class NumericPlannerFallbackTest(unittest.TestCase):
         )
 
         answer = SupportOnlyGenerator(planner_fallback=planner).generate(
-            "what percentage of the total purchase price was represented by ipr&d?",
+            "compute the acquisition allocation for ipr&d relative to total purchase price",
             graph,
         )
 
@@ -75,7 +75,7 @@ class NumericPlannerFallbackTest(unittest.TestCase):
         )
 
         answer = SupportOnlyGenerator(planner_fallback=planner).generate(
-            "what percentage of the total purchase price was represented by ipr&d?",
+            "compute the acquisition allocation for ipr&d relative to total purchase price",
             graph,
         )
 

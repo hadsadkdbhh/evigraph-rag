@@ -86,6 +86,11 @@ class NumericReasoner:
             if answer:
                 return answer
 
+        if "ratio" in query_lower and len(re.findall(r"\b(20\d{2})\b", query_lower)) >= 2:
+            answer = self._ratio_between_years(query_lower, contexts)
+            if answer:
+                return answer
+
         if "post closing adjustments" in query_lower or "post-closing adjustments" in query_lower:
             answer = self._difference_between_nearby_amounts(contexts)
             if answer:
@@ -351,7 +356,7 @@ class NumericReasoner:
             flags=re.IGNORECASE,
         )
         for node_id, text in contexts:
-            for sentence in re.split(r"(?<=[.!?])\s+|\n+", text):
+            for sentence in self._prose_sentences(text):
                 lower_sentence = sentence.lower()
                 sentence_terms = set(re.findall(r"[a-z0-9]+", lower_sentence))
                 score = len(query_terms & sentence_terms)
@@ -405,7 +410,7 @@ class NumericReasoner:
             flags=re.IGNORECASE,
         )
         for node_id, text in contexts:
-            for sentence in re.split(r"(?<=[.!?])\s+|\n+", text):
+            for sentence in self._prose_sentences(text):
                 lower_sentence = sentence.lower()
                 sentence_terms = set(re.findall(r"[a-z0-9]+", lower_sentence))
                 score = len(query_terms & sentence_terms)
@@ -445,7 +450,7 @@ class NumericReasoner:
         query_terms = set(self._keywords(query_lower))
         best_sentence = None
         best_score = 0
-        for sentence in re.split(r"(?<=[.!?])\s+", text):
+        for sentence in self._prose_sentences(text):
             if base_year not in sentence or target_year not in sentence:
                 continue
             sentence_terms = set(re.findall(r"[a-z0-9]+", sentence.lower()))
@@ -455,6 +460,10 @@ class NumericReasoner:
                 best_sentence = sentence
         if not best_sentence:
             return None
+        respectively_values = self._respectively_year_values(best_sentence, base_year, target_year)
+        if respectively_values:
+            respectively_values["__row_label__"] = self._prose_row_label(best_sentence, query_lower)
+            return respectively_values
         values = {}
         pattern = r"\$?\s*([-+]?\d+(?:\.\d+)?)\s+(?:million|billion|thousand)?[^.]{0,80}?\b(20\d{2})\b"
         for value, year in re.findall(pattern, best_sentence, flags=re.IGNORECASE):
@@ -462,9 +471,6 @@ class NumericReasoner:
                 values[year] = self._to_float(value)
         if base_year in values and target_year in values:
             return values
-        respectively_values = self._respectively_year_values(best_sentence, base_year, target_year)
-        if respectively_values:
-            return respectively_values
         return None
 
     def _respectively_year_values(
@@ -473,12 +479,22 @@ class NumericReasoner:
         base_year: str,
         target_year: str,
     ) -> dict[str, float] | None:
-        if "respectively" not in sentence.lower():
+        lower_sentence = sentence.lower()
+        if "respectively" not in lower_sentence:
             return None
-        years = re.findall(r"\b(20\d{2})\b", sentence)
+        scoped_match = re.search(
+            r"(?P<values>[\s\S]{0,260})\bduring\b[\s\S]{0,120}?\b(?P<years>(?:20\d{2}[\s\S]{0,30}){2,})\s*,?\s*respectively",
+            sentence,
+            flags=re.IGNORECASE,
+        )
+        respectively_index = lower_sentence.find("respectively")
+        scoped_text = sentence[:respectively_index]
+        if scoped_match:
+            scoped_text = scoped_match.group("values") + " " + scoped_match.group("years")
+        years = re.findall(r"\b(20\d{2})\b", scoped_text)
         if base_year not in years or target_year not in years:
             return None
-        before_first_year = sentence[: sentence.find(years[0])]
+        before_first_year = scoped_text[: scoped_text.find(years[0])]
         matches = re.findall(
             r"(\$)?\s*([-+]?\d+(?:\.\d+)?)\s*(billion|million|thousand)?",
             before_first_year,
@@ -494,6 +510,31 @@ class NumericReasoner:
         aligned = dict(zip(years, numeric_values[-len(years) :]))
         if base_year in aligned and target_year in aligned:
             return {base_year: aligned[base_year], target_year: aligned[target_year]}
+        return None
+
+    def _ratio_between_years(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
+        years = re.findall(r"\b(20\d{2})\b", query_lower)
+        if len(years) < 2:
+            return None
+        numerator_year, denominator_year = years[0], years[1]
+        for node_id, text in contexts:
+            table_values = self._table_year_values(query_lower, text, denominator_year, numerator_year)
+            values = table_values or self._prose_year_values_for_query(query_lower, text, denominator_year, numerator_year)
+            if not values:
+                continue
+            numerator = values.get(numerator_year)
+            denominator = values.get(denominator_year)
+            if numerator is None or denominator in {None, 0}:
+                continue
+            operation = self.executor.ratio(numerator, denominator)
+            if operation is None:
+                continue
+            row_label = str(values.get("__row_label__", ""))
+            return NumericAnswer(
+                text=self._format_number(operation.value),
+                calculation=f"ratio_between_years row={row_label} years={numerator_year}/{denominator_year}: {operation.expression}",
+                cited_node_ids=[node_id],
+            )
         return None
 
     def _table_year_values(
@@ -549,6 +590,13 @@ class NumericReasoner:
         denominator_terms = self._denominator_terms(query_lower)
         numerator_terms = self._ratio_numerator_terms(query_lower)
         for node_id, text in contexts:
+            prose_answer = (
+                self._prose_ratio_percent(node_id, text, numerator_terms, denominator_terms)
+                if not query_year and " as a percentage of " in query_lower
+                else None
+            )
+            if prose_answer is not None:
+                return prose_answer
             rows = self._label_value_rows(text)
             if not rows and not self._markdown_table(text):
                 continue
@@ -661,6 +709,75 @@ class NumericReasoner:
         if not match:
             return None
         return self._to_float(match.group(1))
+
+    def _prose_ratio_percent(
+        self,
+        node_id: str,
+        text: str,
+        numerator_terms: list[str],
+        denominator_terms: list[str],
+    ) -> NumericAnswer | None:
+        rows = self._label_value_rows(text)
+        numerator, numerator_meta = self._matching_value_with_label(rows, numerator_terms)
+        denominator, denominator_label = self._prose_amount_for_terms(text, denominator_terms)
+        denominator_meta = {"row_label": denominator_label} if denominator_label else {}
+        if denominator is None:
+            denominator, denominator_meta = self._matching_value_with_label(rows, denominator_terms)
+        if numerator is None:
+            numerator, numerator_label = self._prose_amount_for_terms(text, numerator_terms)
+            numerator_meta = {"row_label": numerator_label} if numerator_label else {}
+        if numerator is None or denominator in {None, 0}:
+            return None
+        if numerator_meta.get("row_label") and numerator_meta.get("row_label") == denominator_meta.get("row_label"):
+            return None
+        operation = self.executor.ratio(numerator, denominator)
+        if operation is None:
+            return None
+        result = operation.value * 100.0
+        numerator_label = str(numerator_meta.get("row_label", " ".join(numerator_terms)))
+        denominator_label = str(denominator_meta.get("row_label", " ".join(denominator_terms)))
+        return NumericAnswer(
+            text=self._format_percent(result),
+            calculation=(
+                f"ratio_percent row={numerator_label} denominator_row={denominator_label}: "
+                f"{numerator:g} / {denominator:g} * 100 = {result:.1f}%"
+            ),
+            cited_node_ids=[node_id],
+        )
+
+    def _prose_amount_for_terms(self, text: str, terms: list[str]) -> tuple[float | None, str]:
+        if not terms:
+            return None, ""
+        best: tuple[int, float, str] | None = None
+        min_matches = 2 if len(terms) >= 2 else 1
+        for sentence in self._prose_sentences(text):
+            lower_sentence = sentence.lower()
+            matched_terms = [term for term in terms if term in lower_sentence]
+            if len(matched_terms) < min_matches:
+                continue
+            amounts = list(
+                re.finditer(
+                    r"\(?\s*(\$)?\s*([-+]?\d+(?:\.\d+)?)\s*(billion|million|thousand)?\s*\)?",
+                    sentence,
+                    flags=re.IGNORECASE,
+                )
+            )
+            if not amounts:
+                continue
+            term_positions = [lower_sentence.find(term) for term in matched_terms if lower_sentence.find(term) >= 0]
+            anchor = min(term_positions) if term_positions else 0
+            for amount in amounts:
+                if not amount.group(1) and not amount.group(3):
+                    continue
+                value = self._scaled_number(amount.group(2), amount.group(3).lower() if amount.group(3) else None)
+                distance = abs(amount.start() - anchor)
+                score = len(matched_terms) * 1000 - distance
+                if best is None or score > best[0]:
+                    best = (score, value, " ".join(matched_terms))
+        if best is None:
+            return None, ""
+        _score, value, label = best
+        return value, label
 
     def _difference_between_nearby_amounts(self, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
         for node_id, text in contexts:
@@ -810,6 +927,7 @@ class NumericReasoner:
 
     def _ratio_numerator_terms(self, query_lower: str) -> list[str]:
         patterns = [
+            r"what\s+(?:are|is|was|were)\s+(.+?)\s+as\s+a\s+percentage\s+of",
             r"payments?\s+for\s+(.+?)\s+as\s+a\s+percentage\s+of",
             r"represented by\s+(.+?)\??$",
             r"allocated to\s+(.+?)(?:\s+in\s+20\d{2})?\??$",
@@ -927,6 +1045,32 @@ class NumericReasoner:
             return None
         return rows[0], rows[1:]
 
+    def _prose_sentences(self, text: str) -> list[str]:
+        prose_lines = []
+        for line in text.splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("|") or stripped.startswith("#"):
+                continue
+            if set(stripped) <= {"-", " "}:
+                continue
+            prose_lines.append(stripped)
+        prose = " ".join(prose_lines)
+        return [sentence.strip() for sentence in re.split(r"(?<=[.!?])\s+", prose) if sentence.strip()]
+
+    def _prose_row_label(self, sentence: str, query_lower: str) -> str:
+        lower_sentence = sentence.lower()
+        amount_match = re.search(r"\b(.{0,120}?)\s+(?:was|were|had|totaled|amounted to)?\s*(?:approximately\s+)?\$\s*\d", lower_sentence)
+        label = amount_match.group(1) if amount_match else lower_sentence[:100]
+        label = re.sub(r"\b(2022|2019|201c|201d)\b", " ", label)
+        label_terms = self._keywords(label)
+        query_terms = self._keywords(query_lower)
+        kept = [term for term in query_terms if term in label_terms]
+        if kept:
+            return " ".join(kept)
+        compact = re.sub(r"[^a-z0-9 ]+", " ", label)
+        compact = re.sub(r"\s+", " ", compact).strip()
+        return " ".join(compact.split()[-6:])
+
     def _best_query_row(self, query_lower: str, headers: list[str], rows: list[list[str]]) -> list[str] | None:
         query_terms = set(self._keywords(query_lower))
         best_row = None
@@ -991,3 +1135,8 @@ class NumericReasoner:
         if abs(value - round(value)) < 0.05:
             return f"{round(value):.0f}%"
         return f"{value:.1f}%"
+
+    def _format_number(self, value: float) -> str:
+        if abs(value - round(value)) < 0.05:
+            return f"{round(value):.0f}"
+        return f"{value:.2f}".rstrip("0").rstrip(".")

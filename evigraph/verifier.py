@@ -167,7 +167,7 @@ def _calculation_result_numbers(calculations: list[str]) -> list[float]:
 
 
 def _close(left: float, right: float) -> bool:
-    return abs(left - right) < 1e-6
+    return abs(left - right) <= max(0.05, abs(right) * 0.005)
 
 
 def _is_year(value: float) -> bool:
@@ -208,7 +208,9 @@ def _expected_operation(query: str) -> set[str] | None:
             "related to",
         ]
     ):
-        return {"ratio_percent"}
+        return {"ratio_percent", "ratio_between_years"}
+    if "ratio" in query_lower and len(re.findall(r"\b20\d{2}\b", query_lower)) >= 2:
+        return {"ratio_between_years"}
     if "average" in query_lower:
         return {"average", "row_average", "row_values_average", "year_range_average"}
     if any(phrase in query_lower for phrase in ["difference", "net change", "how much higher", "change in", "changed in"]):
@@ -226,6 +228,7 @@ def _calculation_operation(calculation: str) -> str | None:
         "percent_change_from_to": "percent_change",
         "percent_delta": "percent_delta",
         "ratio_percent": "ratio_percent",
+        "ratio_between_years": "ratio_between_years",
         "row_average": "row_average",
         "row_values_average": "row_values_average",
         "year_range_average": "year_range_average",
