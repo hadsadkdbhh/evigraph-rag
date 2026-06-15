@@ -15,7 +15,8 @@ class ClaimVerifier:
             node.scores.get("misleading_risk", 0.0) >= 0.65 or node.scores.get("contradiction_risk", 0.0) >= 0.65
             for node in support_graph.nodes.values()
         )
-        numeric_supported = self._numeric_claim_supported(answer.text, support_graph)
+        numeric_supported = self._numeric_claim_supported(answer.text, support_graph, answer.calculations)
+        calculation_supported = self._calculation_claim_supported(answer.text, answer.calculations)
         row_grounded = self._row_grounded(query, answer)
         answer_supported = has_citation and citation_nodes_exist and numeric_supported and row_grounded and not has_risky_support
         return {
@@ -25,12 +26,18 @@ class ClaimVerifier:
             "missing_evidence": self._missing_evidence(has_citation, numeric_supported, row_grounded),
             "citation_correct": citation_nodes_exist,
             "confidence": 0.85 if answer_supported else 0.35,
-            "context_utilization": "numeric_row_and_citation_checked" if numeric_supported and row_grounded else "citation_only",
+            "context_utilization": self._context_utilization(numeric_supported, calculation_supported, row_grounded),
             "checked_citations": list(answer.citations),
+            "calculation_supported": calculation_supported,
             "row_grounded": row_grounded,
         }
 
-    def _numeric_claim_supported(self, answer_text: str, support_graph: EvidenceGraph) -> bool:
+    def _numeric_claim_supported(
+        self,
+        answer_text: str,
+        support_graph: EvidenceGraph,
+        calculations: list[str],
+    ) -> bool:
         answer_numbers = _numbers(answer_text)
         if not answer_numbers:
             return bool(support_graph.nodes)
@@ -48,7 +55,26 @@ class ClaimVerifier:
                         support_numbers.extend(_numbers(" ".join(str(item) for item in row)))
             else:
                 support_numbers.extend(_numbers(content))
-        return all(any(abs(answer_number - support_number) < 1e-6 for support_number in support_numbers) for answer_number in answer_numbers)
+        calculation_numbers = _calculation_result_numbers(calculations)
+        if calculation_numbers:
+            return all(
+                _is_year(answer_number)
+                or any(_close(answer_number, calculation_number) for calculation_number in calculation_numbers)
+                for answer_number in answer_numbers
+            )
+        return all(
+            any(_close(answer_number, support_number) for support_number in support_numbers)
+            for answer_number in answer_numbers
+        )
+
+    def _calculation_claim_supported(self, answer_text: str, calculations: list[str]) -> bool:
+        answer_numbers = _numbers(answer_text)
+        if not answer_numbers:
+            return False
+        calculation_numbers = _calculation_result_numbers(calculations)
+        if not calculation_numbers:
+            return False
+        return all(any(_close(answer_number, calculation_number) for calculation_number in calculation_numbers) for answer_number in answer_numbers)
 
     def _row_grounded(self, query: str, answer: Answer) -> bool:
         row_labels = []
@@ -73,14 +99,39 @@ class ClaimVerifier:
         if not has_citation:
             missing.append("No citations were selected.")
         if not numeric_supported:
-            missing.append("Answer contains numeric claims not found in support graph.")
+            missing.append("Answer contains numeric claims not supported by source numbers or calculation results.")
         if not row_grounded:
             missing.append("Calculation row label does not match query terms.")
         return missing
 
+    def _context_utilization(self, numeric_supported: bool, calculation_supported: bool, row_grounded: bool) -> str:
+        if numeric_supported and calculation_supported and row_grounded:
+            return "numeric_calculation_row_and_citation_checked"
+        if numeric_supported and row_grounded:
+            return "numeric_row_and_citation_checked"
+        return "citation_only"
+
 
 def _numbers(text: str) -> list[float]:
     return [float(match) for match in re.findall(r"[-+]?\d+(?:\.\d+)?", text)]
+
+
+def _calculation_result_numbers(calculations: list[str]) -> list[float]:
+    result_numbers = []
+    for calculation in calculations:
+        if "=" not in calculation:
+            continue
+        rhs = calculation.rsplit("=", 1)[1]
+        result_numbers.extend(_numbers(rhs))
+    return result_numbers
+
+
+def _close(left: float, right: float) -> bool:
+    return abs(left - right) < 1e-6
+
+
+def _is_year(value: float) -> bool:
+    return value.is_integer() and 1900 <= int(value) <= 2099
 
 
 def _grounding_terms(text: str) -> list[str]:

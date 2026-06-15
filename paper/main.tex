@@ -71,7 +71,7 @@ Each executed operation returns both a numeric value and a human-readable expres
 \subsection{Claim Verification}
 
 Generated answers are verified against the selected support graph.
-The verifier checks citation presence, simple numeric consistency, and whether calculation row labels are lexically grounded in the query.
+The verifier checks citation presence, source-number consistency, calculation-result consistency, and whether calculation row labels are lexically grounded in the query.
 
 \begin{figure}[t]
 \centering
@@ -112,9 +112,9 @@ TODO: add stronger retrieve-then-read and dense retrieval baselines.
 Setting & Method & Accuracy & Supported & Tokens \\
 \midrule
 Oracle-doc & Top-k & 0.32 & 0.39 & 1433.58 \\
-Oracle-doc & Full EviGraph & 0.31 & 0.60 & 1082.29 \\
-Open BM25 & Full EviGraph & 0.17 & 0.69 & 790.78 \\
-Source rerank & Full EviGraph & 0.29 & 0.63 & 1231.74 \\
+Oracle-doc & Full EviGraph & 0.30 & 0.89 & 1082.29 \\
+Open BM25 & Full EviGraph & 0.16 & 0.90 & 790.78 \\
+Source rerank & Full EviGraph & 0.29 & 0.92 & 1231.74 \\
 \bottomrule
 \end{tabular}
 \caption{Current FinQA 100-example diagnostic results from \texttt{outputs/eval/finqa/summary.md}. Accuracy is numeric exact match. These numbers expose the current table-operation bottleneck and should not yet be presented as final benchmark performance.}
@@ -125,7 +125,7 @@ Source rerank & Full EviGraph & 0.29 & 0.63 & 1231.74 \\
 
 The manifest runner emits a failure report that groups unresolved examples by error category.
 Current categories include missing numeric answer, wrong row/operation, additive lookup failures, ratio failures, and percent-operation failures.
-For oracle-doc full EviGraph, the current 100-example failure report has 69 failures: 29 percent-operation failures, 20 other missing numeric answers, 8 wrong operation or row selections, 5 additive-or-lookup failures, 5 ratio failures, and 2 unsupported textual predictions.
+For oracle-doc full EviGraph, the current 100-example failure report has 70 failures: 29 percent-operation failures, 20 other missing numeric answers, 8 wrong operation or row selections, 5 additive-or-lookup failures, 5 ratio failures, and 3 unsupported textual predictions.
 
 \section{Conclusion}
 

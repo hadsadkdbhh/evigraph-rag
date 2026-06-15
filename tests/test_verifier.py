@@ -45,6 +45,43 @@ class ClaimVerifierTest(unittest.TestCase):
         self.assertFalse(verification["answer_supported"])
         self.assertIn("Calculation row label does not match query terms.", verification["missing_evidence"])
 
+    def test_calculation_result_supports_numeric_answer(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(EvidenceNode("text", "text", "interest expense of $914 million increased by $23 million", source_doc="report.md"))
+        answer = Answer(
+            text="2.6%",
+            citations=["text"],
+            calculations=["percent_delta row=interest expense: 23 / 891 * 100 = 2.6%"],
+        )
+
+        verification = ClaimVerifier().verify(
+            "what is the percentage increase in interest expense?",
+            answer,
+            graph,
+        )
+
+        self.assertTrue(verification["calculation_supported"])
+        self.assertTrue(verification["answer_supported"])
+        self.assertEqual(verification["context_utilization"], "numeric_calculation_row_and_citation_checked")
+
+    def test_calculation_inputs_do_not_support_wrong_numeric_answer(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(EvidenceNode("text", "text", "interest expense of $914 million increased by $23 million", source_doc="report.md"))
+        answer = Answer(
+            text="23%",
+            citations=["text"],
+            calculations=["percent_delta row=interest expense: 23 / 891 * 100 = 2.6%"],
+        )
+
+        verification = ClaimVerifier().verify(
+            "what is the percentage increase in interest expense?",
+            answer,
+            graph,
+        )
+
+        self.assertFalse(verification["calculation_supported"])
+        self.assertFalse(verification["answer_supported"])
+
 
 if __name__ == "__main__":
     unittest.main()
