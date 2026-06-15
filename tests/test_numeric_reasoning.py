@@ -133,6 +133,25 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "104.8%")
         self.assertIn("percent_change", answer.calculations[0])
 
+    def test_percent_increase_from_current_value_and_delta_phrase(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content="Interest expense, net, of $914 million increased by $23 million, due primarily to higher average debt levels.",
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the percentage increase in interest expense?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "2.6%")
+        self.assertIn("percent_delta", answer.calculations[0])
+
     def test_total_debt_percent_change_reports_magnitude(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
@@ -199,6 +218,28 @@ class NumericReasoningTest(unittest.TestCase):
 
         self.assertEqual(answer.text, "59.4%")
         self.assertIn("ratio_percent", answer.calculations[0])
+
+    def test_ratio_percent_rejects_same_row_numerator_and_denominator(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "|  | 2007 |\n"
+                    "| --- | --- |\n"
+                    "| sales | $ 5245 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what percentage of industrial packaging sales where represented by european industrial packaging net sales in 2007?",
+            graph,
+        )
+
+        self.assertNotEqual(answer.text, "100%")
 
     def test_ratio_percent_allocated_to_year_row(self) -> None:
         graph = EvidenceGraph()

@@ -37,6 +37,9 @@ class NumericReasoner:
             answer = self._percent_change(query_lower, contexts)
             if answer:
                 return answer
+            answer = self._percent_delta_phrase(query_lower, contexts)
+            if answer:
+                return answer
 
         if (
             "what percentage" in query_lower
@@ -281,6 +284,56 @@ class NumericReasoner:
             )
         return None
 
+    def _percent_delta_phrase(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
+        query_terms = set(self._keywords(query_lower))
+        if not query_terms:
+            return None
+        best = None
+        best_score = 0
+        pattern = re.compile(
+            r"(?P<label>[a-z][a-z0-9 ,&'/-]{0,90}?)\s+of\s+\$?\s*"
+            r"(?P<current>[-+]?\d+(?:\.\d+)?)\s*(?P<current_scale>million|billion|thousand)?"
+            r"\s+(?P<direction>increased|decreased|declined|grew)\s+by\s+\$?\s*"
+            r"(?P<delta>[-+]?\d+(?:\.\d+)?)\s*(?P<delta_scale>million|billion|thousand)?",
+            flags=re.IGNORECASE,
+        )
+        for node_id, text in contexts:
+            for sentence in re.split(r"(?<=[.!?])\s+|\n+", text):
+                lower_sentence = sentence.lower()
+                sentence_terms = set(re.findall(r"[a-z0-9]+", lower_sentence))
+                score = len(query_terms & sentence_terms)
+                if score == 0:
+                    continue
+                for match in pattern.finditer(sentence):
+                    label = re.sub(r"\s+", " ", match.group("label")).strip(" ,.;")
+                    label_terms = set(re.findall(r"[a-z0-9]+", label.lower()))
+                    match_score = score + len(query_terms & label_terms)
+                    if match_score <= best_score:
+                        continue
+                    current = self._scaled_number(match.group("current"), match.group("current_scale"))
+                    delta = self._scaled_number(match.group("delta"), match.group("delta_scale") or match.group("current_scale"))
+                    direction = match.group("direction").lower()
+                    if current is None or delta is None:
+                        continue
+                    if direction in {"increased", "grew"}:
+                        base = current - delta
+                        signed_delta = delta
+                    else:
+                        base = current + delta
+                        signed_delta = -delta
+                    if base == 0:
+                        continue
+                    best_score = match_score
+                    best = (node_id, label, signed_delta, base, signed_delta / base * 100.0)
+        if best is None:
+            return None
+        node_id, label, signed_delta, base, result = best
+        return NumericAnswer(
+            text=f"{result:.1f}%",
+            calculation=f"percent_delta row={label}: {signed_delta:g} / {base:g} * 100 = {result:.1f}%",
+            cited_node_ids=[node_id],
+        )
+
     def _prose_year_values_for_query(
         self,
         query_lower: str,
@@ -391,6 +444,8 @@ class NumericReasoner:
                 numerator, numerator_meta = self._matching_value_with_label(rows, numerator_terms)
             if numerator is None or denominator in {None, 0}:
                 continue
+            if numerator_meta.get("row_label") and numerator_meta.get("row_label") == denominator_meta.get("row_label"):
+                continue
 
             operation = self.executor.ratio(numerator, denominator)
             if operation is None:
@@ -435,6 +490,8 @@ class NumericReasoner:
         year: str,
         allow_partial: bool = True,
     ) -> tuple[float | None, dict[str, str]]:
+        if not terms:
+            return None, {}
         table = self._markdown_table(text)
         if not table:
             return None, {}
@@ -569,6 +626,8 @@ class NumericReasoner:
         terms: list[str],
     ) -> tuple[float | None, dict[str, str]]:
         normalized_terms = [term for term in terms if term]
+        if not normalized_terms:
+            return None, {}
         for label, value in rows:
             if all(term in label for term in normalized_terms):
                 return value, {"row_label": label}
@@ -754,6 +813,14 @@ class NumericReasoner:
 
     def _to_float(self, value: str) -> float:
         return float(value.replace(",", ""))
+
+    def _scaled_number(self, value: str, scale: str | None) -> float:
+        number = self._to_float(value)
+        if scale == "billion":
+            return number * 1000.0
+        if scale == "thousand":
+            return number / 1000.0
+        return number
 
     def _format_percent(self, value: float) -> str:
         if abs(value - round(value)) < 0.05:
