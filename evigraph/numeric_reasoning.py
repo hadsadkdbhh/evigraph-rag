@@ -27,6 +27,7 @@ class NumericReasoner:
         if not contexts:
             return None
 
+        is_roi_query = "roi" in query_lower or "rate of return" in query_lower
         if (
             "percentage change" in query_lower
             or "percent change" in query_lower
@@ -34,18 +35,22 @@ class NumericReasoner:
             or "percent increase" in query_lower
             or "percentual reduction" in query_lower
             or "growth rate" in query_lower
-            or "rate of return" in query_lower
+            or is_roi_query
             or "percent of the increase" in query_lower
         ):
-            answer = self._percent_change(query_lower, contexts)
+            answer = self._roi_from_table(query_lower, contexts)
             if answer:
                 return answer
-            answer = self._percent_delta_phrase(query_lower, contexts)
-            if answer:
-                return answer
-            answer = self._percent_change_from_to_phrase(query_lower, contexts)
-            if answer:
-                return answer
+            if not is_roi_query:
+                answer = self._percent_change(query_lower, contexts)
+                if answer:
+                    return answer
+                answer = self._percent_delta_phrase(query_lower, contexts)
+                if answer:
+                    return answer
+                answer = self._percent_change_from_to_phrase(query_lower, contexts)
+                if answer:
+                    return answer
 
         if (
             "what percentage" in query_lower
@@ -82,6 +87,9 @@ class NumericReasoner:
             answer = self._row_values_average(query_lower, contexts)
             if answer:
                 return answer
+            answer = self._year_range_average_v2(query_lower, contexts)
+            if answer:
+                return answer
             answer = self._year_range_average(query_lower, contexts)
             if answer:
                 return answer
@@ -105,6 +113,40 @@ class NumericReasoner:
                     cited_node_ids=[contexts[0][0]],
                 )
 
+        return None
+
+    def _year_range_average_v2(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
+        range_match = re.search(r"\b(?:from\s+)?(20\d{2})\s*(?:[-\s]|\bto\b)+\s*(20\d{2})\b", query_lower)
+        if not range_match:
+            return None
+        start_year, end_year = (int(range_match.group(1)), int(range_match.group(2)))
+        years = [str(year) for year in range(start_year, end_year + 1)]
+        for node_id, text in contexts:
+            rows = dict(self._label_value_rows(text))
+            values = [rows[year] for year in years if year in rows]
+            if len(values) == len(years):
+                operation = self.executor.average(values)
+                if operation is not None:
+                    return NumericAnswer(
+                        text=f"{operation.value:.1f}",
+                        calculation=f"year_range_average: {operation.expression}",
+                        cited_node_ids=[node_id],
+                    )
+        for node_id, text in contexts:
+            values = self._prose_multi_year_values_for_query(query_lower, text, years)
+            if not values:
+                continue
+            ordered = [values[year] for year in years if year in values]
+            if len(ordered) != len(years):
+                continue
+            operation = self.executor.average(ordered)
+            if operation is None:
+                continue
+            return NumericAnswer(
+                text=f"{operation.value:.1f}",
+                calculation=f"year_range_average row={values.get('__row_label__', '')}: {operation.expression}",
+                cited_node_ids=[node_id],
+            )
         return None
 
     def _year_range_average(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
@@ -267,6 +309,46 @@ class NumericReasoner:
                 calculation=f"pretax_aftertax_difference: {operation.expression}",
                 cited_node_ids=[node_id],
             )
+        return None
+
+    def _roi_from_table(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
+        if "roi" not in query_lower and "rate of return" not in query_lower:
+            return None
+        years = re.findall(r"\b(20\d{2})\b", query_lower)
+        if len(years) < 2:
+            return None
+        base_year, target_year = years[0], years[1]
+        for node_id, text in contexts:
+            for headers, rows in self._markdown_tables(text):
+                target_index = self._header_year_index(headers, target_year)
+                base_index = self._header_year_index(headers, base_year)
+                if target_index is None:
+                    continue
+                if base_index is None:
+                    earlier = [
+                        index
+                        for index, header in enumerate(headers)
+                        if (match := re.search(r"\b(20\d{2})\b", header)) and int(match.group(1)) < int(target_year)
+                    ]
+                    if earlier:
+                        base_index = earlier[0]
+                if base_index is None:
+                    continue
+                row = self._best_query_row(query_lower, headers, rows)
+                if not row or max(base_index, target_index) >= len(row):
+                    continue
+                base_value = self._first_number(row[base_index])
+                target_value = self._first_number(row[target_index])
+                if base_value is None or target_value is None or base_value == 0:
+                    continue
+                operation = self.executor.percent_change(target_value, base_value)
+                if operation is None:
+                    continue
+                return NumericAnswer(
+                    text=f"{operation.value:.1f}%",
+                    calculation=f"percent_change row={row[0]} roi years={base_year}->{target_year}: {operation.expression}",
+                    cited_node_ids=[node_id],
+                )
         return None
 
     def _percent_change(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
@@ -471,6 +553,73 @@ class NumericReasoner:
                 values[year] = self._to_float(value)
         if base_year in values and target_year in values:
             return values
+        return None
+
+    def _prose_multi_year_values_for_query(
+        self,
+        query_lower: str,
+        text: str,
+        years: list[str],
+    ) -> dict[str, float] | None:
+        if not years:
+            return None
+        query_terms = set(self._keywords(query_lower))
+        best_sentence = None
+        best_score = 0
+        for sentence in self._prose_sentences(text):
+            if not all(year in sentence for year in years):
+                continue
+            sentence_terms = set(re.findall(r"[a-z0-9]+", sentence.lower()))
+            score = len(query_terms & sentence_terms)
+            if score > best_score:
+                best_score = score
+                best_sentence = sentence
+        if not best_sentence:
+            return None
+        values = self._respectively_ordered_values(best_sentence, years)
+        if not values:
+            return None
+        values["__row_label__"] = self._prose_row_label(best_sentence, query_lower)
+        return values
+
+    def _respectively_ordered_values(self, sentence: str, years: list[str]) -> dict[str, float] | None:
+        lower_sentence = sentence.lower()
+        if "respectively" not in lower_sentence:
+            return None
+        scoped_text = sentence[: lower_sentence.find("respectively")]
+        sentence_years = re.findall(r"\b(20\d{2})\b", scoped_text)
+        if not all(year in sentence_years for year in years):
+            return None
+        first_year_index = min(scoped_text.find(year) for year in sentence_years if scoped_text.find(year) >= 0)
+        before_first_year = scoped_text[:first_year_index]
+        last_year_index = max(scoped_text.find(year) + len(year) for year in sentence_years if scoped_text.find(year) >= 0)
+        after_last_year = scoped_text[last_year_index:]
+        matches = re.findall(
+            r"(\$)?\s*([-+]?\d+(?:,\d{3})*(?:\.\d+)?)\s*(billion|million|thousand|shares)?",
+            before_first_year,
+            flags=re.IGNORECASE,
+        )
+        numeric_values = [
+            self._scaled_number(value, scale.lower() if scale and scale.lower() != "shares" else None)
+            for dollar, value, scale in matches
+            if dollar or scale
+        ]
+        if len(numeric_values) < len(sentence_years):
+            matches = re.findall(
+                r"(\$)?\s*([-+]?\d+(?:,\d{3})*(?:\.\d+)?)\s*(billion|million|thousand|shares)?",
+                after_last_year,
+                flags=re.IGNORECASE,
+            )
+            numeric_values = [
+                self._scaled_number(value, scale.lower() if scale and scale.lower() != "shares" else None)
+                for dollar, value, scale in matches
+                if dollar or scale
+            ]
+        if len(numeric_values) < len(sentence_years):
+            return None
+        aligned = dict(zip(sentence_years, numeric_values[-len(sentence_years) :]))
+        if all(year in aligned for year in years):
+            return {year: aligned[year] for year in years}
         return None
 
     def _respectively_year_values(
@@ -1010,6 +1159,12 @@ class NumericReasoner:
         ][:8]
 
     def _markdown_table(self, text: str) -> tuple[list[str], list[list[str]]] | None:
+        candidates = self._markdown_tables(text)
+        if not candidates:
+            return None
+        return max(candidates, key=lambda parsed: (len(parsed[1]), max(len(parsed[0]), *(len(row) for row in parsed[1]))))
+
+    def _markdown_tables(self, text: str) -> list[tuple[list[str], list[list[str]]]]:
         blocks: list[list[str]] = []
         current: list[str] = []
         for line in text.splitlines():
@@ -1024,13 +1179,8 @@ class NumericReasoner:
         for table_lines in blocks:
             parsed = self._parse_markdown_table_block(table_lines)
             if parsed:
-                headers, rows = parsed
-                width = max(len(headers), *(len(row) for row in rows))
-                candidates.append((len(rows), width, parsed))
-        if not candidates:
-            return None
-        _row_count, _width, parsed = max(candidates)
-        return parsed
+                candidates.append(parsed)
+        return candidates
 
     def _parse_markdown_table_block(self, table_lines: list[str]) -> tuple[list[str], list[list[str]]] | None:
         if len(table_lines) < 2:

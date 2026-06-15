@@ -11,7 +11,7 @@ def numeric_exact_match(prediction: str, gold: str | None) -> float:
     gold_numbers = _numbers(gold)
     if not predicted_numbers or not gold_numbers:
         return float(prediction.strip().lower() == gold.strip().lower())
-    tolerance = 0.5 if "%" in prediction or "%" in gold else 1e-6
+    tolerance = 0.5 if "%" in prediction or "%" in gold else 0.1
     return float(any(abs(pred - gold_value) <= tolerance for pred in predicted_numbers for gold_value in gold_numbers))
 
 

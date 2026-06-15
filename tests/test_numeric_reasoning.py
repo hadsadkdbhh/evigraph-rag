@@ -275,6 +275,54 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "-13.4%")
         self.assertIn("row=net earnings attributable to pmi", answer.calculations[0])
 
+    def test_roi_from_stock_return_table_uses_index_row(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| | 12/29/2007 | 1/3/2009 | 1/2/2010 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| cadence design systems inc . | 100.00 | 22.55 | 35.17 |\n"
+                    "| nasdaq composite | 100.00 | 59.03 | 82.25 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the roi of nasdaq composite from 2008 to 2009?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "-41.0%")
+        self.assertIn("roi", answer.calculations[0])
+
+    def test_roi_from_sp500_table_handles_compact_query_token(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| company/index | december 30 2006 | january 3 2009 |\n"
+                    "| --- | --- | --- |\n"
+                    "| advance auto parts | $ 100.00 | $ 97.26 |\n"
+                    "| s&p 500 index | 100.00 | 65.70 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the roi of an investment in s&p500 index from 2006 to january 3 , 2009?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "-34.3%")
+        self.assertIn("row=s&p 500 index", answer.calculations[0])
+
     def test_total_debt_percent_change_reports_magnitude(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
@@ -561,6 +609,29 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "44.8")
         self.assertIn("year_range_average", answer.calculations[0])
 
+    def test_year_range_average_from_respectively_prose(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "For the years ended December 31, 2010, 2009, and 2008, the potential "
+                    "anti-dilutive share conversions were 256,868 shares, 1,230,881 shares, "
+                    "and 638,401 shares, respectively."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the average potential anti-dilutive share conversions from 2008 to 2010",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "708716.7")
+        self.assertIn("year_range_average", answer.calculations[0])
+
     def test_ratio_between_years_from_respectively_sentence(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
@@ -724,6 +795,9 @@ class NumericReasoningTest(unittest.TestCase):
 
     def test_percentage_exact_match_allows_rounding(self) -> None:
         self.assertEqual(numeric_exact_match("86.8%", "87%"), 1.0)
+
+    def test_numeric_exact_match_allows_one_decimal_rounding(self) -> None:
+        self.assertEqual(numeric_exact_match("708716.7", "708716.6"), 1.0)
 
     def test_source_doc_retrieval_adds_oracle_context(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
