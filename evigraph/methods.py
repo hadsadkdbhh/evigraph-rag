@@ -181,6 +181,7 @@ class MethodRunner:
             "context_utilization": "not_checked",
             "arithmetically_supported": False,
             "calculation_supported": False,
+            "operation_semantics_checked": False,
             "row_operation_grounded": False,
             "semantically_grounded": False,
             "row_grounded": False,

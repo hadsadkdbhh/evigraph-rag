@@ -29,6 +29,7 @@ def summarize_result(result: dict[str, Any], gold: str | None = None) -> dict[st
         "answer_supported": bool(result.get("verification", {}).get("answer_supported", False)),
         "arithmetically_supported": bool(result.get("verification", {}).get("arithmetically_supported", False)),
         "calculation_supported": bool(result.get("verification", {}).get("calculation_supported", False)),
+        "operation_semantics_checked": bool(result.get("verification", {}).get("operation_semantics_checked", False)),
         "row_operation_grounded": bool(result.get("verification", {}).get("row_operation_grounded", False)),
         "semantically_grounded": bool(result.get("verification", {}).get("semantically_grounded", False)),
         "citation_correct": bool(result.get("verification", {}).get("citation_correct", False)),

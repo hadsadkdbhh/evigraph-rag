@@ -18,20 +18,34 @@ class ClaimVerifier:
         numeric_supported = self._numeric_claim_supported(answer.text, support_graph, answer.calculations)
         calculation_supported = self._calculation_claim_supported(answer.text, answer.calculations)
         row_grounded = self._row_grounded(query, answer)
-        semantically_grounded = citation_nodes_exist and row_grounded and not has_risky_support
-        answer_supported = has_citation and citation_nodes_exist and numeric_supported and row_grounded and not has_risky_support
+        operation_semantics_checked = self._operation_semantics_checked(query, answer)
+        semantically_grounded = citation_nodes_exist and row_grounded and operation_semantics_checked and not has_risky_support
+        answer_supported = (
+            has_citation
+            and citation_nodes_exist
+            and numeric_supported
+            and row_grounded
+            and operation_semantics_checked
+            and not has_risky_support
+        )
         return {
             "answer_supported": answer_supported,
             "unsupported_claims": [] if answer_supported else [answer.text],
             "contradictions": [],
-            "missing_evidence": self._missing_evidence(has_citation, numeric_supported, row_grounded),
+            "missing_evidence": self._missing_evidence(has_citation, numeric_supported, row_grounded, operation_semantics_checked),
             "citation_correct": citation_nodes_exist,
             "confidence": 0.85 if answer_supported else 0.35,
-            "context_utilization": self._context_utilization(numeric_supported, calculation_supported, row_grounded),
+            "context_utilization": self._context_utilization(
+                numeric_supported,
+                calculation_supported,
+                row_grounded,
+                operation_semantics_checked,
+            ),
             "checked_citations": list(answer.citations),
             "arithmetically_supported": numeric_supported,
             "calculation_supported": calculation_supported,
-            "row_operation_grounded": row_grounded,
+            "operation_semantics_checked": operation_semantics_checked,
+            "row_operation_grounded": row_grounded and operation_semantics_checked,
             "semantically_grounded": semantically_grounded,
             "row_grounded": row_grounded,
         }
@@ -98,7 +112,21 @@ class ClaimVerifier:
                 return True
         return False
 
-    def _missing_evidence(self, has_citation: bool, numeric_supported: bool, row_grounded: bool) -> list[str]:
+    def _operation_semantics_checked(self, query: str, answer: Answer) -> bool:
+        expected = _expected_operation(query)
+        if expected is None:
+            return True
+        actual = {_calculation_operation(calculation) for calculation in answer.calculations}
+        actual.discard(None)
+        return bool(actual & expected)
+
+    def _missing_evidence(
+        self,
+        has_citation: bool,
+        numeric_supported: bool,
+        row_grounded: bool,
+        operation_semantics_checked: bool,
+    ) -> list[str]:
         missing = []
         if not has_citation:
             missing.append("No citations were selected.")
@@ -106,13 +134,21 @@ class ClaimVerifier:
             missing.append("Answer contains numeric claims not supported by source numbers or calculation results.")
         if not row_grounded:
             missing.append("Calculation row label does not match query terms.")
+        if not operation_semantics_checked:
+            missing.append("Calculation operation type does not match query intent.")
         return missing
 
-    def _context_utilization(self, numeric_supported: bool, calculation_supported: bool, row_grounded: bool) -> str:
-        if numeric_supported and calculation_supported and row_grounded:
-            return "numeric_calculation_row_and_citation_checked"
-        if numeric_supported and row_grounded:
-            return "numeric_row_and_citation_checked"
+    def _context_utilization(
+        self,
+        numeric_supported: bool,
+        calculation_supported: bool,
+        row_grounded: bool,
+        operation_semantics_checked: bool,
+    ) -> str:
+        if numeric_supported and calculation_supported and row_grounded and operation_semantics_checked:
+            return "numeric_calculation_row_operation_and_citation_checked"
+        if numeric_supported and row_grounded and operation_semantics_checked:
+            return "numeric_row_operation_and_citation_checked"
         return "citation_only"
 
 
@@ -136,6 +172,68 @@ def _close(left: float, right: float) -> bool:
 
 def _is_year(value: float) -> bool:
     return value.is_integer() and 1900 <= int(value) <= 2099
+
+
+def _expected_operation(query: str) -> set[str] | None:
+    query_lower = query.lower()
+    if any(
+        phrase in query_lower
+        for phrase in [
+            "percentage change",
+            "percent change",
+            "percentage increase",
+            "percent increase",
+            "percentage reduction",
+            "percentual reduction",
+            "growth rate",
+            "rate of return",
+            "roi",
+            "percent higher",
+            "percentage higher",
+        ]
+    ):
+        return {"percent_change", "percent_delta"}
+    if any(
+        phrase in query_lower
+        for phrase in [
+            "what percentage",
+            "what percent",
+            "what portion",
+            "what share",
+            "as a percentage of",
+            "represented by",
+            "allocated to",
+            "comes from",
+            "due to",
+            "related to",
+        ]
+    ):
+        return {"ratio_percent"}
+    if "average" in query_lower:
+        return {"average", "row_average", "row_values_average", "year_range_average"}
+    if any(phrase in query_lower for phrase in ["difference", "net change", "how much higher", "change in", "changed in"]):
+        return {"difference", "row_year_difference", "pretax_aftertax_difference"}
+    return None
+
+
+def _calculation_operation(calculation: str) -> str | None:
+    prefix = calculation.split(":", 1)[0].strip().lower()
+    if prefix.startswith("calc_") or prefix == "derived_from_context":
+        return "difference"
+    operation = prefix.split(" ", 1)[0]
+    aliases = {
+        "percent_change": "percent_change",
+        "percent_delta": "percent_delta",
+        "ratio_percent": "ratio_percent",
+        "row_average": "row_average",
+        "row_values_average": "row_values_average",
+        "year_range_average": "year_range_average",
+        "row_year_difference": "row_year_difference",
+        "pretax_aftertax_difference": "pretax_aftertax_difference",
+        "difference": "difference",
+        "repeated_increase_projection": "difference",
+    }
+    return aliases.get(operation)
 
 
 def _grounding_terms(text: str) -> list[str]:

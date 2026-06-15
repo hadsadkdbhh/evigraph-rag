@@ -12,6 +12,7 @@ DEFAULT_METRICS = [
     "answer_supported",
     "arithmetically_supported",
     "calculation_supported",
+    "operation_semantics_checked",
     "row_operation_grounded",
     "semantically_grounded",
     "citation_correct",
