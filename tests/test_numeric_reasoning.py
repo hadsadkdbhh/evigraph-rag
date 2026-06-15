@@ -152,6 +152,100 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "2.6%")
         self.assertIn("percent_delta", answer.calculations[0])
 
+    def test_reverse_stock_split_reduction_from_to_phrase(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "The reverse stock split reduced the number of shares of common stock outstanding "
+                    "from approximately 1.3 billion shares to approximately 0.4 billion shares."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "considering the reverse stock split, what was the percentual reduction of the common stock outstanding shares?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "69.2%")
+        self.assertIn("percent_change_from_to", answer.calculations[0])
+
+    def test_percent_change_from_respectively_year_sequence(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "Rental expense for operating leases was approximately $66.9 million, "
+                    "$57.2 million and $49.0 million during the years ended December 31, "
+                    "2010, 2009 and 2008, respectively."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the percentage change in rental expense for operating leases from 2008 to 2009?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "16.7%")
+        self.assertIn("percent_change", answer.calculations[0])
+
+    def test_growth_rate_uses_latest_two_table_years_when_query_has_no_years(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| ( in millions ) | for the years ended december 31 , 2017 | for the years ended december 31 , 2016 | for the years ended december 31 , 2015 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| net earnings attributable to pmi | $ 6035 | $ 6967 | $ 6873 |\n"
+                    "| net earnings for basic and diluted eps | $ 6021 | $ 6948 | $ 6849 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the growth rate of the net earnings attributable to pmi?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "-13.4%")
+        self.assertIn("row=net earnings attributable to pmi", answer.calculations[0])
+
+    def test_growth_rate_ignores_truncated_table_fragment_before_full_table(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| ( in millions ) | for the years ended december 31 , 2017 | for the years ended december 31 ,\n"
+                    "basic and diluted earnings per share were calculated using the following:\n"
+                    "| ( in millions ) | for the years ended december 31 , 2017 | for the years ended december 31 , 2016 | for the years ended december 31 , 2015 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| net earnings attributable to pmi | $ 6035 | $ 6967 | $ 6873 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the growth rate of the net earnings attributable to pmi?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "-13.4%")
+        self.assertIn("row=net earnings attributable to pmi", answer.calculations[0])
+
     def test_total_debt_percent_change_reports_magnitude(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

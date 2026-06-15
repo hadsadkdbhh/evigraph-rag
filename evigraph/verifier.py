@@ -223,6 +223,7 @@ def _calculation_operation(calculation: str) -> str | None:
     operation = prefix.split(" ", 1)[0]
     aliases = {
         "percent_change": "percent_change",
+        "percent_change_from_to": "percent_change",
         "percent_delta": "percent_delta",
         "ratio_percent": "ratio_percent",
         "row_average": "row_average",

@@ -33,11 +33,15 @@ class NumericReasoner:
             or "percentual reduction" in query_lower
             or "growth rate" in query_lower
             or "rate of return" in query_lower
+            or "percent of the increase" in query_lower
         ):
             answer = self._percent_change(query_lower, contexts)
             if answer:
                 return answer
             answer = self._percent_delta_phrase(query_lower, contexts)
+            if answer:
+                return answer
+            answer = self._percent_change_from_to_phrase(query_lower, contexts)
             if answer:
                 return answer
 
@@ -252,7 +256,7 @@ class NumericReasoner:
     def _percent_change(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
         years = re.findall(r"\b(20\d{2})\b", query_lower)
         if len(years) < 2:
-            return None
+            return self._percent_change_latest_table_years(query_lower, contexts)
         base_year, target_year = self._percent_change_years(query_lower, years)
         for node_id, text in contexts:
             values = self._table_year_values(query_lower, text, base_year, target_year)
@@ -281,6 +285,43 @@ class NumericReasoner:
             return NumericAnswer(
                 text=f"{result:.1f}%",
                 calculation=f"percent_change: {operation.expression}",
+                cited_node_ids=[node_id],
+            )
+        return None
+
+    def _percent_change_latest_table_years(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        for node_id, text in contexts:
+            table = self._markdown_table(text)
+            if not table:
+                continue
+            headers, rows = table
+            year_columns = [
+                (index, match.group(1))
+                for index, header in enumerate(headers)
+                if (match := re.search(r"\b(20\d{2})\b", header))
+            ]
+            if len(year_columns) < 2:
+                continue
+            target_index, target_year = year_columns[0]
+            base_index, base_year = year_columns[1]
+            best_row = self._best_query_row(query_lower, headers, rows)
+            if not best_row or max(base_index, target_index) >= len(best_row):
+                continue
+            base_value = self._first_number(best_row[base_index])
+            target_value = self._first_number(best_row[target_index])
+            if base_value is None or target_value is None or base_value == 0:
+                continue
+            operation = self.executor.percent_change(target_value, base_value)
+            if operation is None:
+                continue
+            result = operation.value
+            return NumericAnswer(
+                text=f"{result:.1f}%",
+                calculation=f"percent_change row={best_row[0]} years={base_year}->{target_year}: {operation.expression}",
                 cited_node_ids=[node_id],
             )
         return None
@@ -335,6 +376,54 @@ class NumericReasoner:
             cited_node_ids=[node_id],
         )
 
+    def _percent_change_from_to_phrase(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        query_terms = set(self._keywords(query_lower))
+        if not query_terms:
+            return None
+        best = None
+        best_score = 0
+        pattern = re.compile(
+            r"from\s+(?:approximately\s+)?\$?\s*(?P<base>[-+]?\d+(?:\.\d+)?)\s*"
+            r"(?P<base_scale>billion|million|thousand)?[^.]{0,80}?"
+            r"\bto\s+(?:approximately\s+)?\$?\s*(?P<target>[-+]?\d+(?:\.\d+)?)\s*"
+            r"(?P<target_scale>billion|million|thousand)?",
+            flags=re.IGNORECASE,
+        )
+        for node_id, text in contexts:
+            for sentence in re.split(r"(?<=[.!?])\s+|\n+", text):
+                lower_sentence = sentence.lower()
+                sentence_terms = set(re.findall(r"[a-z0-9]+", lower_sentence))
+                score = len(query_terms & sentence_terms)
+                if score == 0:
+                    continue
+                match = pattern.search(sentence)
+                if not match or score <= best_score:
+                    continue
+                base = self._scaled_number(match.group("base"), match.group("base_scale"))
+                target = self._scaled_number(match.group("target"), match.group("target_scale") or match.group("base_scale"))
+                if base == 0:
+                    continue
+                operation = self.executor.percent_change(target, base)
+                if operation is None:
+                    continue
+                result = operation.value
+                if "reverse stock split" in query_lower and "reduction" in query_lower:
+                    result = abs(result)
+                best_score = score
+                best = (node_id, base, target, result)
+        if best is None:
+            return None
+        node_id, base, target, result = best
+        return NumericAnswer(
+            text=f"{result:.1f}%",
+            calculation=f"percent_change_from_to: ({target:g} - {base:g}) / {base:g} * 100 = {result:.1f}%",
+            cited_node_ids=[node_id],
+        )
+
     def _prose_year_values_for_query(
         self,
         query_lower: str,
@@ -362,6 +451,38 @@ class NumericReasoner:
                 values[year] = self._to_float(value)
         if base_year in values and target_year in values:
             return values
+        respectively_values = self._respectively_year_values(best_sentence, base_year, target_year)
+        if respectively_values:
+            return respectively_values
+        return None
+
+    def _respectively_year_values(
+        self,
+        sentence: str,
+        base_year: str,
+        target_year: str,
+    ) -> dict[str, float] | None:
+        if "respectively" not in sentence.lower():
+            return None
+        years = re.findall(r"\b(20\d{2})\b", sentence)
+        if base_year not in years or target_year not in years:
+            return None
+        before_first_year = sentence[: sentence.find(years[0])]
+        matches = re.findall(
+            r"(\$)?\s*([-+]?\d+(?:\.\d+)?)\s*(billion|million|thousand)?",
+            before_first_year,
+            flags=re.IGNORECASE,
+        )
+        numeric_values = [
+            self._scaled_number(value, scale.lower() if scale else None)
+            for dollar, value, scale in matches
+            if dollar or scale
+        ]
+        if len(numeric_values) < len(years):
+            return None
+        aligned = dict(zip(years, numeric_values[-len(years) :]))
+        if base_year in aligned and target_year in aligned:
+            return {base_year: aligned[base_year], target_year: aligned[target_year]}
         return None
 
     def _table_year_values(
@@ -760,10 +881,29 @@ class NumericReasoner:
         ][:8]
 
     def _markdown_table(self, text: str) -> tuple[list[str], list[list[str]]] | None:
-        table_lines = []
+        blocks: list[list[str]] = []
+        current: list[str] = []
         for line in text.splitlines():
             if line.strip().startswith("|") and "|" in line.strip()[1:]:
-                table_lines.append(line)
+                current.append(line)
+            elif current:
+                blocks.append(current)
+                current = []
+        if current:
+            blocks.append(current)
+        candidates = []
+        for table_lines in blocks:
+            parsed = self._parse_markdown_table_block(table_lines)
+            if parsed:
+                headers, rows = parsed
+                width = max(len(headers), *(len(row) for row in rows))
+                candidates.append((len(rows), width, parsed))
+        if not candidates:
+            return None
+        _row_count, _width, parsed = max(candidates)
+        return parsed
+
+    def _parse_markdown_table_block(self, table_lines: list[str]) -> tuple[list[str], list[list[str]]] | None:
         if len(table_lines) < 2:
             return None
         rows = []
