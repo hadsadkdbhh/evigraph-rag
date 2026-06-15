@@ -16,6 +16,11 @@ class FakePlanClient:
         return self.payload
 
 
+class FailingPlanClient:
+    def plan(self, query: str, contexts: list[tuple[str, str]]) -> dict:
+        raise RuntimeError("planner unavailable")
+
+
 class NumericPlannerFallbackTest(unittest.TestCase):
     def test_executes_fake_llm_ratio_plan_against_context_numbers(self) -> None:
         graph = EvidenceGraph()
@@ -75,6 +80,12 @@ class NumericPlannerFallbackTest(unittest.TestCase):
         )
 
         self.assertNotIn("planned_ratio", answer.calculations)
+
+    def test_strict_mode_raises_planner_errors(self) -> None:
+        planner = NumericPlannerFallback(FailingPlanClient(), strict=True)
+
+        with self.assertRaises(RuntimeError):
+            planner.answer("query", [("node", "value 1")])
 
 
 if __name__ == "__main__":

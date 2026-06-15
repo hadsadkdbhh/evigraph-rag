@@ -153,9 +153,11 @@ class NumericPlanExecutor:
 
 
 class NumericPlannerFallback:
-    def __init__(self, plan_client: NumericPlanClient) -> None:
+    def __init__(self, plan_client: NumericPlanClient, strict: bool = False, log_errors: bool = False) -> None:
         self.plan_client = plan_client
         self.executor = NumericPlanExecutor()
+        self.strict = strict
+        self.log_errors = log_errors
 
     @classmethod
     def from_config(cls, config: dict[str, Any] | None = None) -> NumericPlannerFallback | None:
@@ -172,11 +174,24 @@ class NumericPlannerFallback:
         ]:
             if source_key in config:
                 llm_config[target_key] = config[source_key]
-        return cls(LLMNumericPlanClient(make_llm_client(llm_config)))
+        return cls(
+            LLMNumericPlanClient(make_llm_client(llm_config)),
+            strict=bool(config.get("strict", False)),
+            log_errors=bool(config.get("log_errors", False)),
+        )
 
     def answer(self, query: str, contexts: list[tuple[str, str]]) -> PlannedNumericAnswer | None:
         try:
             plan = self.plan_client.plan(query, contexts)
-        except Exception:
+        except Exception as exc:
+            if self.log_errors:
+                print(f"[numeric_planner] planner request failed: {exc}", flush=True)
+            if self.strict:
+                raise
             return None
-        return self.executor.execute(query, contexts, plan)
+        answer = self.executor.execute(query, contexts, plan)
+        if answer is None and self.log_errors:
+            print(f"[numeric_planner] planner returned unverifiable plan: {plan}", flush=True)
+        if answer is None and self.strict:
+            raise RuntimeError(f"Numeric planner returned unverifiable plan: {plan}")
+        return answer
