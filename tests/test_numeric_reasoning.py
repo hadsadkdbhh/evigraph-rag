@@ -316,6 +316,31 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "93.5%")
         self.assertIn("ratio_percent", answer.calculations[0])
 
+    def test_ratio_percent_as_percentage_of_selects_specific_rows(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "|  | payments ( receipts ) ( in millions ) |\n"
+                    "| --- | --- |\n"
+                    "| entergy arkansas | $ 2 |\n"
+                    "| entergy louisiana | $ 6 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what are the payments for entergy arkansas as a percentage of payments for entergy louisiana?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "33.3%")
+        self.assertIn("row=entergy arkansas", answer.calculations[0])
+        self.assertIn("denominator_row=entergy louisiana", answer.calculations[0])
+
     def test_row_average_from_entity_table(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

@@ -46,6 +46,7 @@ class NumericReasoner:
             or "what percent" in query_lower
             or "what portion" in query_lower
             or "what share" in query_lower
+            or " as a percentage of " in query_lower
         ):
             answer = self._ratio_percent(query_lower, contexts)
             if answer:
@@ -631,10 +632,20 @@ class NumericReasoner:
         for label, value in rows:
             if all(term in label for term in normalized_terms):
                 return value, {"row_label": label}
-        for label, value in rows:
-            if any(term in label for term in normalized_terms):
-                return value, {"row_label": label}
-        return None, {}
+        best_match: tuple[float, int, int, str, float] | None = None
+        for row_index, (label, value) in enumerate(rows):
+            matched_terms = [term for term in normalized_terms if term in label]
+            if not matched_terms:
+                continue
+            score = sum(len(term) for term in matched_terms)
+            coverage = len(matched_terms)
+            candidate = (score, coverage, -row_index, label, value)
+            if best_match is None or candidate > best_match:
+                best_match = candidate
+        if best_match is None:
+            return None, {}
+        _score, _coverage, _row_order, label, value = best_match
+        return value, {"row_label": label}
 
     def _denominator_terms(self, query_lower: str) -> list[str]:
         if " as a percentage of " in query_lower:
@@ -667,6 +678,7 @@ class NumericReasoner:
 
     def _ratio_numerator_terms(self, query_lower: str) -> list[str]:
         patterns = [
+            r"payments?\s+for\s+(.+?)\s+as\s+a\s+percentage\s+of",
             r"represented by\s+(.+?)\??$",
             r"allocated to\s+(.+?)(?:\s+in\s+20\d{2})?\??$",
             r"comes from\s+(.+?)\??$",
@@ -722,6 +734,8 @@ class NumericReasoner:
             "rate",
             "return",
             "investment",
+            "payment",
+            "payments",
             "change",
             "changed",
             "increase",
