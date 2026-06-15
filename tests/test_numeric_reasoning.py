@@ -36,6 +36,98 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "275.6%")
         self.assertIn("percent_change", answer.calculations[0])
 
+    def test_percent_change_prefers_specific_table_row(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| $ in millions | as of december 2017 | as of december 2016 |\n"
+                    "| --- | --- | --- |\n"
+                    "| interest rates net | $ -410 ( 410 ) | $ -381 ( 381 ) |\n"
+                    "| credit net | $ 1505 | $ 2504 |\n"
+                    "| commodities net | $ 47 | $ 73 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the percentage change in net comodities from 2016 to 2017?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "-35.6%")
+        self.assertIn("percent_change", answer.calculations[0])
+
+    def test_percent_change_promotes_wrapped_year_header(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| $ in millions | level 3 asse |\n"
+                    "| --- | --- |\n"
+                    "| $ in millions | level 3 assets as of december 2017 | level 3 assets as of december 2016 |\n"
+                    "| interest rates net | $ -410 ( 410 ) | $ -381 ( 381 ) |\n"
+                    "| commodities net | $ 47 | $ 73 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the percentage change in net comodities from 2016 to 2017?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "-35.6%")
+        self.assertIn("percent_change", answer.calculations[0])
+
+    def test_percent_change_from_query_aligned_prose_sentence(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "Other obligations were $17.3 million as of May 26, 2019. "
+                    "Our accrued trade liabilities were $484 million as of May 26, 2019, "
+                    "and $500 million as of May 27, 2018."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the percentage change of our accrued trade liabilities in 2019 compared to 2018",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "-3.2%")
+        self.assertIn("percent_change", answer.calculations[0])
+
+    def test_total_debt_percent_change_reports_magnitude(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content="Our total debt was $28.5 billion at December 31, 2015, and $29.5 billion at December 31, 2014.",
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the percentage change in total debt from 2014 to 2015?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "3.4%")
+        self.assertIn("percent_change", answer.calculations[0])
+
     def test_ratio_percent_from_table_and_prose(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
@@ -231,6 +323,52 @@ class NumericReasoningTest(unittest.TestCase):
         )
 
         self.assertEqual(answer.text, "-1.9")
+        self.assertIn("row_year_difference", answer.calculations[0])
+
+    def test_change_between_years_uses_first_minus_second(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "|  | 2014 | 2012 |\n"
+                    "| --- | --- | --- |\n"
+                    "| long term debt | $ 28987 | $ 0 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the change in amount of long term debt between 2014 and 2012?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "28987")
+        self.assertIn("row_year_difference", answer.calculations[0])
+
+    def test_change_between_years_uses_newer_minus_older(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "|  | 2013 | 2012 |\n"
+                    "| --- | --- | --- |\n"
+                    "| currency hedges | $ 383 | $ 0 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the change in millions between 2012 and 2013 in currency hedges?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "383")
         self.assertIn("row_year_difference", answer.calculations[0])
 
     def test_average_amount_uses_selected_row_values(self) -> None:

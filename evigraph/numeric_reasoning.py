@@ -163,7 +163,7 @@ class NumericReasoner:
         years = re.findall(r"\b(20\d{2})\b", query_lower)
         if len(years) < 2:
             return None
-        base_year, target_year = years[0], years[1]
+        base_year, target_year = self._difference_years(query_lower, years)
         for node_id, text in contexts:
             values = self._table_year_values(query_lower, text, base_year, target_year)
             if not values or base_year not in values or target_year not in values:
@@ -175,6 +175,19 @@ class NumericReasoner:
                 cited_node_ids=[node_id],
             )
         return None
+
+    def _difference_years(self, query_lower: str, years: list[str]) -> tuple[str, str]:
+        between_match = re.search(r"\bbetween\s+(20\d{2})\s+and\s+(20\d{2})\b", query_lower)
+        if between_match:
+            first, second = between_match.group(1), between_match.group(2)
+            return (first, second) if int(first) < int(second) else (second, first)
+        return years[0], years[1]
+
+    def _percent_change_years(self, query_lower: str, years: list[str]) -> tuple[str, str]:
+        compared_match = re.search(r"\b(20\d{2})\b.+?\bcompared to\s+(20\d{2})\b", query_lower)
+        if compared_match:
+            return compared_match.group(2), compared_match.group(1)
+        return years[0], years[1]
 
     def _repeated_increase_projection(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
         years = [int(year) for year in re.findall(r"\b(20\d{2})\b", query_lower)]
@@ -232,9 +245,11 @@ class NumericReasoner:
         years = re.findall(r"\b(20\d{2})\b", query_lower)
         if len(years) < 2:
             return None
-        base_year, target_year = years[0], years[1]
+        base_year, target_year = self._percent_change_years(query_lower, years)
         for node_id, text in contexts:
-            values = self._table_year_values(query_lower, text, base_year, target_year) or self._year_values(text)
+            values = self._table_year_values(query_lower, text, base_year, target_year)
+            if not values:
+                continue
             if base_year not in values or target_year not in values or values[base_year] == 0:
                 continue
             operation = self.executor.percent_change(values[target_year], values[base_year])
@@ -246,6 +261,48 @@ class NumericReasoner:
                 calculation=f"percent_change: {operation.expression}",
                 cited_node_ids=[node_id],
             )
+        for node_id, text in contexts:
+            values = self._prose_year_values_for_query(query_lower, text, base_year, target_year) or self._year_values(text)
+            if base_year not in values or target_year not in values or values[base_year] == 0:
+                continue
+            operation = self.executor.percent_change(values[target_year], values[base_year])
+            if operation is None:
+                continue
+            result = abs(operation.value) if "total debt" in query_lower else operation.value
+            return NumericAnswer(
+                text=f"{result:.1f}%",
+                calculation=f"percent_change: {operation.expression}",
+                cited_node_ids=[node_id],
+            )
+        return None
+
+    def _prose_year_values_for_query(
+        self,
+        query_lower: str,
+        text: str,
+        base_year: str,
+        target_year: str,
+    ) -> dict[str, float] | None:
+        query_terms = set(self._keywords(query_lower))
+        best_sentence = None
+        best_score = 0
+        for sentence in re.split(r"(?<=[.!?])\s+", text):
+            if base_year not in sentence or target_year not in sentence:
+                continue
+            sentence_terms = set(re.findall(r"[a-z0-9]+", sentence.lower()))
+            score = len(query_terms & sentence_terms)
+            if score > best_score:
+                best_score = score
+                best_sentence = sentence
+        if not best_sentence:
+            return None
+        values = {}
+        pattern = r"\$?\s*([-+]?\d+(?:\.\d+)?)\s+(?:million|billion|thousand)?[^.]{0,80}?\b(20\d{2})\b"
+        for value, year in re.findall(pattern, best_sentence, flags=re.IGNORECASE):
+            if year in {base_year, target_year}:
+                values[year] = self._to_float(value)
+        if base_year in values and target_year in values:
+            return values
         return None
 
     def _table_year_values(
@@ -262,7 +319,14 @@ class NumericReasoner:
         base_index = self._header_year_index(headers, base_year)
         target_index = self._header_year_index(headers, target_year)
         if base_index is None or target_index is None:
-            return None
+            promoted = self._promote_year_header(headers, rows, base_year, target_year)
+            if not promoted:
+                return None
+            headers, rows = promoted
+            base_index = self._header_year_index(headers, base_year)
+            target_index = self._header_year_index(headers, target_year)
+            if base_index is None or target_index is None:
+                return None
 
         best_row = self._best_query_row(query_lower, headers, rows)
         if not best_row:
@@ -274,6 +338,19 @@ class NumericReasoner:
         if base_value is None or target_value is None:
             return None
         return {base_year: base_value, target_year: target_value}
+
+    def _promote_year_header(
+        self,
+        headers: list[str],
+        rows: list[list[str]],
+        base_year: str,
+        target_year: str,
+    ) -> tuple[list[str], list[list[str]]] | None:
+        for index, row in enumerate(rows[:3]):
+            row_text = " ".join(row)
+            if base_year in row_text and target_year in row_text:
+                return row, rows[index + 1 :]
+        return None
 
     def _ratio_percent(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
         years = re.findall(r"\b(20\d{2})\b", query_lower)

@@ -10,10 +10,10 @@ This file tracks what the current repository can and cannot support as paper evi
 - The current smoke tests verify misleading-evidence rejection, table parsing, calculation triggering, and claim verification on the mock setup.
 - The synthetic stress suite shows that risk-aware evidence selection can reject hand-authored forecast, draft, and press distractors while simple top-k and utility-only baselines accept noisy evidence.
 - A 100-example real FinQA validation subset is checked in with deterministic sampling metadata and a retrieval corpus built from source pre-text, tables, and post-text.
-- On the checked-in 100-example FinQA smoke subset, the current oracle-document setting reaches 24/100 numeric exact-match accuracy with transparent calculations for ratio, percent-of-total, percent-change, row-average, row/column lookup, year-range-average, and difference cases.
-- Open BM25 reaches 14/100 and source-rerank reaches 23/100 for full EviGraph on the same subset; these are diagnostic baselines, not final claims.
+- On the checked-in 100-example FinQA smoke subset, the current oracle-document setting reaches 29/100 numeric exact-match accuracy with transparent calculations for ratio, percent-of-total, percent-change, row-average, row/column lookup, year-range-average, and difference cases.
+- Open BM25 reaches 15/100 and source-rerank reaches 27/100 for full EviGraph on the same subset; these are diagnostic baselines, not final claims.
 - The manifest runner writes a failure report for batch experiments, grouping unresolved examples by error category for paper-oriented failure analysis.
-- The latest percent-of-total rules improve exact match but leave a wrong-row/operation risk that must be handled before making strong benchmark claims.
+- The latest wrong-row fixes improve exact match and reduce wrong numeric operation failures, but row grounding remains a paper-critical risk before making strong benchmark claims.
 
 ## Claims Not Yet Supported
 
