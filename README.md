@@ -186,6 +186,26 @@ scoring:
 Use `provider: llm` for pure LLM judging, or `provider: hybrid` to blend LLM and
 rule scores with automatic rule fallback.
 
+## LLM Numeric Planner Fallback
+
+The numeric answer path is rule-first by default. You can enable an
+OpenAI-compatible planner that only proposes a structured operation plan; local
+code still validates that all planned numeric values appear in the cited
+context, then executes the calculation with `TableOperationExecutor`.
+
+```yaml
+numeric_planner:
+  enabled: true
+  llm_provider: openai_compatible
+  llm_base_url: https://your-endpoint/v1
+  llm_api_key: ...
+  llm_model: your-chat-model
+```
+
+The planner is used only when the deterministic numeric reasoner cannot produce
+an answer. Its supported operations are `difference`, `ratio`,
+`percent_change`, `average`, and `sum`.
+
 ## Feasibility Check
 
 Run the unit and smoke tests:

@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass
 
 from evigraph.evidence_graph import EvidenceGraph
+from evigraph.numeric_planner import NumericPlannerFallback
 from evigraph.schema import EvidenceNode
 from evigraph.table_executor import TableOperationExecutor
 
@@ -16,8 +17,9 @@ class NumericAnswer:
 
 
 class NumericReasoner:
-    def __init__(self) -> None:
+    def __init__(self, planner_fallback: NumericPlannerFallback | None = None) -> None:
         self.executor = TableOperationExecutor()
+        self.planner_fallback = planner_fallback
 
     def answer(self, query: str, support_graph: EvidenceGraph) -> NumericAnswer | None:
         query_lower = self._normalize_query(query)
@@ -88,6 +90,15 @@ class NumericReasoner:
             answer = self._difference_between_nearby_amounts(contexts)
             if answer:
                 return answer
+
+        if self.planner_fallback is not None:
+            planned = self.planner_fallback.answer(query, contexts)
+            if planned is not None:
+                return NumericAnswer(
+                    text=planned.text,
+                    calculation=planned.calculation,
+                    cited_node_ids=[contexts[0][0]],
+                )
 
         return None
 

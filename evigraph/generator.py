@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from evigraph.evidence_graph import EvidenceGraph
+from evigraph.numeric_planner import NumericPlannerFallback
 from evigraph.numeric_reasoning import NumericReasoner
 from evigraph.schema import Answer
 
 
 class SupportOnlyGenerator:
-    def __init__(self) -> None:
-        self.numeric_reasoner = NumericReasoner()
+    def __init__(self, planner_fallback: NumericPlannerFallback | None = None) -> None:
+        self.numeric_reasoner = NumericReasoner(planner_fallback=planner_fallback)
 
     def generate(self, query: str, support_graph: EvidenceGraph) -> Answer:
         calc_nodes = [node for node in support_graph.nodes.values() if node.node_type == "calculation"]

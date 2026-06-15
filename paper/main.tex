@@ -67,6 +67,7 @@ The selector chooses a compact support set subject to a node budget and a risk t
 
 For numerical QA, the system executes table operations including row/column selection, sum, difference, ratio, percent change, and average.
 Each executed operation returns both a numeric value and a human-readable expression used in the final answer trace.
+When deterministic rules fail, an optional LLM numeric planner can propose a structured operation plan; EviGraph-RAG then validates that planned numeric inputs occur in the cited context and executes the operation locally rather than accepting a free-form model answer.
 
 \subsection{Claim Verification}
 

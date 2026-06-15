@@ -13,5 +13,8 @@ scoring:
   lambda_uncertainty: 0.7
   llm_weight: 0.5
   llm_provider: none
+numeric_planner:
+  enabled: false
+  llm_provider: none
 actions:
   enable_mock_actions: true

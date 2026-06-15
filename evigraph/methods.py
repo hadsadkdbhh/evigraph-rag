@@ -7,6 +7,7 @@ from evigraph.evidence_converter import EvidenceConverter
 from evigraph.evidence_graph import EvidenceGraph, EvidenceGraphBuilder
 from evigraph.generator import SupportOnlyGenerator
 from evigraph.logging_utils import RunLogger
+from evigraph.numeric_planner import NumericPlannerFallback
 from evigraph.retrieval import CorpusRetriever
 from evigraph.schema import Action, Answer, EvidenceNode, EvidenceScore
 from evigraph.scorer import make_scorer
@@ -40,7 +41,9 @@ class MethodRunner:
         self.scorer = make_scorer(config.get("scoring", {}))
         self.actions = EvidenceActionController()
         self.support_extractor = SupportSubgraphExtractor()
-        self.generator = SupportOnlyGenerator()
+        self.generator = SupportOnlyGenerator(
+            planner_fallback=NumericPlannerFallback.from_config(config.get("numeric_planner", {}))
+        )
         self.verifier = ClaimVerifier()
 
     def run(
