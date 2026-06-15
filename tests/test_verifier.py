@@ -24,6 +24,8 @@ class ClaimVerifierTest(unittest.TestCase):
         )
 
         self.assertTrue(verification["row_grounded"])
+        self.assertTrue(verification["row_operation_grounded"])
+        self.assertTrue(verification["semantically_grounded"])
         self.assertTrue(verification["answer_supported"])
 
     def test_row_grounding_rejects_unmatched_calculation_row(self) -> None:
@@ -42,6 +44,7 @@ class ClaimVerifierTest(unittest.TestCase):
         )
 
         self.assertFalse(verification["row_grounded"])
+        self.assertFalse(verification["row_operation_grounded"])
         self.assertFalse(verification["answer_supported"])
         self.assertIn("Calculation row label does not match query terms.", verification["missing_evidence"])
 
@@ -61,6 +64,8 @@ class ClaimVerifierTest(unittest.TestCase):
         )
 
         self.assertTrue(verification["calculation_supported"])
+        self.assertTrue(verification["arithmetically_supported"])
+        self.assertTrue(verification["semantically_grounded"])
         self.assertTrue(verification["answer_supported"])
         self.assertEqual(verification["context_utilization"], "numeric_calculation_row_and_citation_checked")
 
@@ -80,6 +85,7 @@ class ClaimVerifierTest(unittest.TestCase):
         )
 
         self.assertFalse(verification["calculation_supported"])
+        self.assertFalse(verification["arithmetically_supported"])
         self.assertFalse(verification["answer_supported"])
 
 

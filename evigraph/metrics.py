@@ -27,6 +27,10 @@ def summarize_result(result: dict[str, Any], gold: str | None = None) -> dict[st
     return {
         "accuracy": numeric_exact_match(prediction, gold),
         "answer_supported": bool(result.get("verification", {}).get("answer_supported", False)),
+        "arithmetically_supported": bool(result.get("verification", {}).get("arithmetically_supported", False)),
+        "calculation_supported": bool(result.get("verification", {}).get("calculation_supported", False)),
+        "row_operation_grounded": bool(result.get("verification", {}).get("row_operation_grounded", False)),
+        "semantically_grounded": bool(result.get("verification", {}).get("semantically_grounded", False)),
         "citation_correct": bool(result.get("verification", {}).get("citation_correct", False)),
         "misleading_acceptance": misleading_acceptance(selected_ids),
         "input_tokens": cost.get("selected_tokens", 0.0),

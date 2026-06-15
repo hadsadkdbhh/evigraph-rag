@@ -18,6 +18,7 @@ class ClaimVerifier:
         numeric_supported = self._numeric_claim_supported(answer.text, support_graph, answer.calculations)
         calculation_supported = self._calculation_claim_supported(answer.text, answer.calculations)
         row_grounded = self._row_grounded(query, answer)
+        semantically_grounded = citation_nodes_exist and row_grounded and not has_risky_support
         answer_supported = has_citation and citation_nodes_exist and numeric_supported and row_grounded and not has_risky_support
         return {
             "answer_supported": answer_supported,
@@ -28,7 +29,10 @@ class ClaimVerifier:
             "confidence": 0.85 if answer_supported else 0.35,
             "context_utilization": self._context_utilization(numeric_supported, calculation_supported, row_grounded),
             "checked_citations": list(answer.citations),
+            "arithmetically_supported": numeric_supported,
             "calculation_supported": calculation_supported,
+            "row_operation_grounded": row_grounded,
+            "semantically_grounded": semantically_grounded,
             "row_grounded": row_grounded,
         }
 

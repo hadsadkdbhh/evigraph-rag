@@ -179,6 +179,11 @@ class MethodRunner:
             "citation_correct": False,
             "confidence": 0.0,
             "context_utilization": "not_checked",
+            "arithmetically_supported": False,
+            "calculation_supported": False,
+            "row_operation_grounded": False,
+            "semantically_grounded": False,
+            "row_grounded": False,
         }
 
     def _trace(self, logger: RunLogger | None, step: str, payload: dict[str, Any]) -> None:

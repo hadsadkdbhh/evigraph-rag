@@ -123,8 +123,10 @@ evidence annotations from retrieval.
 The current manifest uses the sample `source_doc` field to evaluate
 oracle-document reasoning before open retrieval. On this smoke subset,
 `full_evigraph` currently reaches 30/100 numeric exact matches in oracle-doc
-mode, 16/100 in open BM25 mode, and 29/100 in source-rerank mode. These are
-diagnostic baselines, not final benchmark claims.
+mode, 19/100 in open BM25 mode, and 31/100 in source-rerank mode. The CSVs
+also report diagnostic verifier metrics including arithmetic support,
+calculation-result support, row-operation grounding, and semantic grounding.
+These are diagnostic baselines, not final benchmark claims.
 
 Generate a failure report for the FinQA ablation output:
 
