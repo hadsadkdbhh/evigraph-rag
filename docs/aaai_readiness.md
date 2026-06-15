@@ -9,9 +9,9 @@ This file tracks what the current repository can and cannot support as paper evi
 - The manifest runner can build a local index, convert raw question files, run ablations, run a budget sweep, summarize results, and write an experiment card.
 - The current smoke tests verify misleading-evidence rejection, table parsing, calculation triggering, and claim verification on the mock setup.
 - The synthetic stress suite shows that risk-aware evidence selection can reject hand-authored forecast, draft, and press distractors while simple top-k and utility-only baselines accept noisy evidence.
-- A 20-example real FinQA validation subset is checked in with deterministic sampling metadata and a retrieval corpus built from source pre-text, tables, and post-text.
-- On the checked-in 100-example FinQA smoke subset, the current oracle-document setting reaches 12/100 numeric exact-match accuracy with transparent calculations for ratio, percent-change, row-average, year-range-average, and difference cases.
-- Open BM25 reaches 9/100 and source-rerank reaches 10/100 for full EviGraph on the same subset; these are diagnostic baselines, not final claims.
+- A 100-example real FinQA validation subset is checked in with deterministic sampling metadata and a retrieval corpus built from source pre-text, tables, and post-text.
+- On the checked-in 100-example FinQA smoke subset, the current oracle-document setting reaches 20/100 numeric exact-match accuracy with transparent calculations for ratio, percent-change, row-average, row/column lookup, year-range-average, and difference cases.
+- Open BM25 reaches 14/100 and source-rerank reaches 19/100 for full EviGraph on the same subset; these are diagnostic baselines, not final claims.
 - The manifest runner writes a failure report for batch experiments, grouping unresolved examples by error category for paper-oriented failure analysis.
 
 ## Claims Not Yet Supported
@@ -26,7 +26,7 @@ This file tracks what the current repository can and cannot support as paper evi
 
 ## Evidence Needed Before Submission
 
-- Scale the real benchmark subset beyond the checked-in 20-example FinQA smoke subset.
+- Scale the real benchmark subset beyond the checked-in 100-example FinQA smoke subset.
 - Add stronger baselines, including dense retrieval and retrieve-then-read RAG.
 - Add task-appropriate metrics beyond brittle numeric/string exact match.
 - Add failure analysis and qualitative case studies from real examples.

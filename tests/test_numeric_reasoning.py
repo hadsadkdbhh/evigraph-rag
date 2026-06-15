@@ -110,6 +110,99 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "44.8")
         self.assertIn("year_range_average", answer.calculations[0])
 
+    def test_change_from_year_columns(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "|  | 2013 | 2012 | 2011 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| weighted average common shares outstanding for basic computations | 320.9 | 323.7 | 335.9 |\n"
+                    "| weighted average common shares outstanding for diluted computations | 326.5 | 328.4 | 339.9 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the change in the weighted average common shares outstanding for diluted computations from 2012 to 2013 , in millions?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "-1.9")
+        self.assertIn("row_year_difference", answer.calculations[0])
+
+    def test_average_amount_uses_selected_row_values(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| december 31, | 2016 | 2015 | 2014 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| balance at january 1 | $ 373 | $ 394 | $ 392 |\n"
+                    "| settlements | -13 ( 13 ) | -19 ( 19 ) | -2 ( 2 ) |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "for the period ending in 2016 , what was the average amount of settlements , in millions?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "11.3")
+        self.assertIn("row_values_average", answer.calculations[0])
+
+    def test_repeated_increase_projection(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| ( in millions ) | 2007 | 2006 | 2005 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| development costs incurred during the period | 1654 | 1251 | 1030 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "if current development costs increased in 2008 as much as in 2007 , what would the 2008 total be , in millions?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "2057")
+        self.assertIn("repeated_increase_projection", answer.calculations[0])
+
+    def test_pretax_aftertax_difference(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "these unrealized losses related to reclassifications totaled $ 303 million , "
+                    "or $ 189 million after-tax , as of december 31 , 2011."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "in 2011 what was the amount of tax related to the unrealized losses reclassifications totaled $ 303 million , or $ 189 million after-tax,",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "114")
+        self.assertIn("pretax_aftertax_difference", answer.calculations[0])
+
     def test_percentage_exact_match_allows_rounding(self) -> None:
         self.assertEqual(numeric_exact_match("86.8%", "87%"), 1.0)
 

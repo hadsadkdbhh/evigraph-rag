@@ -40,12 +40,30 @@ class NumericReasoner:
             if answer:
                 return answer
 
+        if "increased" in query_lower and "as much as" in query_lower:
+            answer = self._repeated_increase_projection(query_lower, contexts)
+            if answer:
+                return answer
+
+        if "after-tax" in query_lower or "after tax" in query_lower:
+            answer = self._pretax_aftertax_difference(query_lower, contexts)
+            if answer:
+                return answer
+
+        if "change" in query_lower and len(re.findall(r"\b(20\d{2})\b", query_lower)) >= 2:
+            answer = self._row_year_difference(query_lower, contexts)
+            if answer:
+                return answer
+
         if "average" in query_lower and "per" in query_lower:
             answer = self._row_average(query_lower, contexts)
             if answer:
                 return answer
 
         if "average" in query_lower:
+            answer = self._row_values_average(query_lower, contexts)
+            if answer:
+                return answer
             answer = self._year_range_average(query_lower, contexts)
             if answer:
                 return answer
@@ -110,6 +128,101 @@ class NumericReasoner:
                 )
         return None
 
+    def _row_values_average(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
+        if re.search(r"\b20\d{2}\D+20\d{2}\b", query_lower):
+            return None
+        for node_id, text in contexts:
+            table = self._markdown_table(text)
+            if not table:
+                continue
+            headers, rows = table
+            row = self._best_query_row(query_lower, headers, rows)
+            if not row:
+                continue
+            values = [value for value in (self._first_number(cell) for cell in row[1:]) if value is not None]
+            if len(values) < 2:
+                continue
+            if "amount" in query_lower:
+                values = [abs(value) for value in values]
+            operation = self.executor.average(values)
+            if operation is None:
+                continue
+            return NumericAnswer(
+                text=f"{operation.value:.1f}",
+                calculation=f"row_values_average: {operation.expression}",
+                cited_node_ids=[node_id],
+            )
+        return None
+
+    def _row_year_difference(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
+        years = re.findall(r"\b(20\d{2})\b", query_lower)
+        if len(years) < 2:
+            return None
+        base_year, target_year = years[0], years[1]
+        for node_id, text in contexts:
+            values = self._table_year_values(query_lower, text, base_year, target_year)
+            if not values or base_year not in values or target_year not in values:
+                continue
+            operation = self.executor.difference(values[target_year], values[base_year])
+            return NumericAnswer(
+                text=f"{operation.value:g}",
+                calculation=f"row_year_difference: {operation.expression}",
+                cited_node_ids=[node_id],
+            )
+        return None
+
+    def _repeated_increase_projection(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
+        years = [int(year) for year in re.findall(r"\b(20\d{2})\b", query_lower)]
+        if len(years) < 2:
+            return None
+        target_year = years[0]
+        prior_year = years[1]
+        base_year = prior_year - 1
+        for node_id, text in contexts:
+            table = self._markdown_table(text)
+            if not table:
+                continue
+            headers, rows = table
+            target_index = self._header_year_index(headers, str(prior_year))
+            base_index = self._header_year_index(headers, str(base_year))
+            if target_index is None or base_index is None:
+                continue
+            row = self._best_query_row(query_lower, headers, rows)
+            if not row or max(target_index, base_index) >= len(row):
+                continue
+            prior_value = self._first_number(row[target_index])
+            base_value = self._first_number(row[base_index])
+            if prior_value is None or base_value is None:
+                continue
+            increase = self.executor.difference(prior_value, base_value)
+            projected = self.executor.sum([prior_value, increase.value])
+            if projected is None:
+                continue
+            return NumericAnswer(
+                text=f"{projected.value:g}",
+                calculation=(
+                    f"repeated_increase_projection: prior increase {increase.expression}; "
+                    f"{target_year} projection {projected.expression}"
+                ),
+                cited_node_ids=[node_id],
+            )
+        return None
+
+    def _pretax_aftertax_difference(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
+        for node_id, text in contexts:
+            pattern = r"\$\s*([-+]?\d+(?:\.\d+)?)\s+million\s*,\s*or\s*\$\s*([-+]?\d+(?:\.\d+)?)\s+million\s+after[- ]tax"
+            matches = re.findall(pattern, text, flags=re.IGNORECASE)
+            if not matches:
+                continue
+            pretax, aftertax = (self._to_float(value) for value in matches[0])
+            operation = self.executor.difference(pretax, aftertax)
+            return NumericAnswer(
+                text=f"{operation.value:g}",
+                calculation=f"pretax_aftertax_difference: {operation.expression}",
+                cited_node_ids=[node_id],
+            )
+        return None
+
     def _percent_change(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
         years = re.findall(r"\b(20\d{2})\b", query_lower)
         if len(years) < 2:
@@ -146,18 +259,10 @@ class NumericReasoner:
         if base_index is None or target_index is None:
             return None
 
-        query_terms = set(self._keywords(query_lower))
-        best_row = None
-        best_score = 0
-        for row in rows:
-            if max(base_index, target_index) >= len(row):
-                continue
-            label_terms = set(re.findall(r"[a-z0-9]+", row[0].lower()))
-            score = len(query_terms & label_terms)
-            if score > best_score:
-                best_score = score
-                best_row = row
-        if not best_row or best_score == 0:
+        best_row = self._best_query_row(query_lower, headers, rows)
+        if not best_row:
+            return None
+        if max(base_index, target_index) >= len(best_row):
             return None
         base_value = self._first_number(best_row[base_index])
         target_value = self._first_number(best_row[target_index])
@@ -351,18 +456,21 @@ class NumericReasoner:
             "what",
             "percentage",
             "percent",
+            "percentual",
             "of",
             "the",
             "were",
             "was",
             "by",
             "in",
+            "for",
             "are",
             "due",
             "after",
             "represented",
             "total",
             "is",
+            "if",
             "an",
             "from",
             "to",
@@ -370,8 +478,27 @@ class NumericReasoner:
             "return",
             "investment",
             "change",
+            "changed",
+            "increase",
+            "increased",
+            "as",
+            "much",
+            "would",
+            "be",
+            "average",
+            "amount",
+            "period",
+            "ending",
+            "millions",
+            "million",
+            "current",
+            "compared",
         }
-        return [token for token in re.findall(r"[a-z0-9]+", text.lower()) if token not in stop][:5]
+        return [
+            token
+            for token in re.findall(r"[a-z0-9]+", text.lower())
+            if token not in stop and not re.fullmatch(r"20\d{2}", token)
+        ][:8]
 
     def _markdown_table(self, text: str) -> tuple[list[str], list[list[str]]] | None:
         table_lines = []
@@ -389,6 +516,22 @@ class NumericReasoner:
         if len(rows) < 2:
             return None
         return rows[0], rows[1:]
+
+    def _best_query_row(self, query_lower: str, headers: list[str], rows: list[list[str]]) -> list[str] | None:
+        query_terms = set(self._keywords(query_lower))
+        best_row = None
+        best_score = 0
+        for row in rows:
+            if not row:
+                continue
+            label_terms = set(re.findall(r"[a-z0-9]+", row[0].lower()))
+            score = len(query_terms & label_terms)
+            if score > best_score:
+                best_score = score
+                best_row = row
+        if best_score == 0:
+            return None
+        return best_row
 
     def _column_index(self, headers: list[str], terms: list[str]) -> int | None:
         for index, header in enumerate(headers):

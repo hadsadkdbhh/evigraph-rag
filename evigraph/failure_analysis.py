@@ -77,12 +77,12 @@ class FailureAnalyzer:
         prediction = row.get("prediction", "")
         query = row.get("query", "").lower()
         if prediction.startswith("Based on the selected evidence:"):
-            if any(token in query for token in ["sum", "total", "combined", "amount"]):
-                return "no_numeric_answer_additive_or_lookup"
             if any(token in query for token in ["percentage", "percent", "rate", "growth"]):
                 return "no_numeric_answer_percent"
             if any(token in query for token in ["average", "per"]):
                 return "no_numeric_answer_ratio"
+            if any(token in query for token in ["sum", "total", "combined", "amount", "portion", "share"]):
+                return "no_numeric_answer_additive_or_lookup"
             return "no_numeric_answer_other"
         if self._numbers(prediction) and self._numbers(row.get("answer", "")):
             return "wrong_numeric_operation_or_row"
