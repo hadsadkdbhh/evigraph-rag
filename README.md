@@ -206,6 +206,13 @@ The planner is used only when the deterministic numeric reasoner cannot produce
 an answer. Its supported operations are `difference`, `ratio`,
 `percent_change`, `average`, and `sum`.
 
+Run the dedicated FinQA planner manifest after setting the LLM environment:
+
+```powershell
+python scripts/check_llm_planner_ready.py
+python scripts/run_manifest.py --manifest configs/experiments.finqa.planner.json
+```
+
 ## Feasibility Check
 
 Run the unit and smoke tests:
