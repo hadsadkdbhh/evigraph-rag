@@ -114,6 +114,14 @@ class ManifestRunner:
     ) -> None:
         methods = experiment.get("methods", DEFAULT_ABLATION_METHODS)
         self._validate_methods(methods)
+        samples = [json.loads(line) for line in questions_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        total_runs = len(samples) * len(methods)
+        completed_runs = 0
+        print(
+            f"[manifest] {dataset_name}/{experiment['name']}: "
+            f"{len(samples)} samples x {len(methods)} methods = {total_runs} runs",
+            flush=True,
+        )
         fieldnames = [
             "dataset",
             "experiment",
@@ -141,8 +149,7 @@ class ManifestRunner:
         ) as output_handle:
             writer = csv.DictWriter(output_handle, fieldnames=fieldnames)
             writer.writeheader()
-            for line in input_handle:
-                sample = json.loads(line)
+            for sample in samples:
                 for method in methods:
                     result = MethodRunner(deepcopy(base_config)).run(
                         sample["query"],
@@ -165,6 +172,13 @@ class ManifestRunner:
                             "run_dir": result["artifacts"]["run_dir"],
                         }
                     )
+                    completed_runs += 1
+                    if completed_runs == 1 or completed_runs % 10 == 0 or completed_runs == total_runs:
+                        print(
+                            f"[manifest] {dataset_name}/{experiment['name']}: "
+                            f"{completed_runs}/{total_runs} runs complete",
+                            flush=True,
+                        )
 
     def _run_pareto(
         self,
@@ -204,6 +218,13 @@ class ManifestRunner:
         with output_path.open("w", encoding="utf-8", newline="") as output_handle:
             writer = csv.DictWriter(output_handle, fieldnames=fieldnames)
             writer.writeheader()
+            total_runs = len(samples) * len(budgets)
+            completed_runs = 0
+            print(
+                f"[manifest] {dataset_name}/{experiment['name']}: "
+                f"{len(samples)} samples x {len(budgets)} budgets = {total_runs} runs",
+                flush=True,
+            )
             for budget in budgets:
                 config = deepcopy(base_config)
                 config.setdefault("selection", {})["max_nodes"] = budget
@@ -227,6 +248,13 @@ class ManifestRunner:
                             **metrics,
                         }
                     )
+                    completed_runs += 1
+                    if completed_runs == 1 or completed_runs % 10 == 0 or completed_runs == total_runs:
+                        print(
+                            f"[manifest] {dataset_name}/{experiment['name']}: "
+                            f"{completed_runs}/{total_runs} runs complete",
+                            flush=True,
+                        )
 
     def _prepare_corpus(self, dataset: dict[str, Any]) -> Path | None:
         corpus = dataset.get("corpus")
