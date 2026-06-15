@@ -109,6 +109,30 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "-3.2%")
         self.assertIn("percent_change", answer.calculations[0])
 
+    def test_percent_increase_routes_to_percent_change(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "|  | 2003 | 2002 |\n"
+                    "| --- | --- | --- |\n"
+                    "| inventories | $ 180.0 | $ 87.9 |\n"
+                    "| raw materials and work in progress | $ 90.8 | $ 44.3 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what percent increase did inventories receive between 2002 and 2003?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "104.8%")
+        self.assertIn("percent_change", answer.calculations[0])
+
     def test_total_debt_percent_change_reports_magnitude(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

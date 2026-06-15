@@ -28,6 +28,9 @@ class NumericReasoner:
         if (
             "percentage change" in query_lower
             or "percent change" in query_lower
+            or "percentage increase" in query_lower
+            or "percent increase" in query_lower
+            or "percentual reduction" in query_lower
             or "growth rate" in query_lower
             or "rate of return" in query_lower
         ):
@@ -128,7 +131,7 @@ class NumericReasoner:
                 result = operation.value
                 return NumericAnswer(
                     text=f"{result:.2f}",
-                    calculation=f"row_average: {operation.expression}",
+                    calculation=f"row_average row={row[0]}: {operation.expression}",
                     cited_node_ids=[node_id],
                 )
         return None
@@ -154,7 +157,7 @@ class NumericReasoner:
                 continue
             return NumericAnswer(
                 text=f"{operation.value:.1f}",
-                calculation=f"row_values_average: {operation.expression}",
+                calculation=f"row_values_average row={row[0]}: {operation.expression}",
                 cited_node_ids=[node_id],
             )
         return None
@@ -169,9 +172,10 @@ class NumericReasoner:
             if not values or base_year not in values or target_year not in values:
                 continue
             operation = self.executor.difference(values[target_year], values[base_year])
+            row_label = str(values.get("__row_label__", ""))
             return NumericAnswer(
                 text=f"{operation.value:g}",
-                calculation=f"row_year_difference: {operation.expression}",
+                calculation=f"row_year_difference row={row_label}: {operation.expression}",
                 cited_node_ids=[node_id],
             )
         return None
@@ -219,7 +223,7 @@ class NumericReasoner:
             return NumericAnswer(
                 text=f"{projected.value:g}",
                 calculation=(
-                    f"repeated_increase_projection: prior increase {increase.expression}; "
+                    f"repeated_increase_projection row={row[0]}: prior increase {increase.expression}; "
                     f"{target_year} projection {projected.expression}"
                 ),
                 cited_node_ids=[node_id],
@@ -256,9 +260,10 @@ class NumericReasoner:
             if operation is None:
                 continue
             result = operation.value
+            row_label = str(values.get("__row_label__", ""))
             return NumericAnswer(
                 text=f"{result:.1f}%",
-                calculation=f"percent_change: {operation.expression}",
+                calculation=f"percent_change row={row_label}: {operation.expression}",
                 cited_node_ids=[node_id],
             )
         for node_id, text in contexts:
@@ -337,7 +342,7 @@ class NumericReasoner:
         target_value = self._first_number(best_row[target_index])
         if base_value is None or target_value is None:
             return None
-        return {base_year: base_value, target_year: target_value}
+        return {base_year: base_value, target_year: target_value, "__row_label__": best_row[0]}
 
     def _promote_year_header(
         self,
@@ -363,19 +368,27 @@ class NumericReasoner:
                 continue
 
             denominator = None
+            denominator_meta = {}
             if query_year:
-                denominator = self._table_value_for_terms_year(text, denominator_terms, query_year)
+                denominator, denominator_meta = self._table_value_for_terms_year_with_label(text, denominator_terms, query_year)
             if denominator is None:
-                denominator = self._matching_value(rows, denominator_terms)
+                denominator, denominator_meta = self._matching_value_with_label(rows, denominator_terms)
             numerator = None
+            numerator_meta = {}
             if "due after" in query_lower:
-                numerator = self._matching_value(rows, ["thereafter"])
+                numerator, numerator_meta = self._matching_value_with_label(rows, ["thereafter"])
             if numerator is None and query_year:
-                numerator = self._table_value_for_terms_year(text, numerator_terms, query_year, allow_partial=False)
+                numerator, numerator_meta = self._table_value_for_terms_year_with_label(
+                    text,
+                    numerator_terms,
+                    query_year,
+                    allow_partial=False,
+                )
             if numerator is None and query_year:
                 numerator = self._prose_value_for_terms_year(text, numerator_terms, query_year)
+                numerator_meta = {}
             if numerator is None:
-                numerator = self._matching_value(rows, numerator_terms)
+                numerator, numerator_meta = self._matching_value_with_label(rows, numerator_terms)
             if numerator is None or denominator in {None, 0}:
                 continue
 
@@ -383,9 +396,14 @@ class NumericReasoner:
             if operation is None:
                 continue
             result = operation.value * 100.0
+            numerator_label = str(numerator_meta.get("row_label", ""))
+            denominator_label = str(denominator_meta.get("row_label", ""))
             return NumericAnswer(
                 text=self._format_percent(result),
-                calculation=f"ratio_percent: {numerator:g} / {denominator:g} * 100 = {result:.1f}%",
+                calculation=(
+                    f"ratio_percent row={numerator_label} denominator_row={denominator_label}: "
+                    f"{numerator:g} / {denominator:g} * 100 = {result:.1f}%"
+                ),
                 cited_node_ids=[node_id],
             )
         return None
@@ -407,28 +425,38 @@ class NumericReasoner:
         year: str,
         allow_partial: bool = True,
     ) -> float | None:
+        value, _metadata = self._table_value_for_terms_year_with_label(text, terms, year, allow_partial)
+        return value
+
+    def _table_value_for_terms_year_with_label(
+        self,
+        text: str,
+        terms: list[str],
+        year: str,
+        allow_partial: bool = True,
+    ) -> tuple[float | None, dict[str, str]]:
         table = self._markdown_table(text)
         if not table:
-            return None
+            return None, {}
         headers, rows = table
         year_index = self._header_year_index(headers, year)
         if year_index is None:
-            return None
+            return None, {}
         for row in rows:
             if year_index >= len(row):
                 continue
             label = row[0].lower()
             if all(term in label for term in terms):
-                return self._first_number(row[year_index])
+                return self._first_number(row[year_index]), {"row_label": row[0]}
         if not allow_partial:
-            return None
+            return None, {}
         for row in rows:
             if year_index >= len(row):
                 continue
             label = row[0].lower()
             if any(term in label for term in terms):
-                return self._first_number(row[year_index])
-        return None
+                return self._first_number(row[year_index]), {"row_label": row[0]}
+        return None, {}
 
     def _prose_value_for_terms_year(self, text: str, terms: list[str], year: str) -> float | None:
         if not terms:
@@ -532,14 +560,22 @@ class NumericReasoner:
         return rows
 
     def _matching_value(self, rows: list[tuple[str, float]], terms: list[str]) -> float | None:
+        value, _metadata = self._matching_value_with_label(rows, terms)
+        return value
+
+    def _matching_value_with_label(
+        self,
+        rows: list[tuple[str, float]],
+        terms: list[str],
+    ) -> tuple[float | None, dict[str, str]]:
         normalized_terms = [term for term in terms if term]
         for label, value in rows:
             if all(term in label for term in normalized_terms):
-                return value
+                return value, {"row_label": label}
         for label, value in rows:
             if any(term in label for term in normalized_terms):
-                return value
-        return None
+                return value, {"row_label": label}
+        return None, {}
 
     def _denominator_terms(self, query_lower: str) -> list[str]:
         if " as a percentage of " in query_lower:

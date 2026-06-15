@@ -8,7 +8,7 @@ from evigraph.evidence_graph import EvidenceGraph, EvidenceGraphBuilder
 from evigraph.generator import SupportOnlyGenerator
 from evigraph.logging_utils import RunLogger
 from evigraph.retrieval import CorpusRetriever
-from evigraph.schema import Action, EvidenceNode, EvidenceScore
+from evigraph.schema import Action, Answer, EvidenceNode, EvidenceScore
 from evigraph.scorer import make_scorer
 from evigraph.selector import EvidenceSetSelector
 from evigraph.support import SupportSubgraphExtractor
@@ -77,6 +77,14 @@ class MethodRunner:
             verification = self._skipped_verification(answer)
         else:
             verification = self.verifier.verify(query, answer, support_graph)
+            if verification.get("row_grounded") is False:
+                answer = Answer(
+                    text="Insufficient evidence to answer.",
+                    citations=[],
+                    calculations=answer.calculations,
+                )
+                verification = self.verifier.verify(query, answer, support_graph)
+                verification["missing_evidence"].append("Rejected numeric answer because calculation row did not match query.")
             verify_action = Action(
                 "VERIFY_CLAIM",
                 target_node_ids=list(answer.citations),
