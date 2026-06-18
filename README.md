@@ -72,6 +72,19 @@ The manifest runner also writes `outputs/eval/manifest/experiment_card.md`,
 which records datasets, methods, result files, environment details, git commit,
 and current limitations for paper auditing.
 
+Run the quick MVP0 acceptance gate used by CI:
+
+```powershell
+python scripts/run_mvp0_acceptance.py
+```
+
+Run the full MVP0 acceptance gate, including the checked-in 100-example FinQA
+smoke subset:
+
+```powershell
+python scripts/run_mvp0_acceptance.py --with-finqa
+```
+
 Convert external benchmark files into the internal JSONL question format:
 
 ```powershell
@@ -122,8 +135,8 @@ evidence annotations from retrieval.
 
 The current manifest uses the sample `source_doc` field to evaluate
 oracle-document reasoning before open retrieval. On this smoke subset,
-`full_evigraph` currently reaches 37/100 numeric exact matches in oracle-doc
-mode, 19/100 in open BM25 mode, and 33/100 in source-rerank mode. The CSVs
+`full_evigraph` currently reaches 43/100 numeric exact matches in oracle-doc
+mode, 18/100 in open BM25 mode, and 38/100 in source-rerank mode. The CSVs
 also report diagnostic verifier metrics including arithmetic support,
 calculation-result support, operation-semantics checking, row-operation
 grounding, and semantic grounding. These are diagnostic baselines, not final

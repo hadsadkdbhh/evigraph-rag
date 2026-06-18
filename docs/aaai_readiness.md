@@ -10,8 +10,8 @@ This file tracks what the current repository can and cannot support as paper evi
 - The current smoke tests verify misleading-evidence rejection, table parsing, calculation triggering, and claim verification on the mock setup.
 - The synthetic stress suite shows that risk-aware evidence selection can reject hand-authored forecast, draft, and press distractors while simple top-k and utility-only baselines accept noisy evidence.
 - A 100-example real FinQA validation subset is checked in with deterministic sampling metadata and a retrieval corpus built from source pre-text, tables, and post-text.
-- On the checked-in 100-example FinQA smoke subset, the current oracle-document setting reaches 37/100 numeric exact-match accuracy with transparent calculations for ratio, percent-of-total, percent-change, row-average, row/column lookup, year-range-average, and difference cases.
-- Open BM25 reaches 19/100 and source-rerank reaches 33/100 for full EviGraph on the same subset; these are diagnostic baselines, not final claims.
+- On the checked-in 100-example FinQA smoke subset, the current oracle-document setting reaches 43/100 numeric exact-match accuracy with transparent calculations for ratio, percent-of-total, percent-change, row-average, row/column lookup, year-range-average, ROI, prose average, and difference cases.
+- Open BM25 reaches 18/100 and source-rerank reaches 38/100 for full EviGraph on the same subset; these are diagnostic baselines, not final claims.
 - The experiment CSVs now separate exact match from verifier diagnostics: arithmetic support, calculation-result support, operation-semantics checking, row-operation grounding, semantic grounding, and final answer support.
 - The manifest runner writes a failure report for batch experiments, grouping unresolved examples by error category for paper-oriented failure analysis.
 - The latest calculation-aware verifier raises support auditing fidelity by accepting reproducible calculation results while keeping exact-match claims separate from support diagnostics; row/operation grounding remains a paper-critical risk before making strong benchmark claims.
@@ -32,7 +32,7 @@ This file tracks what the current repository can and cannot support as paper evi
 - Add stronger baselines, including dense retrieval and retrieve-then-read RAG.
 - Add task-appropriate metrics beyond brittle numeric/string exact match.
 - Add failure analysis and qualitative case studies from real examples.
-- Add reproducibility checks that can run from a clean checkout.
+- Keep the MVP0 acceptance gate green from a clean checkout.
 - Replace hand-authored stress distractors with real retrieval confounders from benchmark corpora.
 - Improve real-table numerical reasoning; the current rule generator does not solve the FinQA subset yet.
 - Separate oracle-document reasoning from open-document retrieval in future benchmark tables.

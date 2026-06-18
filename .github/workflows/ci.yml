@@ -18,14 +18,8 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Run unit tests
-        run: python scripts/run_tests.py
-
-      - name: Run feasibility suite
-        run: python scripts/run_feasibility.py --corpus data/corpus --report outputs/eval/feasibility_report.json
-
-      - name: Run stress manifest
-        run: python scripts/run_manifest.py --manifest configs/experiments.stress.json
+      - name: Run MVP0 acceptance checks
+        run: python scripts/run_mvp0_acceptance.py
 
       - name: Compile sources
         run: python -m compileall evigraph scripts tests
