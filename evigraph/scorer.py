@@ -62,11 +62,13 @@ class RuleBasedUtilityRiskScorer:
         )
         source_reliability = self._source_reliability(node)
         cost = self._normalized_cost(node)
+        retrieval_prior = self._retrieval_prior(node)
         final_score = (
             1.0 * relevance
             + 1.5 * utility
             + 1.2 * grounding
             + 0.6 * source_reliability
+            + 0.8 * retrieval_prior
             - 1.0 * misleading_risk
             - 1.0 * contradiction_risk
             - 0.7 * uncertainty
@@ -121,6 +123,15 @@ class RuleBasedUtilityRiskScorer:
         tool_calls = float(node.cost.get("tool_calls", 0))
         latency_ms = float(node.cost.get("latency_ms", 0))
         return _clip(math.log1p(tokens) / 6.0 + 0.12 * tool_calls + latency_ms / 3000.0)
+
+    def _retrieval_prior(self, node: EvidenceNode) -> float:
+        try:
+            rank = int(node.metadata.get("retrieval_rank", 0))
+        except (TypeError, ValueError):
+            return 0.0
+        if rank <= 0:
+            return 0.0
+        return _clip((9 - min(rank, 9)) / 8)
 
     def _reason(self, node: EvidenceNode, misleading: float, contradiction: float, utility: float) -> str:
         if misleading > 0.6:

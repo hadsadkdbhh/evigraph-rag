@@ -123,6 +123,7 @@ class BM25Retriever:
                     },
                     metadata={
                         "retrieval_score": round(score, 4),
+                        "retrieval_rank": rank,
                         "chunk_id": chunk.chunk_id,
                         **(chunk.metadata or {}),
                     },

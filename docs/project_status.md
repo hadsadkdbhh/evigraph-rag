@@ -34,15 +34,16 @@ records `source_doc` for oracle-document and source-rerank evaluation.
 
 | setting | full EviGraph exact match |
 | --- | ---: |
-| Oracle-doc | 43/100 |
-| Open BM25 | 18/100 |
-| BM25 + source rerank | 38/100 |
+| Oracle-doc | 45/100 |
+| Open BM25 | 31/100 |
+| BM25 + source rerank | 45/100 |
 
 These numbers are diagnostic smoke results, not final benchmark claims.
 
 ## Main Bottleneck
 
-The largest remaining failure class is percent-style numeric questions. The
-open-retrieval setting is much weaker than oracle-doc and source-rerank, so the
-next research/engineering push should focus on retrieval, chunking, and support
-graph construction before adding more numeric rules.
+The largest remaining failure class is wrong numeric operation or row selection
+under open retrieval. Open BM25 improved substantially after retrieval-prior
+selection and same-source support expansion, but it still trails the top-k
+ceiling, so the next push should focus on operation planning and row grounding
+for the retrieved evidence.

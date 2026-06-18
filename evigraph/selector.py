@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from evigraph.evidence_graph import EvidenceGraph
 from evigraph.schema import EvidenceNode, EvidenceScore
 
@@ -36,10 +38,23 @@ class EvidenceSetSelector:
 
     def _is_redundant(self, node: EvidenceNode, selected: list[EvidenceNode]) -> bool:
         node_text = node.text().lower()
+        node_terms = self._terms(node_text)
         for existing in selected:
             existing_text = existing.text().lower()
-            if node.source_doc == existing.source_doc and node.modality == existing.modality:
-                return True
             if node_text and node_text in existing_text:
                 return True
+            if (
+                node.source_doc == existing.source_doc
+                and node.modality == existing.modality
+                and self._jaccard(node_terms, self._terms(existing_text)) >= 0.85
+            ):
+                return True
         return False
+
+    def _terms(self, text: str) -> set[str]:
+        return {term for term in re.findall(r"[a-z0-9]+", text.lower()) if len(term) > 2}
+
+    def _jaccard(self, left: set[str], right: set[str]) -> float:
+        if not left or not right:
+            return 0.0
+        return len(left & right) / len(left | right)
