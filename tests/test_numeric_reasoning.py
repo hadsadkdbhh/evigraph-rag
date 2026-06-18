@@ -12,6 +12,80 @@ from evigraph.schema import EvidenceNode
 
 
 class NumericReasoningTest(unittest.TestCase):
+    def test_numeric_contexts_prefer_retrieval_rank_order(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="rank2_wrong",
+                node_type="text",
+                content=(
+                    "|  | 2016 | 2015 |\n"
+                    "| --- | --- | --- |\n"
+                    "| total redeemable stock of subsidiaries | $ 100 | $ 100 |\n"
+                ),
+                source_doc="distractor.md",
+                metadata={"retrieval_rank": 2},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="rank1_correct",
+                node_type="text",
+                content=(
+                    "|  | 2016 | 2015 |\n"
+                    "| --- | --- | --- |\n"
+                    "| total redeemable stock of subsidiaries | $ 353 | $ 109 |\n"
+                ),
+                source_doc="report.md",
+                metadata={"retrieval_rank": 1},
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the change in millions of total redeemable stock of subsidiaries from 2015 to 2016?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "244")
+        self.assertEqual(answer.citations, ["rank1_correct"])
+
+    def test_row_matching_skips_weak_single_term_overlap(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="rank1_weak",
+                node_type="text",
+                content=(
+                    "|  | 2016 | 2015 |\n"
+                    "| --- | --- | --- |\n"
+                    "| plus contingently issuable performance stock units | 2014 | 2014 |\n"
+                ),
+                source_doc="distractor.md",
+                metadata={"retrieval_rank": 1},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="rank2_correct",
+                node_type="text",
+                content=(
+                    "|  | 2016 | 2015 |\n"
+                    "| --- | --- | --- |\n"
+                    "| total redeemable stock of subsidiaries | $ 782 | $ 538 |\n"
+                ),
+                source_doc="report.md",
+                metadata={"retrieval_rank": 2},
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the change in millions of total redeemable stock of subsidiaries from 2015 to 2016?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "244")
+        self.assertEqual(answer.citations, ["rank2_correct"])
+
     def test_percent_change_from_year_rows(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

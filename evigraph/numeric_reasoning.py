@@ -958,13 +958,20 @@ class NumericReasoner:
 
     def _contexts(self, support_graph: EvidenceGraph) -> list[tuple[str, str]]:
         contexts = []
-        for node in support_graph.nodes.values():
+        for node in sorted(support_graph.nodes.values(), key=self._context_order):
             if node.node_type == "verifier_judgment":
                 continue
             text = self._node_text(node)
             if text:
                 contexts.append((node.node_id, text))
         return contexts
+
+    def _context_order(self, node: EvidenceNode) -> tuple[int, str]:
+        try:
+            rank = int(node.metadata.get("retrieval_rank", 999))
+        except (TypeError, ValueError):
+            rank = 999
+        return rank, node.node_id
 
     def _node_text(self, node: EvidenceNode) -> str:
         content = node.content
@@ -1128,6 +1135,7 @@ class NumericReasoner:
             "is",
             "if",
             "an",
+            "and",
             "from",
             "to",
             "rate",
@@ -1143,6 +1151,9 @@ class NumericReasoner:
             "much",
             "would",
             "be",
+            "between",
+            "did",
+            "receive",
             "average",
             "amount",
             "period",
@@ -1223,6 +1234,7 @@ class NumericReasoner:
 
     def _best_query_row(self, query_lower: str, headers: list[str], rows: list[list[str]]) -> list[str] | None:
         query_terms = set(self._keywords(query_lower))
+        min_score = 2 if len(query_terms) >= 2 else 1
         best_row = None
         best_score = 0
         for row in rows:
@@ -1233,7 +1245,7 @@ class NumericReasoner:
             if score > best_score:
                 best_score = score
                 best_row = row
-        if best_score == 0:
+        if best_score < min_score:
             return None
         return best_row
 

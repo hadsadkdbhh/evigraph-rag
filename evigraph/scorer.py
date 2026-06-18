@@ -43,7 +43,7 @@ class RuleBasedUtilityRiskScorer:
         unreliable_content = (
             any(
                 marker in text_lower
-                for marker in ["preliminary forecast", "draft forecast", "press excerpt", "early draft", "expected"]
+                for marker in ["preliminary forecast", "draft forecast", "press excerpt", "early draft"]
             )
             and not reliable_content
             and not is_oracle_source

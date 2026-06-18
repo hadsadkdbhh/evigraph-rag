@@ -50,6 +50,41 @@ class SupportSubgraphExtractorTest(unittest.TestCase):
         self.assertIn("selected_chunk", support.nodes)
         self.assertIn("neighbor_chunk", support.nodes)
 
+    def test_preserves_selected_order_before_expanded_neighbors(self) -> None:
+        graph = EvidenceGraph()
+        first = EvidenceNode(
+            node_id="rank1",
+            node_type="text",
+            content="rank one evidence",
+            source_doc="report.md",
+            scores={"misleading_risk": 0.0, "contradiction_risk": 0.0},
+            metadata={"retrieval_rank": 1},
+        )
+        second = EvidenceNode(
+            node_id="rank2",
+            node_type="text",
+            content="rank two evidence",
+            source_doc="report.md",
+            scores={"misleading_risk": 0.0, "contradiction_risk": 0.0},
+            metadata={"retrieval_rank": 2},
+        )
+        expanded = EvidenceNode(
+            node_id="expanded",
+            node_type="text",
+            content="same-source context",
+            source_doc="report.md",
+            scores={"misleading_risk": 0.0, "contradiction_risk": 0.0},
+            metadata={"retrieval_rank": 3},
+        )
+        graph.add_node(first)
+        graph.add_node(second)
+        graph.add_node(expanded)
+        graph.add_edge("rank1", "expanded", "source", 0.5)
+
+        support = SupportSubgraphExtractor().extract("what changed?", graph, [first, second])
+
+        self.assertEqual(["rank1", "rank2", "expanded"], list(support.nodes))
+
     def test_does_not_add_risky_retrieval_neighbor(self) -> None:
         graph = EvidenceGraph()
         selected = EvidenceNode(
