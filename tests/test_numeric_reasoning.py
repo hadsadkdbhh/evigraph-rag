@@ -207,6 +207,52 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "104.8%")
         self.assertIn("percent_change", answer.calculations[0])
 
+    def test_percentage_growth_routes_to_percent_change(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "|  | 2018 | 2017 |\n"
+                    "| --- | --- | --- |\n"
+                    "| operating profit as reported | $ 1211 | $ 1194 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the percentage growth in the operating profit as reported from 2017 to 2018",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "1.4%")
+        self.assertIn("percent_change", answer.calculations[0])
+
+    def test_percentage_reduction_routes_to_percent_change(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "|  | 2013 | 2014 |\n"
+                    "| --- | --- | --- |\n"
+                    "| loews common stock | 126.23 | 110.59 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the percentage reduction in the loews common stock from 2013 to 2014",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "-12.4%")
+        self.assertIn("percent_change", answer.calculations[0])
+
     def test_percent_increase_from_current_value_and_delta_phrase(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
@@ -348,6 +394,31 @@ class NumericReasoningTest(unittest.TestCase):
 
         self.assertEqual(answer.text, "-13.4%")
         self.assertIn("row=net earnings attributable to pmi", answer.calculations[0])
+
+    def test_growth_rate_from_year_labeled_rows(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "|  | ( in millions ) |\n"
+                    "| --- | --- |\n"
+                    "| 2002 net revenue | $ 922.9 |\n"
+                    "| deferred fuel cost revisions | 59.1 |\n"
+                    "| 2003 net revenue | $ 973.7 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the growth rate in net revenue in 2003 for entergy louisiana , inc.?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "5.5%")
+        self.assertIn("percent_change", answer.calculations[0])
 
     def test_roi_from_stock_return_table_uses_index_row(self) -> None:
         graph = EvidenceGraph()

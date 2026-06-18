@@ -21,7 +21,15 @@ class EvidenceSetSelector:
         selected: list[EvidenceNode] = []
         seen_modalities: set[str] = set()
 
+        anchor = self._safe_retrieval_anchor(graph, scores)
+        if anchor is not None:
+            selected.append(anchor)
+            seen_modalities.add(anchor.modality)
+            anchor.metadata["selection_status"] = "selected"
+
         for node in ranked:
+            if any(existing.node_id == node.node_id for existing in selected):
+                continue
             score = scores[node.node_id]
             if max(score.misleading_risk, score.contradiction_risk) >= self.risk_threshold:
                 node.metadata["selection_status"] = "discarded_risk"
@@ -35,6 +43,29 @@ class EvidenceSetSelector:
             if len(selected) >= self.max_nodes:
                 break
         return selected
+
+    def _safe_retrieval_anchor(
+        self,
+        graph: EvidenceGraph,
+        scores: dict[str, EvidenceScore],
+    ) -> EvidenceNode | None:
+        ranked_by_retrieval = sorted(
+            graph.nodes.values(),
+            key=lambda node: (self._retrieval_rank(node), node.node_id),
+        )
+        for node in ranked_by_retrieval:
+            if self._retrieval_rank(node) != 1:
+                break
+            score = scores[node.node_id]
+            if max(score.misleading_risk, score.contradiction_risk) < self.risk_threshold:
+                return node
+        return None
+
+    def _retrieval_rank(self, node: EvidenceNode) -> int:
+        try:
+            return int(node.metadata.get("retrieval_rank", 999))
+        except (TypeError, ValueError):
+            return 999
 
     def _is_redundant(self, node: EvidenceNode, selected: list[EvidenceNode]) -> bool:
         node_text = node.text().lower()

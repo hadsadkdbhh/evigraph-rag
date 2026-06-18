@@ -33,6 +33,10 @@ class NumericReasoner:
             or "percent change" in query_lower
             or "percentage increase" in query_lower
             or "percent increase" in query_lower
+            or "percentage growth" in query_lower
+            or "percent growth" in query_lower
+            or "percentage reduction" in query_lower
+            or "percent reduction" in query_lower
             or "percentual reduction" in query_lower
             or "growth rate" in query_lower
             or is_roi_query
@@ -354,6 +358,10 @@ class NumericReasoner:
     def _percent_change(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
         years = re.findall(r"\b(20\d{2})\b", query_lower)
         if len(years) < 2:
+            if len(years) == 1:
+                answer = self._percent_change_year_labeled_rows(query_lower, contexts, years[0])
+                if answer:
+                    return answer
             return self._percent_change_latest_table_years(query_lower, contexts)
         base_year, target_year = self._percent_change_years(query_lower, years)
         for node_id, text in contexts:
@@ -386,6 +394,55 @@ class NumericReasoner:
                 cited_node_ids=[node_id],
             )
         return None
+
+    def _percent_change_year_labeled_rows(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+        target_year: str,
+    ) -> NumericAnswer | None:
+        base_year = str(int(target_year) - 1)
+        query_terms = set(self._keywords(query_lower)) - {"growth"}
+        for node_id, text in contexts:
+            rows = self._label_value_rows(text)
+            base = self._matching_year_labeled_value(rows, base_year, query_terms)
+            target = self._matching_year_labeled_value(rows, target_year, query_terms)
+            if base is None or target is None or base[0] == 0:
+                continue
+            operation = self.executor.percent_change(target[0], base[0])
+            if operation is None:
+                continue
+            return NumericAnswer(
+                text=f"{operation.value:.1f}%",
+                calculation=(
+                    f"percent_change row={target[1]} vs {base[1]}: "
+                    f"{operation.expression}"
+                ),
+                cited_node_ids=[node_id],
+            )
+        return None
+
+    def _matching_year_labeled_value(
+        self,
+        rows: list[tuple[str, float]],
+        year: str,
+        query_terms: set[str],
+    ) -> tuple[float, str] | None:
+        best: tuple[int, float, str] | None = None
+        for label, value in rows:
+            if year not in label:
+                continue
+            label_terms = set(re.findall(r"[a-z0-9]+", label))
+            score = len(query_terms & label_terms)
+            if score == 0:
+                continue
+            candidate = (score, value, label)
+            if best is None or candidate > best:
+                best = candidate
+        if best is None:
+            return None
+        _score, value, label = best
+        return value, label
 
     def _percent_change_latest_table_years(
         self,
