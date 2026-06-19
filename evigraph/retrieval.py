@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 import re
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
 
 from evigraph.document_loader import DocumentChunk, DocumentLoader, load_chunks_from_index
@@ -166,7 +166,8 @@ class CorpusRetriever:
         else:
             chunks = DocumentLoader().load(path)
         if retrieval_mode == "open":
-            return BM25Retriever(chunks).retrieve(query, top_k=top_k)
+            nodes = BM25Retriever(chunks).retrieve(query, top_k=top_k)
+            return self._with_adjacent_context(nodes, chunks)
 
         if source_doc and retrieval_mode == "source_rerank":
             return self._source_rerank(query, chunks, source_doc, top_k)
@@ -216,6 +217,76 @@ class CorpusRetriever:
             if Path(str(node.source_doc)).name == source_name:
                 node.metadata["rerank_boost"] = "source_doc_match"
         return reranked[:top_k]
+
+    def _with_adjacent_context(
+        self,
+        nodes: list[EvidenceNode],
+        chunks: list[DocumentChunk],
+    ) -> list[EvidenceNode]:
+        if not nodes:
+            return nodes
+        chunks_by_source: dict[str, list[DocumentChunk]] = defaultdict(list)
+        for chunk in chunks:
+            chunks_by_source[chunk.source_doc].append(chunk)
+        positions: dict[str, tuple[str, int]] = {}
+        for source_doc, source_chunks in chunks_by_source.items():
+            source_chunks.sort(key=self._chunk_order)
+            for index, chunk in enumerate(source_chunks):
+                positions[chunk.chunk_id] = (source_doc, index)
+
+        expanded = list(nodes)
+        seen_chunk_ids = {str(node.metadata.get("chunk_id", "")) for node in expanded}
+        for anchor in nodes:
+            chunk_id = str(anchor.metadata.get("chunk_id", ""))
+            if chunk_id not in positions:
+                continue
+            source_doc, index = positions[chunk_id]
+            source_chunks = chunks_by_source[source_doc]
+            for neighbor_index in (index - 1, index + 1):
+                if neighbor_index < 0 or neighbor_index >= len(source_chunks):
+                    continue
+                neighbor = source_chunks[neighbor_index]
+                if neighbor.chunk_id in seen_chunk_ids:
+                    continue
+                expanded.append(self._neighbor_node(neighbor, anchor))
+                seen_chunk_ids.add(neighbor.chunk_id)
+        return expanded
+
+    def _chunk_order(self, chunk: DocumentChunk) -> tuple[int, int, str]:
+        try:
+            char_start = int((chunk.metadata or {}).get("char_start", 0))
+        except (TypeError, ValueError):
+            char_start = 0
+        return chunk.page_number or 0, char_start, chunk.chunk_id
+
+    def _neighbor_node(self, chunk: DocumentChunk, anchor: EvidenceNode) -> EvidenceNode:
+        node_type, modality, content = _infer_node_content(chunk.text)
+        try:
+            anchor_score = float(anchor.metadata.get("retrieval_score", 0.0))
+        except (TypeError, ValueError):
+            anchor_score = 0.0
+        return EvidenceNode(
+            node_id=f"neighbor_{anchor.metadata.get('retrieval_rank', 'x')}_{chunk.chunk_id}",
+            node_type=node_type,
+            content=content,
+            source_doc=chunk.source_doc,
+            page_number=chunk.page_number,
+            modality=modality,
+            confidence=1.0,
+            cost={
+                "tokens": max(1, len(chunk.text.split())),
+                "tool_calls": 0,
+                "latency_ms": 5,
+            },
+            metadata={
+                "retrieval_score": round(max(0.0, anchor_score - 0.0001), 4),
+                "retrieval_rank": anchor.metadata.get("retrieval_rank", 999),
+                "chunk_id": chunk.chunk_id,
+                "neighbor_context": True,
+                "expanded_from": anchor.node_id,
+                **(chunk.metadata or {}),
+            },
+        )
 
 
 def _tokens(text: str) -> list[str]:

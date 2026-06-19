@@ -86,6 +86,38 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "244")
         self.assertEqual(answer.citations, ["rank2_correct"])
 
+    def test_numeric_contexts_read_retrieved_chunk_before_neighbor_context(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="neighbor_1_case_0_2",
+                node_type="text",
+                content="Later allocation values included 27.0 and 36.5 in adjacent discussion.",
+                source_doc="case.md",
+                metadata={"retrieval_rank": 1, "neighbor_context": True},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="retrieved_1_case_0_1",
+                node_type="text",
+                content=(
+                    "The aggregate purchase price was $171.5 million, "
+                    "and was subsequently increased to $173.2 million, subject to post-closing adjustments."
+                ),
+                source_doc="case.md",
+                metadata={"retrieval_rank": 1},
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "for the mtn deal , what was the total post closing adjustments , in millions?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "1.7")
+        self.assertEqual(answer.citations, ["retrieved_1_case_0_1"])
+
     def test_percent_change_from_year_rows(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
@@ -711,6 +743,96 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "34.9%")
         self.assertIn("ratio_percent", answer.calculations[0])
 
+    def test_ratio_percent_selects_query_measure_column(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "|  | oil ( mmbbls ) | gas ( bcf ) | ngls ( mmbbls ) | total ( mmboe ) |\n"
+                    "| --- | --- | --- | --- | --- |\n"
+                    "| u.s . onshore | 12 | 626 | 23 | 140 |\n"
+                    "| canada | 23 | 198 | 4 | 60 |\n"
+                    "| total | 66 | 894 | 28 | 243 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what percentage of the total oil and gas mmboe comes from canada?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "24.7%")
+        self.assertIn("column=total ( mmboe )", answer.calculations[0])
+
+    def test_ratio_percent_prefers_later_complete_measure_table(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="partial_oil_table",
+                node_type="text",
+                content=(
+                    "|  | oil ( mmbbls ) |\n"
+                    "| --- | --- |\n"
+                    "| canada | 23 |\n"
+                    "| total | 66 |\n"
+                ),
+                source_doc="partial.md",
+                metadata={"retrieval_rank": 1},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="complete_mmboe_table",
+                node_type="text",
+                content=(
+                    "|  | oil ( mmbbls ) | gas ( bcf ) | ngls ( mmbbls ) | total ( mmboe ) |\n"
+                    "| --- | --- | --- | --- | --- |\n"
+                    "| u.s . onshore | 12 | 626 | 23 | 140 |\n"
+                    "| canada | 23 | 198 | 4 | 60 |\n"
+                    "| total | 66 | 894 | 28 | 243 |\n"
+                ),
+                source_doc="complete.md",
+                metadata={"retrieval_rank": 2},
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what percentage of the total oil and gas mmboe comes from canada?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "24.7%")
+        self.assertEqual(answer.citations, ["complete_mmboe_table"])
+
+    def test_ratio_percent_total_denominator_prefers_total_row(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| contractual obligation | total | less than 1 year | 1 - 3 years |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| long-term debt | $ 275.1 | $ 8.6 | $ 13.8 |\n"
+                    "| purchase obligations | 177.3 | 176.6 | 0.7 |\n"
+                    "| total | $ 521.3 | $ 199.6 | $ 35.2 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what percentage of total aggregate contractual obligations is due to purchase obligations?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "34%")
+        self.assertIn("denominator_row=total", answer.calculations[0])
+
     def test_ratio_percent_due_after_total(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
@@ -854,6 +976,121 @@ class NumericReasoningTest(unittest.TestCase):
 
         self.assertEqual(answer.text, "60.3%")
         self.assertIn("ratio_percent", answer.calculations[0])
+
+    def test_ratio_percent_prefers_later_mixed_prose_over_partial_rows(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="partial_rows",
+                node_type="text",
+                content=(
+                    "|  | ( in millions ) |\n"
+                    "| --- | --- |\n"
+                    "| deferred fuel cost revisions | 98.0 |\n"
+                    "| fuel cost recovery revenues | 98.0 |\n"
+                ),
+                source_doc="partial.md",
+                metadata={"retrieval_rank": 1},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="complete_mixed",
+                node_type="text",
+                content=(
+                    "Gross operating revenues increased primarily due to an increase of $98.0 million "
+                    "in fuel cost recovery revenues due to higher fuel rates.\n"
+                    "| | ( in millions ) |\n"
+                    "| --- | --- |\n"
+                    "| deferred fuel cost revisions | 59.1 |\n"
+                ),
+                source_doc="complete.md",
+                metadata={"retrieval_rank": 2},
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what are the deferred fuel cost revisions as a percentage of the increase in fuel cost recovery revenues?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "60.3%")
+        self.assertEqual(answer.citations, ["complete_mixed"])
+
+    def test_ratio_percent_rejects_weak_prose_numerator_overlap(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="partial_prose",
+                node_type="text",
+                content=(
+                    "Gross operating revenues increased primarily due to an increase of $98.0 million "
+                    "in fuel cost recovery revenues due to higher fuel rates. "
+                    "Fuel and purchased power expenses increased due to deferred fuel costs."
+                ),
+                source_doc="partial.md",
+                metadata={"retrieval_rank": 1},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="complete_mixed",
+                node_type="text",
+                content=(
+                    "Gross operating revenues increased primarily due to an increase of $98.0 million "
+                    "in fuel cost recovery revenues due to higher fuel rates.\n"
+                    "| | ( in millions ) |\n"
+                    "| --- | --- |\n"
+                    "| deferred fuel cost revisions | 59.1 |\n"
+                ),
+                source_doc="complete.md",
+                metadata={"retrieval_rank": 2},
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what are the deferred fuel cost revisions as a percentage of the increase in fuel cost recovery revenues?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "60.3%")
+        self.assertEqual(answer.citations, ["complete_mixed"])
+
+    def test_ratio_percent_combines_same_source_adjacent_chunks(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="retrieved_1_case_0_0",
+                node_type="text",
+                content=(
+                    "Gross operating revenues increased primarily due to an increase of $98.0 million "
+                    "in fuel cost recovery revenues due to higher fuel rates."
+                ),
+                source_doc="case.md",
+                metadata={"retrieval_rank": 1},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="retrieved_2_case_0_1",
+                node_type="text",
+                content=(
+                    "| | ( in millions ) |\n"
+                    "| --- | --- |\n"
+                    "| deferred fuel cost revisions | 59.1 |\n"
+                ),
+                source_doc="case.md",
+                metadata={"retrieval_rank": 2},
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what are the deferred fuel cost revisions as a percentage of the increase in fuel cost recovery revenues?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "60.3%")
+        self.assertEqual(answer.citations, ["retrieved_2_case_0_1", "retrieved_1_case_0_0"])
 
     def test_ratio_percent_mixes_prose_numerator_and_year_table_denominator(self) -> None:
         graph = EvidenceGraph()

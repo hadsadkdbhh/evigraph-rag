@@ -30,6 +30,9 @@ class EvidenceSetSelector:
         for node in ranked:
             if any(existing.node_id == node.node_id for existing in selected):
                 continue
+            if self._is_context_expansion(node):
+                node.metadata["selection_status"] = "context_expansion"
+                continue
             score = scores[node.node_id]
             if max(score.misleading_risk, score.contradiction_risk) >= self.risk_threshold:
                 node.metadata["selection_status"] = "discarded_risk"
@@ -54,6 +57,8 @@ class EvidenceSetSelector:
             key=lambda node: (self._retrieval_rank(node), node.node_id),
         )
         for node in ranked_by_retrieval:
+            if self._is_context_expansion(node):
+                continue
             if self._retrieval_rank(node) != 1:
                 break
             score = scores[node.node_id]
@@ -66,6 +71,9 @@ class EvidenceSetSelector:
             return int(node.metadata.get("retrieval_rank", 999))
         except (TypeError, ValueError):
             return 999
+
+    def _is_context_expansion(self, node: EvidenceNode) -> bool:
+        return bool(node.metadata.get("neighbor_context"))
 
     def _is_redundant(self, node: EvidenceNode, selected: list[EvidenceNode]) -> bool:
         node_text = node.text().lower()

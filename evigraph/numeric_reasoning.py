@@ -914,14 +914,34 @@ class NumericReasoner:
         query_year = self._ratio_year(query_lower, years)
         denominator_terms = self._denominator_terms(query_lower)
         numerator_terms = self._ratio_numerator_terms(query_lower)
+
         for node_id, text in contexts:
-            prose_answer = (
-                self._prose_ratio_percent(node_id, text, numerator_terms, denominator_terms)
-                if self._allow_prose_ratio(query_lower, query_year)
-                else None
+            table_answer = self._ratio_percent_from_table_columns(
+                node_id,
+                query_lower,
+                text,
+                numerator_terms,
+                denominator_terms,
+                query_year,
             )
-            if prose_answer is not None:
-                return prose_answer
+            if table_answer is not None:
+                return table_answer
+
+        if self._allow_prose_ratio(query_lower, query_year):
+            for node_id, text in contexts:
+                prose_answer = self._prose_ratio_percent(node_id, text, numerator_terms, denominator_terms)
+                if prose_answer is not None:
+                    return prose_answer
+
+        cross_context_answer = self._ratio_percent_across_contexts(
+            contexts,
+            numerator_terms,
+            denominator_terms,
+        )
+        if cross_context_answer is not None:
+            return cross_context_answer
+
+        for node_id, text in contexts:
             rows = self._label_value_rows(text)
             if not rows and not self._markdown_table(text):
                 continue
@@ -963,7 +983,18 @@ class NumericReasoner:
                 denominator_meta,
             )
             if numerator_meta.get("row_label") and numerator_meta.get("row_label") == denominator_meta.get("row_label"):
-                continue
+                prose_denominator, denominator_label = self._prose_amount_for_terms(text, denominator_terms)
+                if prose_denominator is None:
+                    continue
+                denominator = prose_denominator
+                denominator_meta = {"row_label": denominator_label, "source": "prose"} if denominator_label else {}
+                numerator, denominator = self._normalize_mixed_table_prose_scale(
+                    text,
+                    numerator,
+                    denominator,
+                    numerator_meta,
+                    denominator_meta,
+                )
 
             operation = self.executor.ratio(numerator, denominator)
             if operation is None:
@@ -980,6 +1011,193 @@ class NumericReasoner:
                 cited_node_ids=[node_id],
             )
         return None
+
+    def _ratio_percent_across_contexts(
+        self,
+        contexts: list[tuple[str, str]],
+        numerator_terms: list[str],
+        denominator_terms: list[str],
+    ) -> NumericAnswer | None:
+        numerators: list[tuple[str, str, float, str]] = []
+        denominators: list[tuple[str, str, float, str]] = []
+        for node_id, text in contexts:
+            source_key = self._context_source_key(node_id)
+            rows = self._label_value_rows(text)
+            numerator, numerator_meta = self._matching_value_with_label(rows, numerator_terms)
+            numerator_label = str(numerator_meta.get("row_label", ""))
+            if numerator is not None and self._label_matches_terms(numerator_label, numerator_terms):
+                numerators.append((source_key, node_id, numerator, numerator_label))
+
+            denominator, denominator_label = self._prose_amount_for_terms(text, denominator_terms)
+            if denominator is not None and denominator_label:
+                denominators.append((source_key, node_id, denominator, denominator_label))
+
+        for numerator_source, numerator_id, numerator, numerator_label in numerators:
+            for denominator_source, denominator_id, denominator, denominator_label in denominators:
+                if numerator_source != denominator_source or denominator == 0:
+                    continue
+                operation = self.executor.ratio(numerator, denominator)
+                if operation is None:
+                    continue
+                result = operation.value * 100.0
+                citations = [numerator_id]
+                if denominator_id != numerator_id:
+                    citations.append(denominator_id)
+                return NumericAnswer(
+                    text=self._format_percent(result),
+                    calculation=(
+                        f"ratio_percent row={numerator_label} denominator_row={denominator_label}: "
+                        f"{numerator:g} / {denominator:g} * 100 = {result:.1f}%"
+                    ),
+                    cited_node_ids=citations,
+                )
+        return None
+
+    def _ratio_percent_from_table_columns(
+        self,
+        node_id: str,
+        query_lower: str,
+        text: str,
+        numerator_terms: list[str],
+        denominator_terms: list[str],
+        query_year: str | None,
+    ) -> NumericAnswer | None:
+        tables = [table for table in [self._markdown_table(text), self._loose_markdown_table(text)] if table]
+        seen = set()
+        for headers, rows in tables:
+            signature = (tuple(headers), tuple(tuple(row) for row in rows))
+            if signature in seen:
+                continue
+            seen.add(signature)
+            answer = self._ratio_percent_from_parsed_table(
+                node_id,
+                query_lower,
+                headers,
+                rows,
+                numerator_terms,
+                denominator_terms,
+                query_year,
+            )
+            if answer is not None:
+                return answer
+        return None
+
+    def _ratio_percent_from_parsed_table(
+        self,
+        node_id: str,
+        query_lower: str,
+        headers: list[str],
+        rows: list[list[str]],
+        numerator_terms: list[str],
+        denominator_terms: list[str],
+        query_year: str | None,
+    ) -> NumericAnswer | None:
+        if len(headers) <= 2:
+            return None
+        column_index = self._ratio_value_column(headers, query_lower, denominator_terms, query_year)
+        if column_index is None:
+            return None
+        numerator_row = self._ratio_table_row(rows, numerator_terms, prefer_total=False)
+        if numerator_row is None and "due after" in query_lower:
+            numerator_row = self._ratio_table_row(rows, ["thereafter"], prefer_total=False)
+        denominator_row = self._ratio_table_row(
+            rows,
+            denominator_terms,
+            prefer_total="total" in denominator_terms or "total" in query_lower,
+        )
+        if numerator_row is None or denominator_row is None:
+            return None
+        if numerator_row[0].strip().lower() == denominator_row[0].strip().lower():
+            return None
+        if column_index >= len(numerator_row) or column_index >= len(denominator_row):
+            return None
+        numerator = self._first_number(numerator_row[column_index])
+        denominator = self._first_number(denominator_row[column_index])
+        if numerator is None or denominator in {None, 0}:
+            return None
+        operation = self.executor.ratio(numerator, denominator)
+        if operation is None:
+            return None
+        result = operation.value * 100.0
+        return NumericAnswer(
+            text=self._format_percent(result),
+            calculation=(
+                f"ratio_percent row={numerator_row[0].strip().lower()} "
+                f"denominator_row={denominator_row[0].strip().lower()} "
+                f"column={headers[column_index].strip().lower()}: "
+                f"{numerator:g} / {denominator:g} * 100 = {result:.1f}%"
+            ),
+            cited_node_ids=[node_id],
+        )
+
+    def _ratio_value_column(
+        self,
+        headers: list[str],
+        query_lower: str,
+        denominator_terms: list[str],
+        query_year: str | None,
+    ) -> int | None:
+        if query_year:
+            year_index = self._header_year_index(headers, query_year)
+            if year_index is not None:
+                return year_index
+        query_terms = set(self._keywords(query_lower))
+        denominator_term_set = set(denominator_terms)
+        best: tuple[int, int, int] | None = None
+        for index, header in enumerate(headers[1:], start=1):
+            label = header.lower()
+            label_terms = set(self._keywords(label))
+            score = 0
+            score += 3 * len(label_terms & query_terms)
+            score += 2 * len(label_terms & denominator_term_set)
+            if "total" in label and ("total" in denominator_term_set or "total" in query_lower):
+                score += 4
+            if any(unit in label for unit in ["mmboe", "mmbbls", "bcf"]):
+                score += 3 * len(set(re.findall(r"[a-z0-9]+", label)) & query_terms)
+            if score <= 0:
+                continue
+            candidate = (score, -index, index)
+            if best is None or candidate > best:
+                best = candidate
+        if best is not None:
+            return best[2]
+        return None
+
+    def _ratio_table_row(
+        self,
+        rows: list[list[str]],
+        terms: list[str],
+        prefer_total: bool,
+    ) -> list[str] | None:
+        normalized_terms = [term for term in terms if term]
+        if prefer_total:
+            for row in rows:
+                if row and re.fullmatch(r"total(?:\s+.*)?", row[0].strip().lower()):
+                    return row
+        if not normalized_terms:
+            return None
+        for row in rows:
+            if not row:
+                continue
+            label = row[0].strip().lower()
+            if all(term in label for term in normalized_terms):
+                return row
+        best: tuple[int, int, int, list[str]] | None = None
+        for row_index, row in enumerate(rows):
+            if not row:
+                continue
+            label = row[0].strip().lower()
+            matched_terms = [term for term in normalized_terms if term in label]
+            if not matched_terms:
+                continue
+            coverage = len(matched_terms)
+            score = sum(len(term) for term in matched_terms)
+            if coverage == 1 and len(normalized_terms) >= 3 and matched_terms[0] not in {"total"}:
+                continue
+            candidate = (coverage, score, -row_index, row)
+            if best is None or candidate > best:
+                best = candidate
+        return best[3] if best else None
 
     def _ratio_year(self, query_lower: str, years: list[str]) -> str | None:
         if "due after" in query_lower:
@@ -1089,6 +1307,8 @@ class NumericReasoner:
                 denominator_meta = {"row_label": denominator_label, "source": "prose"} if denominator_label else {}
         numerator_meta.setdefault("source", "table" if numerator_meta.get("row_label") else "")
         denominator_meta.setdefault("source", "table" if denominator_meta.get("row_label") else "")
+        if numerator_meta.get("source") != "prose" and denominator_meta.get("source") != "prose":
+            return None
         numerator, denominator = self._normalize_mixed_table_prose_scale(
             text,
             numerator,
@@ -1149,7 +1369,7 @@ class NumericReasoner:
         if not terms:
             return None, ""
         best: tuple[int, float, str] | None = None
-        min_matches = 2 if len(terms) >= 2 else 1
+        min_matches = self._minimum_term_matches(terms)
         for sentence in self._prose_sentences(text):
             lower_sentence = sentence.lower()
             matched_terms = [term for term in terms if term in lower_sentence]
@@ -1178,6 +1398,13 @@ class NumericReasoner:
             return None, ""
         _score, value, label = best
         return value, label
+
+    def _minimum_term_matches(self, terms: list[str]) -> int:
+        if len(terms) <= 1:
+            return 1
+        if len(terms) <= 3:
+            return 2
+        return 3
 
     def _difference_between_nearby_amounts(self, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
         for node_id, text in contexts:
@@ -1217,12 +1444,13 @@ class NumericReasoner:
                 contexts.append((node.node_id, text))
         return contexts
 
-    def _context_order(self, node: EvidenceNode) -> tuple[int, str]:
+    def _context_order(self, node: EvidenceNode) -> tuple[int, int, str]:
         try:
             rank = int(node.metadata.get("retrieval_rank", 999))
         except (TypeError, ValueError):
             rank = 999
-        return rank, node.node_id
+        neighbor_order = 1 if node.metadata.get("neighbor_context") else 0
+        return rank, neighbor_order, node.node_id
 
     def _node_text(self, node: EvidenceNode) -> str:
         content = node.content
@@ -1337,6 +1565,19 @@ class NumericReasoner:
             return None, {}
         _score, _coverage, _row_order, label, value = best_match
         return value, {"row_label": label}
+
+    def _label_matches_terms(self, label: str, terms: list[str]) -> bool:
+        if not label or not terms:
+            return False
+        matched_terms = [term for term in terms if term in label]
+        return len(matched_terms) >= self._minimum_term_matches(terms)
+
+    def _context_source_key(self, node_id: str) -> str:
+        key = re.sub(r"^parsed_", "", node_id)
+        key = re.sub(r"^(retrieved|neighbor)_\d+_", "", key)
+        key = re.sub(r"_full$", "", key)
+        key = re.sub(r"_\d+_\d+$", "", key)
+        return key
 
     def _denominator_terms(self, query_lower: str) -> list[str]:
         if " as a percentage of " in query_lower:
@@ -1461,6 +1702,37 @@ class NumericReasoner:
         if not candidates:
             return None
         return max(candidates, key=lambda parsed: (len(parsed[1]), max(len(parsed[0]), *(len(row) for row in parsed[1]))))
+
+    def _loose_markdown_table(self, text: str) -> tuple[list[str], list[list[str]]] | None:
+        parsed_lines: list[list[str]] = []
+        for line in text.splitlines():
+            if "|" not in line or "---" in line:
+                continue
+            cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+            if len(cells) >= 2:
+                parsed_lines.append(cells)
+        header_candidates = [
+            cells
+            for cells in parsed_lines
+            if len(cells) >= 3
+            and (not cells[0].strip() or self._first_number(cells[0]) is None)
+            and any(self._first_number(cell) is None for cell in cells[1:])
+        ]
+        if not header_candidates:
+            return None
+        headers = max(header_candidates, key=lambda cells: (len(cells), sum(len(cell) for cell in cells)))
+        rows = [
+            cells
+            for cells in parsed_lines
+            if len(cells) == len(headers)
+            and cells != headers
+            and cells[0].strip()
+            and self._first_number(cells[0]) is None
+            and any(self._first_number(cell) is not None for cell in cells[1:])
+        ]
+        if not rows:
+            return None
+        return headers, rows
 
     def _markdown_tables(self, text: str) -> list[tuple[list[str], list[list[str]]]]:
         blocks: list[list[str]] = []
