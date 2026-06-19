@@ -9,6 +9,11 @@
 \usepackage{booktabs}
 \usepackage{amsmath}
 \usepackage{amssymb}
+\usepackage{amsthm}
+
+\newtheorem{definition}{Definition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
 
 \title{EviGraph-RAG: Evidence-State Control for Numerically Grounded Retrieval-Augmented Generation}
 
@@ -43,13 +48,19 @@ The current FinQA experiments use a deterministic 100-example validation subset 
 \section{Related Work}
 
 \paragraph{Retrieval-Augmented Generation.}
-TODO: discuss retrieve-then-read systems, citation faithfulness, and context selection.
+Retrieval-augmented generation combines parametric generation with retrieved non-parametric memory, making retrieval quality and context selection central to answer faithfulness~\cite{lewis2020retrieval}.
+Dense Passage Retrieval further shows that learned retrievers can replace or complement sparse retrieval for open-domain QA~\cite{karpukhin2020dense}.
+EviGraph-RAG is complementary to this line: rather than proposing a new retriever, it treats retrieved candidates as an intermediate evidence state that must be selected, risk-scored, and verified before generation.
 
 \paragraph{Table and Financial QA.}
-TODO: discuss FinQA, TAT-QA, ChartQA, and numerical reasoning over semi-structured evidence.
+Financial QA benchmarks such as FinQA and TAT-QA require numerical reasoning over tables and surrounding text~\cite{chen2021finqa,zhu2021tatqa}.
+These tasks expose a weakness of passage-only RAG: the relevant context may be split across row labels, year columns, prose definitions, and derived operations.
+Our current experiments focus on FinQA because it lets us evaluate whether a system can preserve source-document provenance, select supporting table evidence, and produce auditable calculations.
 
 \paragraph{Verifiable and Tool-Augmented QA.}
-TODO: position evidence actions, calculation execution, and verification against tool-using RAG.
+Tool-augmented reasoning frameworks such as ReAct interleave reasoning traces with external actions~\cite{yao2023react}.
+EviGraph-RAG uses a narrower but more auditable version of this idea for numerical QA: table operations are executed locally, cited values are checked against the support graph, and verifier diagnostics are reported separately from exact-match accuracy.
+This separation is important for submission claims because a numerically correct answer and a well-supported answer are related but distinct properties.
 
 \section{Method}
 
@@ -62,6 +73,63 @@ Edges record derivation and support relations.
 
 Each node receives a utility score and risk signals such as misleading-risk and contradiction-risk.
 The selector chooses a compact support set subject to a node budget and a risk threshold.
+
+\subsection{Subgraph Selection Objective}
+
+Let the candidate evidence graph be \(G=(V,E)\), where each node \(v\in V\) is a retrieved passage, table fragment, derived row, or intermediate calculation candidate, and each edge \(e\in E\) records support, derivation, temporal adjacency, or potential conflict.
+For a question \(q\), let \(\mathcal{A}_q\) denote a finite set of required evidence aspects, such as entity overlap, year coverage, table-row relevance, denominator availability, and operation cues.
+Each node has an aspect utility \(u_{v,a}\in[0,1]\) for \(a\in\mathcal{A}_q\).
+Structural and temporal alignment risks are propagated from \(G\) into node-level scores \(r^{\mathrm{str}}_v,r^{\mathrm{tmp}}_v\in[0,1]\).
+We define a risk discount
+\[
+\rho_v=\exp\left(-\lambda_{\mathrm{str}}r^{\mathrm{str}}_v-\lambda_{\mathrm{tmp}}r^{\mathrm{tmp}}_v\right)
+\]
+and risk-adjusted aspect coverage \(p_{v,a}=\rho_v u_{v,a}\).
+The utility of a selected support subgraph \(S\subseteq V\) is
+\[
+f(S)=\sum_{a\in\mathcal{A}_q} w_a
+\left(1-\prod_{v\in S}(1-p_{v,a})\right),
+\]
+where \(w_a\ge 0\) is the importance of aspect \(a\).
+This objective rewards complementary evidence while discounting nodes whose graph context indicates structural or temporal risk.
+
+\begin{lemma}
+The function \(f(S)\) is monotone submodular over \(V\).
+\end{lemma}
+
+\begin{proof}
+Consider adding node \(v\notin S\).
+The marginal gain is
+\[
+\Delta_v(S)=f(S\cup\{v\})-f(S)
+=\sum_{a\in\mathcal{A}_q} w_a p_{v,a}
+\prod_{x\in S}(1-p_{x,a}).
+\]
+Since \(p_{x,a}\in[0,1]\), for any \(S\subseteq T\subseteq V\setminus\{v\}\),
+\[
+\prod_{x\in S}(1-p_{x,a})\ge
+\prod_{x\in T}(1-p_{x,a}).
+\]
+Multiplying by nonnegative \(w_a p_{v,a}\) and summing over \(a\) gives
+\[
+\Delta_v(S)\ge \Delta_v(T).
+\]
+Thus \(f\) has diminishing marginal returns and is submodular.
+The same marginal expression is nonnegative, so \(f\) is monotone.
+\end{proof}
+
+\begin{proposition}
+Under the cardinality constraint \(|S|\le K\), greedy subgraph selection achieves a \((1-1/e)\)-approximation to the optimal risk-adjusted support set.
+\end{proposition}
+
+\begin{proof}
+The previous lemma establishes that \(f\) is nonnegative, monotone, and submodular.
+Therefore the classical result of Nemhauser, Wolsey, and Fisher~\cite{nemhauser1978analysis} applies: repeatedly adding the node with largest marginal gain returns a set \(S_{\mathrm{greedy}}\) satisfying
+\[
+f(S_{\mathrm{greedy}})\ge (1-1/e)\max_{|S|\le K} f(S).
+\]
+In EviGraph-RAG, this justifies greedy node pruning as a budgeted approximation to selecting a compact, risk-adjusted evidence subgraph rather than an arbitrary top-\(K\) retrieval prefix.
+\end{proof}
 
 \subsection{Table Operation Executor}
 
@@ -78,9 +146,22 @@ The verifier checks citation presence, source-number consistency, calculation-re
 \centering
 \fbox{\begin{minipage}{0.92\linewidth}
 \centering
-Query $\rightarrow$ Retrieval $\rightarrow$ Evidence Graph $\rightarrow$ Utility/Risk Scoring $\rightarrow$ Support Subgraph $\rightarrow$ Table Operation Executor $\rightarrow$ Verified Answer
+\small
+\begin{tabular}{c}
+\textbf{Query and Corpus} \\
+\(\downarrow\) lexical or oracle-document retrieval \\
+\textbf{Candidate Evidence Graph \(G=(V,E)\)} \\
+nodes: passages, tables, rows, calculations \\
+edges: support, derivation, temporal alignment, conflict \\
+\(\downarrow\) risk-adjusted submodular selection \\
+\textbf{Support Subgraph \(S\subseteq V\)} \\
+\(\downarrow\) local table-operation execution \\
+\textbf{Grounded Numeric Answer} \\
+\(\downarrow\) citation, arithmetic, row, and operation checks \\
+\textbf{Verified Answer Trace}
+\end{tabular}
 \end{minipage}}
-\caption{Planned method figure placeholder. The final version should show evidence nodes, risk filtering, operation execution, and verification edges.}
+\caption{EviGraph-RAG pipeline. Retrieved candidates are represented as an evidence graph, pruned into a compact risk-adjusted support subgraph, executed with local table operations, and verified against cited evidence.}
 \label{fig:method}
 \end{figure}
 
@@ -103,7 +184,7 @@ This suite is used for mechanism debugging, not public benchmark claims.
 \subsection{Baselines and Ablations}
 
 We compare top-k, utility-only, EviGraph without risk, EviGraph without verifier, EviGraph without support extraction, and full EviGraph.
-TODO: add stronger retrieve-then-read and dense retrieval baselines.
+The current draft reports lexical retrieval baselines; stronger dense or hybrid retrieve-then-read baselines are required before making final benchmark-level claims.
 
 \input{generated/finqa_results_tables}
 

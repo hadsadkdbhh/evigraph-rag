@@ -153,6 +153,24 @@ Before reporting real benchmark numbers, follow the protocol in
 `configs/experiments.chartqa.example.json`; populate `data/raw/chartqa_subset.jsonl`
 and `data/chartqa_corpus` before running it.
 
+## Paper and Submission Assets
+
+The AAAI working draft lives in `paper/main.tex`. The current submission plan
+and claim boundaries are tracked in:
+
+- `docs/submission_readiness_aaai27.md`
+- `docs/aaai_readiness.md`
+- `docs/project_status.md`
+
+Refresh the paper-ready FinQA result tables after a manifest run:
+
+```powershell
+python scripts/build_paper_assets.py --eval-dir outputs/eval/finqa --output-dir paper/generated
+```
+
+The generated LaTeX table file is included from `paper/main.tex`, and the
+matching Markdown summary is written to `paper/generated/finqa_results_summary.md`.
+
 ## Local Retrieval MVP-1
 
 Build a local JSON index from files under `data/corpus`:
