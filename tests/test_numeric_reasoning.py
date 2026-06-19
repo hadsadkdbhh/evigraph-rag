@@ -637,6 +637,33 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "59.4%")
         self.assertIn("ratio_percent", answer.calculations[0])
 
+    def test_ratio_percent_represented_by_prose_amount_with_thousand_table(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="mixed",
+                node_type="text",
+                content=(
+                    "The total purchase consideration consisted of: ( in thousands ).\n"
+                    "|  | ( in thousands ) |\n"
+                    "| --- | --- |\n"
+                    "| cash paid | $ 11001 |\n"
+                    "| total purchase price | $ 15704 |\n"
+                    "Goodwill, representing the excess of the purchase price over net assets, "
+                    "was $3.4 million."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what percentage of the total purchase price is represented by goodwill?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "21.7%")
+        self.assertIn("ratio_percent", answer.calculations[0])
+
     def test_ratio_percent_rejects_same_row_numerator_and_denominator(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
@@ -781,6 +808,28 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "166.4%")
         self.assertIn("ratio_percent", answer.calculations[0])
 
+    def test_ratio_percent_from_that_was_prose_amounts(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "Restricted cash as of December 31, 2009, was $236.6 million, "
+                    "of which $93.1 million was proceeds from the issuance of tax-exempt bonds."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "as of december 31 2009 what was the percentage of restricted cash that was proceeds from the issuance of tax-exempt bonds?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "39.3%")
+        self.assertIn("ratio_percent", answer.calculations[0])
+
     def test_ratio_percent_mixes_table_numerator_and_prose_denominator(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
@@ -804,6 +853,32 @@ class NumericReasoningTest(unittest.TestCase):
         )
 
         self.assertEqual(answer.text, "60.3%")
+        self.assertIn("ratio_percent", answer.calculations[0])
+
+    def test_ratio_percent_mixes_prose_numerator_and_year_table_denominator(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="mixed",
+                node_type="text",
+                content=(
+                    "The annual long-term debt maturities and annual cash sinking fund requirements "
+                    "are as follows ( in thousands ).\n"
+                    "| 2003 | $ 1150786 |\n"
+                    "| --- | --- |\n"
+                    "| 2007 | $ 475288 |\n"
+                    "Not included are other sinking fund requirements of approximately $30.2 million annually."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what are the annual other sinking fund requirements as a percentage of annual long-term debt maturities and annual cash sinking fund requirements for debt outstanding in 2007?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "6.4%")
         self.assertIn("ratio_percent", answer.calculations[0])
 
     def test_row_average_from_entity_table(self) -> None:
@@ -899,6 +974,57 @@ class NumericReasoningTest(unittest.TestCase):
         )
 
         self.assertEqual(answer.text, "1.11")
+        self.assertIn("ratio_between_years", answer.calculations[0])
+
+    def test_ratio_between_year_label_rows(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| year | gallons hedged |\n"
+                    "| --- | --- |\n"
+                    "| 2017 | 12000000 |\n"
+                    "| 2018 | 3000000 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the ratio of the gallons hedged in 2017 to 2018",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "4")
+        self.assertIn("ratio_between_years", answer.calculations[0])
+
+    def test_ratio_after_year_to_year_uses_future_range_row(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| year | expected future pension benefits |\n"
+                    "| --- | --- |\n"
+                    "| 2008 | 1490 |\n"
+                    "| 2009 | 1540 |\n"
+                    "| 2010 | 1600 |\n"
+                    "| 2011 | 1660 |\n"
+                    "| years 2012 2013 2016 | 9530 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "at december 31 , 2006 what was the ratio of the expected future pension benefits after 2012 compared to 2008",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "6.4")
         self.assertIn("ratio_between_years", answer.calculations[0])
 
     def test_change_from_year_columns(self) -> None:

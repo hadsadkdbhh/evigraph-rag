@@ -34,9 +34,9 @@ records `source_doc` for oracle-document and source-rerank evaluation.
 
 | setting | full EviGraph exact match |
 | --- | ---: |
-| Oracle-doc | 49/100 |
-| Open BM25 | 44/100 |
-| BM25 + source rerank | 49/100 |
+| Oracle-doc | 54/100 |
+| Open BM25 | 47/100 |
+| BM25 + source rerank | 53/100 |
 
 These numbers are diagnostic smoke results, not final benchmark claims.
 
@@ -47,6 +47,7 @@ selection and unresolved percent-style operations under open retrieval. Open
 BM25 improved after retrieval-prior selection, ordered support extraction,
 less brittle risk wording, stricter row grounding, retrieval-rank anchoring,
 additional percent-change routing, year-label table fallback, and
-caption/header-aware row selection; it now slightly exceeds the current top-k
-smoke baseline, so the next push should focus on operation planning and row
-grounding for the retrieved evidence.
+caption/header-aware row selection, prose/table percent-of-total normalization,
+and ordinary ratio execution over year-value tables; it now slightly exceeds the
+current top-k smoke baseline, so the next push should focus on row/operation
+selection errors and unresolved percent operations in retrieved evidence.

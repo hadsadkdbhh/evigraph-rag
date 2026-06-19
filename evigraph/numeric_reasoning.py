@@ -66,6 +66,8 @@ class NumericReasoner:
         if (
             "what percentage" in query_lower
             or "what percent" in query_lower
+            or " percentage of " in query_lower
+            or " percent of " in query_lower
             or "what portion" in query_lower
             or "what share" in query_lower
             or " as a percentage of " in query_lower
@@ -777,10 +779,21 @@ class NumericReasoner:
         years = re.findall(r"\b(20\d{2})\b", query_lower)
         if len(years) < 2:
             return None
+        after_answer = self._ratio_after_year_to_year(query_lower, contexts)
+        if after_answer is not None:
+            return after_answer
         numerator_year, denominator_year = years[0], years[1]
         for node_id, text in contexts:
             table_values = self._table_year_values(query_lower, text, denominator_year, numerator_year)
             values = table_values or self._prose_year_values_for_query(query_lower, text, denominator_year, numerator_year)
+            if not values:
+                year_label_values, value_label = self._year_label_values_with_label(query_lower, text)
+                if numerator_year in year_label_values and denominator_year in year_label_values:
+                    values = {
+                        numerator_year: year_label_values[numerator_year],
+                        denominator_year: year_label_values[denominator_year],
+                        "__row_label__": value_label,
+                    }
             if not values:
                 continue
             numerator = values.get(numerator_year)
@@ -791,9 +804,58 @@ class NumericReasoner:
             if operation is None:
                 continue
             row_label = str(values.get("__row_label__", ""))
+            row_fragment = f" row={row_label}" if row_label else ""
             return NumericAnswer(
                 text=self._format_number(operation.value),
-                calculation=f"ratio_between_years row={row_label} years={numerator_year}/{denominator_year}: {operation.expression}",
+                calculation=f"ratio_between_years{row_fragment} years={numerator_year}/{denominator_year}: {operation.expression}",
+                cited_node_ids=[node_id],
+            )
+        return None
+
+    def _ratio_after_year_to_year(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        match = re.search(r"\bafter\s+(20\d{2})\b.*\bcompared\s+to\s+(20\d{2})\b", query_lower)
+        if not match:
+            match = re.search(r"\bafter\s+(20\d{2})\b.*\bto\s+(20\d{2})\b", query_lower)
+        if not match:
+            return None
+        cutoff_year, denominator_year = match.group(1), match.group(2)
+        cutoff = int(cutoff_year)
+        for node_id, text in contexts:
+            rows = self._label_value_rows(text)
+            denominator = None
+            numerator = None
+            future_values = []
+            for label, value in rows:
+                normalized_label = label.lower()
+                if re.fullmatch(denominator_year, normalized_label):
+                    denominator = value
+                if (
+                    "thereafter" in normalized_label
+                    or f"after {cutoff_year}" in normalized_label
+                    or ("years" in normalized_label and cutoff_year in normalized_label)
+                ):
+                    numerator = value
+                year_match = re.fullmatch(r"20\d{2}", normalized_label)
+                if year_match and int(year_match.group(0)) > cutoff:
+                    future_values.append(value)
+            if numerator is None and future_values:
+                summed = self.executor.sum(future_values)
+                numerator = summed.value if summed is not None else None
+            if numerator is None or denominator in {None, 0}:
+                continue
+            operation = self.executor.ratio(numerator, denominator)
+            if operation is None:
+                continue
+            return NumericAnswer(
+                text=self._format_number(operation.value),
+                calculation=(
+                    f"ratio_between_years cutoff={cutoff_year} denominator_year={denominator_year}: "
+                    f"{operation.expression}"
+                ),
                 cited_node_ids=[node_id],
             )
         return None
@@ -855,7 +917,7 @@ class NumericReasoner:
         for node_id, text in contexts:
             prose_answer = (
                 self._prose_ratio_percent(node_id, text, numerator_terms, denominator_terms)
-                if not query_year and " as a percentage of " in query_lower
+                if self._allow_prose_ratio(query_lower, query_year)
                 else None
             )
             if prose_answer is not None:
@@ -886,8 +948,20 @@ class NumericReasoner:
                 numerator_meta = {}
             if numerator is None:
                 numerator, numerator_meta = self._matching_value_with_label(rows, numerator_terms)
+            if numerator is None:
+                numerator, numerator_label = self._prose_amount_for_terms(text, numerator_terms)
+                numerator_meta = {"row_label": numerator_label, "source": "prose"} if numerator_label else {}
             if numerator is None or denominator in {None, 0}:
                 continue
+            numerator_meta.setdefault("source", "table" if numerator_meta.get("row_label") else "")
+            denominator_meta.setdefault("source", "table" if denominator_meta.get("row_label") else "")
+            numerator, denominator = self._normalize_mixed_table_prose_scale(
+                text,
+                numerator,
+                denominator,
+                numerator_meta,
+                denominator_meta,
+            )
             if numerator_meta.get("row_label") and numerator_meta.get("row_label") == denominator_meta.get("row_label"):
                 continue
 
@@ -942,6 +1016,15 @@ class NumericReasoner:
         headers, rows = table
         year_index = self._header_year_index(headers, year)
         if year_index is None:
+            if not allow_partial:
+                return None, {}
+            if self._table_context_matches_terms(text, terms):
+                for row in rows:
+                    if not row or row[0].strip() != year or len(row) < 2:
+                        continue
+                    value = self._first_number(row[1])
+                    if value is not None:
+                        return value, {"row_label": row[0]}
             return None, {}
         for row in rows:
             if year_index >= len(row):
@@ -958,6 +1041,14 @@ class NumericReasoner:
             if any(term in label for term in terms):
                 return self._first_number(row[year_index]), {"row_label": row[0]}
         return None, {}
+
+    def _table_context_matches_terms(self, text: str, terms: list[str]) -> bool:
+        if not terms:
+            return False
+        text_terms = set(re.findall(r"[a-z0-9]+", text.lower()))
+        matched = [term for term in terms if term in text_terms]
+        minimum = 2 if len(terms) >= 2 else 1
+        return len(matched) >= minimum
 
     def _prose_value_for_terms_year(self, text: str, terms: list[str], year: str) -> float | None:
         if not terms:
@@ -982,15 +1073,29 @@ class NumericReasoner:
     ) -> NumericAnswer | None:
         rows = self._label_value_rows(text)
         numerator, numerator_meta = self._matching_value_with_label(rows, numerator_terms)
-        denominator, denominator_label = self._prose_amount_for_terms(text, denominator_terms)
-        denominator_meta = {"row_label": denominator_label} if denominator_label else {}
+        denominator, denominator_meta = self._matching_value_with_label(rows, denominator_terms)
         if denominator is None:
-            denominator, denominator_meta = self._matching_value_with_label(rows, denominator_terms)
+            denominator, denominator_label = self._prose_amount_for_terms(text, denominator_terms)
+            denominator_meta = {"row_label": denominator_label, "source": "prose"} if denominator_label else {}
         if numerator is None:
             numerator, numerator_label = self._prose_amount_for_terms(text, numerator_terms)
-            numerator_meta = {"row_label": numerator_label} if numerator_label else {}
+            numerator_meta = {"row_label": numerator_label, "source": "prose"} if numerator_label else {}
         if numerator is None or denominator in {None, 0}:
             return None
+        if numerator_meta.get("row_label") and numerator_meta.get("row_label") == denominator_meta.get("row_label"):
+            prose_denominator, denominator_label = self._prose_amount_for_terms(text, denominator_terms)
+            if prose_denominator is not None:
+                denominator = prose_denominator
+                denominator_meta = {"row_label": denominator_label, "source": "prose"} if denominator_label else {}
+        numerator_meta.setdefault("source", "table" if numerator_meta.get("row_label") else "")
+        denominator_meta.setdefault("source", "table" if denominator_meta.get("row_label") else "")
+        numerator, denominator = self._normalize_mixed_table_prose_scale(
+            text,
+            numerator,
+            denominator,
+            numerator_meta,
+            denominator_meta,
+        )
         if numerator_meta.get("row_label") and numerator_meta.get("row_label") == denominator_meta.get("row_label"):
             return None
         operation = self.executor.ratio(numerator, denominator)
@@ -1007,6 +1112,38 @@ class NumericReasoner:
             ),
             cited_node_ids=[node_id],
         )
+
+    def _allow_prose_ratio(self, query_lower: str, query_year: str | None) -> bool:
+        direct_prose_ratio = (
+            " that was " in query_lower
+            or " that were " in query_lower
+            or " which was " in query_lower
+            or " which were " in query_lower
+            or " of which " in query_lower
+            or " represented by " in query_lower
+        )
+        if direct_prose_ratio:
+            return True
+        return query_year is None and " as a percentage of " in query_lower
+
+    def _normalize_mixed_table_prose_scale(
+        self,
+        text: str,
+        numerator: float,
+        denominator: float,
+        numerator_meta: dict[str, str],
+        denominator_meta: dict[str, str],
+    ) -> tuple[float, float]:
+        if not self._table_is_in_thousands(text):
+            return numerator, denominator
+        if numerator_meta.get("source") == "table" and denominator_meta.get("source") == "prose":
+            return numerator / 1000.0, denominator
+        if denominator_meta.get("source") == "table" and numerator_meta.get("source") == "prose":
+            return numerator, denominator / 1000.0
+        return numerator, denominator
+
+    def _table_is_in_thousands(self, text: str) -> bool:
+        return bool(re.search(r"\(\s*in\s+thousands\s*\)|\bin\s+thousands\b", text, flags=re.IGNORECASE))
 
     def _prose_amount_for_terms(self, text: str, terms: list[str]) -> tuple[float | None, str]:
         if not terms:
@@ -1127,6 +1264,34 @@ class NumericReasoner:
                 values.setdefault(label, value)
         return values
 
+    def _year_label_values_with_label(self, query_lower: str, text: str) -> tuple[dict[str, float], str]:
+        table = self._markdown_table(text)
+        if not table:
+            return self._year_label_values(text), ""
+        headers, rows = table
+        query_terms = set(self._keywords(query_lower))
+        best: tuple[int, int, int, str, dict[str, float]] | None = None
+        for column_index, header in enumerate(headers[1:], start=1):
+            values = {}
+            for row in rows:
+                if len(row) <= column_index or not re.fullmatch(r"20\d{2}", row[0].strip()):
+                    continue
+                value = self._first_number(row[column_index])
+                if value is not None:
+                    values[row[0].strip()] = value
+            if len(values) < 2:
+                continue
+            label = header.lower()
+            label_terms = set(self._keywords(label))
+            score = len(query_terms & label_terms)
+            candidate = (score, len(values), -column_index, label, values)
+            if best is None or candidate > best:
+                best = candidate
+        if best is None:
+            return self._year_label_values(text), ""
+        score, _count, _column_index, label, values = best
+        return values, label if score else ""
+
     def _label_value_rows(self, text: str) -> list[tuple[str, float]]:
         rows = []
         for line in text.splitlines():
@@ -1191,7 +1356,7 @@ class NumericReasoner:
         else:
             return []
         tail = re.split(
-            r"\b(was|were|is|are|comes from|represented by|allocated to|related to|due to|due after)\b",
+            r"\b(that\s+was|that\s+were|which\s+was|which\s+were|was|were|is|are|comes from|represented by|allocated to|related to|due to|due after)\b",
             tail,
             maxsplit=1,
         )[0]
@@ -1206,6 +1371,7 @@ class NumericReasoner:
         patterns = [
             r"what\s+(?:are|is|was|were)\s+(.+?)\s+as\s+a\s+percentage\s+of",
             r"payments?\s+for\s+(.+?)\s+as\s+a\s+percentage\s+of",
+            r"\b(?:that|which)\s+(?:was|were|is|are)\s+(.+?)(?:\s+in\s+20\d{2})?\??$",
             r"represented by\s+(.+?)\??$",
             r"allocated to\s+(.+?)(?:\s+in\s+20\d{2})?\??$",
             r"comes from\s+(.+?)\??$",
