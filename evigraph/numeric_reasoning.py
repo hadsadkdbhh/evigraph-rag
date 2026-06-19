@@ -46,6 +46,13 @@ class NumericReasoner:
             if answer:
                 return answer
             if not is_roi_query:
+                if len(re.findall(r"\b(20\d{2})\b", query_lower)) < 2:
+                    answer = self._percent_delta_phrase(query_lower, contexts)
+                    if answer:
+                        return answer
+                    answer = self._percent_change_from_to_phrase(query_lower, contexts)
+                    if answer:
+                        return answer
                 answer = self._percent_change(query_lower, contexts)
                 if answer:
                     return answer
@@ -381,7 +388,9 @@ class NumericReasoner:
                 cited_node_ids=[node_id],
             )
         for node_id, text in contexts:
-            values = self._prose_year_values_for_query(query_lower, text, base_year, target_year) or self._year_values(text)
+            values = self._prose_year_values_for_query(query_lower, text, base_year, target_year)
+            if not values:
+                continue
             if base_year not in values or target_year not in values or values[base_year] == 0:
                 continue
             operation = self.executor.percent_change(values[target_year], values[base_year])
@@ -393,7 +402,51 @@ class NumericReasoner:
                 calculation=f"percent_change: {operation.expression}",
                 cited_node_ids=[node_id],
             )
+        fallback = self._query_scored_year_values(query_lower, contexts, base_year, target_year)
+        if fallback:
+            node_id, values = fallback
+            operation = self.executor.percent_change(values[target_year], values[base_year])
+            if operation is None:
+                return None
+            result = abs(operation.value) if "total debt" in query_lower else operation.value
+            row_label = str(values.get("__row_label__", "year_values"))
+            return NumericAnswer(
+                text=f"{result:.1f}%",
+                calculation=f"percent_change row={row_label}: {operation.expression}",
+                cited_node_ids=[node_id],
+            )
         return None
+
+    def _query_scored_year_values(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+        base_year: str,
+        target_year: str,
+    ) -> tuple[str, dict[str, float]] | None:
+        query_terms = set(self._keywords(query_lower))
+        if not query_terms:
+            return None
+        best: tuple[int, int, str, dict[str, float], list[str]] | None = None
+        min_score = 2 if len(query_terms) >= 2 else 1
+        for context_index, (node_id, text) in enumerate(contexts):
+            text_terms = set(re.findall(r"[a-z0-9]+", text.lower()))
+            matched_terms = [term for term in self._keywords(query_lower) if term in text_terms]
+            score = len(matched_terms)
+            if score < min_score:
+                continue
+            values = self._year_label_values(text)
+            if base_year not in values or target_year not in values or values[base_year] == 0:
+                continue
+            candidate = (score, -context_index, node_id, values, matched_terms)
+            if best is None or candidate > best:
+                best = candidate
+        if best is None:
+            return None
+        _score, _order, node_id, values, matched_terms = best
+        values = dict(values)
+        values["__row_label__"] = " ".join(matched_terms[:6])
+        return node_id, values
 
     def _percent_change_year_labeled_rows(
         self,
@@ -464,6 +517,8 @@ class NumericReasoner:
             target_index, target_year = year_columns[0]
             base_index, base_year = year_columns[1]
             best_row = self._best_query_row(query_lower, headers, rows)
+            if not best_row:
+                best_row = self._best_query_row_with_context(query_lower, headers, rows, text)
             if not best_row or max(base_index, target_index) >= len(best_row):
                 continue
             base_value = self._first_number(best_row[base_index])
@@ -768,6 +823,8 @@ class NumericReasoner:
 
         best_row = self._best_query_row(query_lower, headers, rows)
         if not best_row:
+            best_row = self._best_query_row_with_context(query_lower, headers, rows, text)
+        if not best_row:
             return None
         if max(base_index, target_index) >= len(best_row):
             return None
@@ -1063,6 +1120,13 @@ class NumericReasoner:
             values.setdefault(year, self._to_float(value))
         return values
 
+    def _year_label_values(self, text: str) -> dict[str, float]:
+        values = {}
+        for label, value in self._label_value_rows(text):
+            if re.fullmatch(r"20\d{2}", label):
+                values.setdefault(label, value)
+        return values
+
     def _label_value_rows(self, text: str) -> list[tuple[str, float]]:
         rows = []
         for line in text.splitlines():
@@ -1304,6 +1368,35 @@ class NumericReasoner:
                 best_row = row
         if best_score < min_score:
             return None
+        return best_row
+
+    def _best_query_row_with_context(
+        self,
+        query_lower: str,
+        headers: list[str],
+        rows: list[list[str]],
+        text: str,
+    ) -> list[str] | None:
+        query_terms = set(self._keywords(query_lower))
+        if len(query_terms) < 2:
+            return None
+        context_text = " ".join(headers) + " " + text
+        context_terms = set(re.findall(r"[a-z0-9]+", context_text.lower()))
+        best_row = None
+        best_score = 0
+        for row in rows:
+            if not row:
+                continue
+            label_terms = set(re.findall(r"[a-z0-9]+", row[0].lower()))
+            row_score = len(query_terms & label_terms)
+            if row_score == 0:
+                continue
+            missing_terms = query_terms - label_terms
+            context_score = len(missing_terms & context_terms)
+            score = row_score * 10 + context_score
+            if row_score >= 1 and context_score >= 1 and score > best_score:
+                best_score = score
+                best_row = row
         return best_row
 
     def _column_index(self, headers: list[str], terms: list[str]) -> int | None:

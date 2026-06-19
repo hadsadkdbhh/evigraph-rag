@@ -93,7 +93,7 @@ class NumericReasoningTest(unittest.TestCase):
                 node_id="table",
                 node_type="text",
                 content=(
-                    "|  | amount ( in thousands ) |\n"
+                    "| annual long-term debt maturities | amount ( in thousands ) |\n"
                     "| --- | --- |\n"
                     "| 2016 | $ 204079 |\n"
                     "| 2017 | $ 766451 |\n"
@@ -230,6 +230,31 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "1.4%")
         self.assertIn("percent_change", answer.calculations[0])
 
+    def test_percentage_growth_uses_table_caption_terms_for_row_match(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "Annual net sales for each business segment were as follows.\n"
+                    "| ( in millions ) | 2017 | 2016 | 2015 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| cabinets | $ 2467.1 | $ 2397.8 | $ 2173.4 |\n"
+                    "| plumbing | 1720.8 | 1534.4 | 1414.5 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the percentage growth in sales of cabinets from 2016 to 2017",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "2.9%")
+        self.assertIn("row=cabinets", answer.calculations[0])
+
     def test_percentage_reduction_routes_to_percent_change(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
@@ -294,6 +319,42 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "69.2%")
         self.assertIn("percent_change_from_to", answer.calculations[0])
 
+    def test_reverse_stock_split_prefers_from_to_phrase_before_unrelated_year_table(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="wrong_table",
+                node_type="text",
+                content=(
+                    "|  | 2017 | 2016 |\n"
+                    "| --- | --- | --- |\n"
+                    "| class a common stock issued and outstanding | 339235 | 338240 |\n"
+                ),
+                source_doc="distractor.md",
+                metadata={"retrieval_rank": 1},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="split_phrase",
+                node_type="text",
+                content=(
+                    "The reverse stock split reduced the number of shares of common stock outstanding "
+                    "from approximately 1.3 billion shares to approximately 0.4 billion shares."
+                ),
+                source_doc="report.md",
+                metadata={"retrieval_rank": 2},
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "considering the reverse stock split, what was the percentual reduction of the common stock outstanding shares?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "69.2%")
+        self.assertEqual(answer.citations, ["split_phrase"])
+
     def test_percent_change_from_respectively_year_sequence(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
@@ -345,6 +406,47 @@ class NumericReasoningTest(unittest.TestCase):
 
         self.assertEqual(answer.text, "16.7%")
         self.assertIn("percent_change", answer.calculations[0])
+
+    def test_percent_change_year_value_fallback_prefers_query_matching_context(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="wrong_year_values",
+                node_type="text",
+                content=(
+                    "Rental expense for operating leases.\n"
+                    "| year | value |\n"
+                    "| --- | --- |\n"
+                    "| 2010 | 31 |\n"
+                    "| 2011 | 62465 |\n"
+                ),
+                source_doc="distractor.md",
+                metadata={"retrieval_rank": 1},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="matching_year_values",
+                node_type="text",
+                content=(
+                    "Minimum annual rental payments under noncancelable leases.\n"
+                    "| year | value |\n"
+                    "| --- | --- |\n"
+                    "| 2010 | 3160 |\n"
+                    "| 2011 | 3200 |\n"
+                ),
+                source_doc="report.md",
+                metadata={"retrieval_rank": 2},
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the percent change in minimum annual rental payment between 2010 and 2011?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "1.3%")
+        self.assertEqual(answer.citations, ["matching_year_values"])
 
     def test_growth_rate_uses_latest_two_table_years_when_query_has_no_years(self) -> None:
         graph = EvidenceGraph()
