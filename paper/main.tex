@@ -105,28 +105,14 @@ This suite is used for mechanism debugging, not public benchmark claims.
 We compare top-k, utility-only, EviGraph without risk, EviGraph without verifier, EviGraph without support extraction, and full EviGraph.
 TODO: add stronger retrieve-then-read and dense retrieval baselines.
 
-\begin{table}[t]
-\centering
-\small
-\begin{tabular}{lrrrrrr}
-\toprule
-Setting & Method & Acc. & Arith. & OpSem & Sem. & Tokens \\
-\midrule
-Oracle-doc & Top-k & 0.37 & 0.90 & 0.74 & 0.55 & 1433.58 \\
-Oracle-doc & Full EviGraph & 0.37 & 0.92 & 0.73 & 0.69 & 1081.72 \\
-Open BM25 & Full EviGraph & 0.19 & 0.95 & 0.63 & 0.59 & 790.78 \\
-Source rerank & Full EviGraph & 0.33 & 0.95 & 0.73 & 0.69 & 1231.17 \\
-\bottomrule
-\end{tabular}
-\caption{Current FinQA 100-example diagnostic results from \texttt{outputs/eval/finqa/summary.md}. Accuracy is numeric exact match; Arith., OpSem, and Sem. are verifier diagnostics for arithmetic support, operation-semantics checking, and heuristic semantic grounding. These numbers expose the current table-operation bottleneck and should not yet be presented as final benchmark performance.}
-\label{tab:main-results}
-\end{table}
+\input{generated/finqa_results_tables}
 
 \section{Failure Analysis}
 
 The manifest runner emits a failure report that groups unresolved examples by error category.
 Current categories include missing numeric answer, wrong row/operation, additive lookup failures, ratio failures, and percent-operation failures.
-For oracle-doc full EviGraph, the current 100-example failure report has 63 failures: 22 percent-operation failures, 21 other missing numeric answers, 7 wrong operation or row selections, 5 ratio failures, 4 additive-or-lookup failures, and 4 unsupported textual predictions.
+Table~\ref{tab:finqa-failure-categories} reports the current full EviGraph failure profile for the 100-example FinQA diagnostic subset.
+The largest remaining categories are wrong row/operation selection and unresolved numeric-answer extraction, which are the next engineering targets before scaling to larger benchmark runs.
 
 \section{Conclusion}
 
