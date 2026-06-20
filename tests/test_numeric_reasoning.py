@@ -1539,6 +1539,50 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "35.1%")
         self.assertIn("numerator_column=payments due by period ( 1 ) thereafter", answer.calculations[0])
 
+    def test_percent_of_total_due_after_uses_vertical_schedule_rows_first(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="correct",
+                node_type="text",
+                content=(
+                    "|  | ( in thousands ) |\n"
+                    "| --- | --- |\n"
+                    "| 2010 | $ 6951 |\n"
+                    "| 2011 | 5942 |\n"
+                    "| 2012 | 3659 |\n"
+                    "| 2013 | 1486 |\n"
+                    "| 2014 | 1486 |\n"
+                    "| thereafter | 25048 |\n"
+                    "| total | $ 44572 |\n"
+                ),
+                source_doc="correct.md",
+                metadata={"retrieval_rank": 1},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="distractor",
+                node_type="text",
+                content=(
+                    "| ( in millions ) | payments due by period ( 1 ) total | payments due by period ( 1 ) thereafter |\n"
+                    "| --- | --- | --- |\n"
+                    "| purchase obligations | 1035 | 539 |\n"
+                ),
+                source_doc="distractor.md",
+                metadata={"retrieval_rank": 2},
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what percentage of total purchase commitments are due after 2014?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "56.2%")
+        self.assertEqual(answer.citations, ["correct"])
+        self.assertIn("row=thereafter", answer.calculations[0])
+
     def test_change_from_year_columns(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

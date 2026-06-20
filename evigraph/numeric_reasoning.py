@@ -1389,6 +1389,16 @@ class NumericReasoner:
         denominator_terms: list[str],
         query_year: str | None,
     ) -> NumericAnswer | None:
+        vertical_schedule_answer = self._ratio_percent_from_vertical_schedule_rows(
+            node_id,
+            query_lower,
+            headers,
+            rows,
+            denominator_terms,
+            query_year,
+        )
+        if vertical_schedule_answer is not None:
+            return vertical_schedule_answer
         if len(headers) <= 2:
             return None
         same_row_answer = self._ratio_percent_from_same_row_columns(
@@ -1440,6 +1450,90 @@ class NumericReasoner:
             ),
             cited_node_ids=[node_id],
         )
+
+    def _ratio_percent_from_vertical_schedule_rows(
+        self,
+        node_id: str,
+        query_lower: str,
+        headers: list[str],
+        rows: list[list[str]],
+        denominator_terms: list[str],
+        query_year: str | None,
+    ) -> NumericAnswer | None:
+        if not self._same_row_column_ratio_query(query_lower):
+            return None
+        if not any("total" in term for term in denominator_terms) and "total" not in query_lower:
+            return None
+        value_column = self._vertical_schedule_value_column(headers)
+        if value_column is None:
+            return None
+        numerator_label = self._vertical_schedule_numerator_label(query_lower, query_year)
+        if numerator_label is None:
+            return None
+        numerator_row = self._row_by_label(rows, [numerator_label])
+        denominator_row = self._row_by_label(rows, ["total"])
+        if numerator_row is None or denominator_row is None:
+            return None
+        if value_column >= len(numerator_row) or value_column >= len(denominator_row):
+            return None
+        numerator = self._first_number(numerator_row[value_column])
+        denominator = self._first_number(denominator_row[value_column])
+        if numerator is None or denominator in {None, 0}:
+            return None
+        operation = self.executor.ratio(numerator, denominator)
+        if operation is None:
+            return None
+        result = operation.value * 100.0
+        return NumericAnswer(
+            text=self._format_percent(result),
+            calculation=(
+                f"ratio_percent row={numerator_row[0].strip().lower()} "
+                f"denominator_row={denominator_row[0].strip().lower()} "
+                f"column={headers[value_column].strip().lower()}: "
+                f"{numerator:g} / {denominator:g} * 100 = {result:.1f}%"
+            ),
+            cited_node_ids=[node_id],
+        )
+
+    def _vertical_schedule_value_column(self, headers: list[str]) -> int | None:
+        if len(headers) < 2:
+            return None
+        best: tuple[int, int] | None = None
+        for index, header in enumerate(headers[1:], start=1):
+            label = header.lower()
+            score = 1
+            if "million" in label or "thousand" in label or "$" in label:
+                score += 3
+            if re.search(r"\b(?:amount|value|total)\b", label):
+                score += 1
+            candidate = (score, -index)
+            if best is None or candidate > best:
+                best = candidate
+        if best is None:
+            return None
+        return -best[1]
+
+    def _vertical_schedule_numerator_label(self, query_lower: str, query_year: str | None) -> str | None:
+        if "due after" in query_lower or "thereafter" in query_lower:
+            return "thereafter"
+        year_of_match = re.search(r"\byear\s+of\s+(20\d{2})\b", query_lower)
+        if year_of_match:
+            return year_of_match.group(1)
+        return query_year
+
+    def _row_by_label(self, rows: list[list[str]], terms: list[str]) -> list[str] | None:
+        best: tuple[int, int, list[str]] | None = None
+        for index, row in enumerate(rows):
+            if not row:
+                continue
+            label = row[0].strip().lower()
+            if not all(term in label for term in terms):
+                continue
+            score = sum(len(term) for term in terms)
+            candidate = (score, -index, row)
+            if best is None or candidate > best:
+                best = candidate
+        return best[2] if best else None
 
     def _ratio_percent_from_same_row_columns(
         self,
