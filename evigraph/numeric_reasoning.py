@@ -1391,6 +1391,16 @@ class NumericReasoner:
     ) -> NumericAnswer | None:
         if len(headers) <= 2:
             return None
+        same_row_answer = self._ratio_percent_from_same_row_columns(
+            node_id,
+            query_lower,
+            headers,
+            rows,
+            denominator_terms,
+            query_year,
+        )
+        if same_row_answer is not None:
+            return same_row_answer
         column_index = self._ratio_value_column(headers, query_lower, denominator_terms, query_year)
         if column_index is None:
             return None
@@ -1430,6 +1440,97 @@ class NumericReasoner:
             ),
             cited_node_ids=[node_id],
         )
+
+    def _ratio_percent_from_same_row_columns(
+        self,
+        node_id: str,
+        query_lower: str,
+        headers: list[str],
+        rows: list[list[str]],
+        denominator_terms: list[str],
+        query_year: str | None,
+    ) -> NumericAnswer | None:
+        if not self._same_row_column_ratio_query(query_lower):
+            return None
+        row_terms = [term for term in denominator_terms if term != "total"]
+        if not row_terms:
+            return None
+        row = self._ratio_table_row(rows, row_terms, prefer_total=False, query_lower=query_lower)
+        if row is None:
+            return None
+        numerator_index = self._same_row_ratio_numerator_column(headers, query_lower, query_year)
+        denominator_index = self._same_row_ratio_denominator_column(headers)
+        if numerator_index is None or denominator_index is None or numerator_index == denominator_index:
+            return None
+        if numerator_index >= len(row) or denominator_index >= len(row):
+            return None
+        numerator = self._first_number(row[numerator_index])
+        denominator = self._first_number(row[denominator_index])
+        if numerator is None or denominator in {None, 0}:
+            return None
+        operation = self.executor.ratio(numerator, denominator)
+        if operation is None:
+            return None
+        result = operation.value * 100.0
+        return NumericAnswer(
+            text=self._format_percent(result),
+            calculation=(
+                f"ratio_percent row={row[0].strip().lower()} "
+                f"numerator_column={headers[numerator_index].strip().lower()} "
+                f"denominator_column={headers[denominator_index].strip().lower()}: "
+                f"{numerator:g} / {denominator:g} * 100 = {result:.1f}%"
+            ),
+            cited_node_ids=[node_id],
+        )
+
+    def _same_row_column_ratio_query(self, query_lower: str) -> bool:
+        if "total" not in query_lower:
+            return False
+        column_cues = [
+            "due after",
+            "due in",
+            "due for",
+            "year of",
+            "payments due",
+            "matur",
+            "thereafter",
+        ]
+        return any(cue in query_lower for cue in column_cues)
+
+    def _same_row_ratio_numerator_column(
+        self,
+        headers: list[str],
+        query_lower: str,
+        query_year: str | None,
+    ) -> int | None:
+        if "due after" in query_lower or "thereafter" in query_lower:
+            thereafter_index = self._column_with_terms(headers, ["thereafter"])
+            if thereafter_index is not None:
+                return thereafter_index
+        year_of_match = re.search(r"\byear\s+of\s+(20\d{2})\b", query_lower)
+        if year_of_match:
+            return self._header_year_index(headers, year_of_match.group(1))
+        if query_year:
+            return self._header_year_index(headers, query_year)
+        return None
+
+    def _same_row_ratio_denominator_column(self, headers: list[str]) -> int | None:
+        return self._column_with_terms(headers, ["total"])
+
+    def _column_with_terms(self, headers: list[str], terms: list[str]) -> int | None:
+        best: tuple[int, int] | None = None
+        for index, header in enumerate(headers):
+            label = header.lower()
+            matched = [term for term in terms if term in label]
+            if not matched:
+                continue
+            score = sum(len(term) for term in matched)
+            candidate = (score, -index)
+            if best is None or candidate > best:
+                best = candidate
+        if best is None:
+            return None
+        return -best[1]
 
     def _ratio_value_column(
         self,

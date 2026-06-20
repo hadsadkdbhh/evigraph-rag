@@ -1513,6 +1513,32 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "6.4")
         self.assertIn("ratio_between_years", answer.calculations[0])
 
+    def test_percent_of_total_due_after_uses_same_row_columns(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| ( in millions ) | payments due by period ( 1 ) total | payments due by period ( 1 ) 2007 | payments due by period ( 1 ) 2008 | payments due by period ( 1 ) 2009 | payments due by period ( 1 ) 2010 | payments due by period ( 1 ) 2011 | payments due by period ( 1 ) thereafter |\n"
+                    "| --- | --- | --- | --- | --- | --- | --- | --- |\n"
+                    "| long-term debt obligations | $ 4134 | $ 1340 | $ 198 | $ 4 | $ 534 | $ 607 | $ 1451 |\n"
+                    "| lease obligations | 2328 | 351 | 281 | 209 | 178 | 158 | 1151 |\n"
+                    "| purchase obligations | 1035 | 326 | 120 | 26 | 12 | 12 | 539 |\n"
+                    "| total contractual obligations | $ 7497 | $ 2017 | $ 599 | $ 239 | $ 724 | $ 777 | $ 3141 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the percent of the total long-term debt obligations that was due after 2011",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "35.1%")
+        self.assertIn("numerator_column=payments due by period ( 1 ) thereafter", answer.calculations[0])
+
     def test_change_from_year_columns(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

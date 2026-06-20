@@ -34,7 +34,7 @@ records `source_doc` for oracle-document and source-rerank evaluation.
 
 | setting | full EviGraph exact match |
 | --- | ---: |
-| Oracle-doc | 62/100 |
+| Oracle-doc | 63/100 |
 | Open BM25 | 54/100 |
 | Open hybrid | 53/100 |
 | BM25 + source rerank | 63/100 |
@@ -58,7 +58,9 @@ Y between years." The current numeric path now also scores year-label
 percent-change candidates across contexts, which helps fiscal schedules such as
 estimated amortization expense, and combines same-source table/prose evidence for
 total-denominator ratios such as segment operating income over total operating
-income. The deterministic open hybrid reranker adds table, year, number, and
+income. The current numeric path also supports same-row column ratios for
+maturity/payment schedules, such as thereafter-over-total obligations. The
+deterministic open hybrid reranker adds table, year, number, and
 operation overlap features, but it remains slightly below open BM25 on exact
 match while improving some verifier diagnostics. This indicates that the next
 push should focus on row/operation intent and operand selection inside retrieved
@@ -66,7 +68,7 @@ evidence rather than simple lexical reranking.
 
 The row/operation diagnostic now splits wrong numeric full EviGraph answers into
 multi-label causes. On the current 100-example FinQA smoke subset, open hybrid
-has 13 wrong numeric operation/row cases: 3 wrong-numerator signals, 2
+has 14 wrong numeric operation/row cases: 3 wrong-numerator signals, 3
 wrong-denominator signals, 2 wrong-year-or-period signals, 2 wrong-row-label
 signals, 0 wrong-operation-type signals, and 6 ambiguous supported wrong-number
 cases. The highest-yield next engineering targets are numerator/denominator
