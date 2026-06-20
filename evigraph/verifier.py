@@ -203,6 +203,14 @@ def _is_year(value: float) -> bool:
 
 def _expected_operation(query: str) -> set[str] | None:
     query_lower = query.lower()
+    if (
+        "difference" in query_lower
+        and "as a percentage of" in query_lower
+        and len(re.findall(r"\b20\d{2}\b", query_lower)) >= 2
+    ):
+        return {"percentage_point_row_difference", "row_year_difference", "difference"}
+    if "percent higher" in query_lower or "percentage higher" in query_lower:
+        return {"relative_difference_between_rows", "percent_change", "percent_delta"}
     if any(
         phrase in query_lower
         for phrase in [
@@ -260,6 +268,8 @@ def _calculation_operation(calculation: str) -> str | None:
         "row_values_average": "row_values_average",
         "year_range_average": "year_range_average",
         "row_year_difference": "row_year_difference",
+        "percentage_point_row_difference": "percentage_point_row_difference",
+        "relative_difference_between_rows": "relative_difference_between_rows",
         "pretax_aftertax_difference": "pretax_aftertax_difference",
         "difference": "difference",
         "repeated_increase_projection": "difference",

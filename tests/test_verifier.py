@@ -160,6 +160,42 @@ class ClaimVerifierTest(unittest.TestCase):
         self.assertTrue(verification["operation_semantics_checked"])
         self.assertTrue(verification["answer_supported"])
 
+    def test_operation_semantics_accepts_percent_higher_between_rows(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(EvidenceNode("table", "text", "foreign exchange products 1.8 interest-rate products 1.25 44.0", source_doc="report.md"))
+        answer = Answer(
+            text="44%",
+            citations=["table"],
+            calculations=[
+                "relative_difference_between_rows row=foreign exchange products denominator_row=interest-rate products: (1.8 - 1.25) / 1.25 * 100 = 44.0%"
+            ],
+        )
+
+        verification = ClaimVerifier().verify(
+            "what percent higher is the average var for foreign exchange products than that of interest rate products?",
+            answer,
+            graph,
+        )
+
+        self.assertTrue(verification["operation_semantics_checked"])
+
+    def test_operation_semantics_accepts_percentage_point_difference(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(EvidenceNode("table", "text", "americas 2003 51.2 2001 47.4 3.8", source_doc="report.md"))
+        answer = Answer(
+            text="3.8%",
+            citations=["table"],
+            calculations=["percentage_point_row_difference row=americas: 51.2 - 47.4 = 3.8"],
+        )
+
+        verification = ClaimVerifier().verify(
+            "what was the difference in operating profit for the americas as a percentage of net sales between 2001 and 2003?",
+            answer,
+            graph,
+        )
+
+        self.assertTrue(verification["operation_semantics_checked"])
+
 
 if __name__ == "__main__":
     unittest.main()

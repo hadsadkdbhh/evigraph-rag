@@ -10,8 +10,8 @@ This file tracks what the current repository can and cannot support as paper evi
 - The current smoke tests verify misleading-evidence rejection, table parsing, calculation triggering, and claim verification on the mock setup.
 - The synthetic stress suite shows that risk-aware evidence selection can reject hand-authored forecast, draft, and press distractors while simple top-k and utility-only baselines accept noisy evidence.
 - A 100-example real FinQA validation subset is checked in with deterministic sampling metadata and a retrieval corpus built from source pre-text, tables, and post-text.
-- On the checked-in 100-example FinQA smoke subset, the current oracle-document setting reaches 58/100 numeric exact-match accuracy with transparent calculations for ratio, percent-of-total, percent-change, row-average, row/column lookup, year-range-average, ROI, prose average, cross-chunk ratio, cross-chunk continuation-table stitching, and difference cases.
-- Open BM25 reaches 50/100, deterministic open hybrid reaches 49/100, and source-rerank reaches 59/100 for full EviGraph on the same subset; these are diagnostic baselines, not final claims.
+- On the checked-in 100-example FinQA smoke subset, the current oracle-document setting reaches 60/100 numeric exact-match accuracy with transparent calculations for ratio, percent-of-total, percent-change, row-average, row/column lookup, year-range-average, ROI, prose average, cross-chunk ratio, cross-chunk continuation-table stitching, relative row difference, percentage-point row difference, and difference cases.
+- Open BM25 reaches 52/100, deterministic open hybrid reaches 51/100, and source-rerank reaches 61/100 for full EviGraph on the same subset; these are diagnostic baselines, not final claims.
 - The experiment CSVs now separate exact match from verifier diagnostics: arithmetic support, calculation-result support, operation-semantics checking, row-operation grounding, semantic grounding, and final answer support.
 - The manifest runner writes a failure report for batch experiments, grouping unresolved examples by error category for paper-oriented failure analysis.
 - The row/operation diagnostic splits wrong numeric answers into wrong numerator, wrong denominator, wrong year or period, wrong row label, wrong operation type, and ambiguous supported wrong-number cases.
@@ -35,7 +35,7 @@ This file tracks what the current repository can and cannot support as paper evi
 - Add failure analysis and qualitative case studies from real examples.
 - Keep the MVP0 acceptance gate green from a clean checkout.
 - Replace hand-authored stress distractors with real retrieval confounders from benchmark corpora.
-- Improve real-table numerical reasoning; current diagnostics point first to operand selection for ratio/percent-change calculations and then ambiguous supported wrong-number cases.
+- Improve real-table numerical reasoning; current diagnostics point first to numerator/denominator selection for ratio and percent-change calculations, period intent disambiguation, and then ambiguous supported wrong-number cases.
 - Separate oracle-document reasoning from open-document retrieval in future benchmark tables.
 - Improve table operation coverage before using FinQA results as a positive performance claim; current top-k remains a close smoke baseline rather than a solved comparator.
 

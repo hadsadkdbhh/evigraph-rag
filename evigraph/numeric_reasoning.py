@@ -63,6 +63,20 @@ class NumericReasoner:
                 if answer:
                     return answer
 
+        if "percent higher" in query_lower or "percentage higher" in query_lower:
+            answer = self._percent_higher_between_rows(query_lower, contexts)
+            if answer:
+                return answer
+
+        if (
+            "difference" in query_lower
+            and "as a percentage of" in query_lower
+            and len(re.findall(r"\b(20\d{2})\b", query_lower)) >= 2
+        ):
+            answer = self._percentage_point_row_difference(query_lower, contexts)
+            if answer:
+                return answer
+
         if (
             "what percentage" in query_lower
             or "what percent" in query_lower
@@ -882,6 +896,80 @@ class NumericReasoner:
             )
         return None
 
+    def _percent_higher_between_rows(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
+        row_terms = self._higher_than_row_terms(query_lower)
+        if row_terms is None:
+            return None
+        numerator_terms, denominator_terms = row_terms
+        for node_id, text in contexts:
+            for headers, rows in self._markdown_tables(text):
+                numerator_row = self._ratio_table_row(rows, numerator_terms, prefer_total=False, query_lower=query_lower)
+                denominator_row = self._ratio_table_row(rows, denominator_terms, prefer_total=False, query_lower=query_lower)
+                if numerator_row is None or denominator_row is None:
+                    continue
+                column_indices = self._metric_column_indices(headers, query_lower)
+                if not column_indices:
+                    continue
+                numerator_values = self._row_values_at_columns(numerator_row, column_indices)
+                denominator_values = self._row_values_at_columns(denominator_row, column_indices)
+                if not numerator_values or not denominator_values:
+                    continue
+                numerator = sum(numerator_values) / len(numerator_values)
+                denominator = sum(denominator_values) / len(denominator_values)
+                operation = self.executor.percent_change(numerator, denominator)
+                if operation is None:
+                    continue
+                return NumericAnswer(
+                    text=self._format_percent(operation.value),
+                    calculation=(
+                        f"relative_difference_between_rows row={numerator_row[0].strip().lower()} "
+                        f"denominator_row={denominator_row[0].strip().lower()} "
+                        f"columns={','.join(headers[index].strip().lower() for index in column_indices)}: "
+                        f"{operation.expression}"
+                    ),
+                    cited_node_ids=[node_id],
+                )
+        return None
+
+    def _percentage_point_row_difference(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        years = re.findall(r"\b(20\d{2})\b", query_lower)
+        if len(years) < 2:
+            return None
+        base_year, target_year = self._difference_years(query_lower, years)
+        focus_query = self._percentage_point_focus_query(query_lower)
+        grouped = self._grouped_table_year_values(focus_query, contexts, base_year, target_year)
+        if grouped is not None:
+            node_ids, values = grouped
+            operation = self.executor.difference(values[target_year], values[base_year])
+            row_label = str(values.get("__row_label__", ""))
+            return NumericAnswer(
+                text=self._format_percent(operation.value),
+                calculation=f"percentage_point_row_difference row={row_label}: {operation.expression}",
+                cited_node_ids=node_ids,
+            )
+        for node_id, text in contexts:
+            values = self._table_year_values(focus_query, text, base_year, target_year)
+            if not values or base_year not in values or target_year not in values:
+                continue
+            operation = self.executor.difference(values[target_year], values[base_year])
+            row_label = str(values.get("__row_label__", ""))
+            return NumericAnswer(
+                text=self._format_percent(operation.value),
+                calculation=f"percentage_point_row_difference row={row_label}: {operation.expression}",
+                cited_node_ids=[node_id],
+            )
+        return None
+
+    def _percentage_point_focus_query(self, query_lower: str) -> str:
+        match = re.search(r"\bfor\s+(?:the\s+)?(.+?)\s+as\s+a\s+percentage\s+of\b", query_lower)
+        if match:
+            return match.group(1)
+        return query_lower
+
     def _table_year_values(
         self,
         query_lower: str,
@@ -1367,6 +1455,47 @@ class NumericReasoner:
         if len(years) == 1:
             return years[0]
         return None
+
+    def _higher_than_row_terms(self, query_lower: str) -> tuple[list[str], list[str]] | None:
+        match = re.search(
+            r"\b(?:percent|percentage)\s+higher\s+is\s+.+?\s+for\s+(.+?)\s+than\s+(?:that\s+of\s+|the\s+)?(.+?)\??$",
+            query_lower,
+        )
+        if not match:
+            return None
+        numerator_terms = self._keywords(match.group(1))
+        denominator_terms = self._keywords(match.group(2))
+        if not numerator_terms or not denominator_terms:
+            return None
+        return numerator_terms, denominator_terms
+
+    def _metric_column_indices(self, headers: list[str], query_lower: str) -> list[int]:
+        query_terms = set(self._keywords(query_lower))
+        scored: list[tuple[int, int]] = []
+        for index, header in enumerate(headers[1:], start=1):
+            label = header.lower()
+            label_terms = set(re.findall(r"[a-z0-9]+", label))
+            score = len(query_terms & label_terms)
+            if "average" in query_lower and "average" in label:
+                score += 5
+            if "annual" in query_lower and "annual" in label:
+                score += 3
+            if score > 0:
+                scored.append((score, index))
+        if not scored:
+            return []
+        best_score = max(score for score, _index in scored)
+        return [index for score, index in scored if score == best_score]
+
+    def _row_values_at_columns(self, row: list[str], column_indices: list[int]) -> list[float]:
+        values = []
+        for index in column_indices:
+            if index >= len(row):
+                continue
+            value = self._first_number(row[index])
+            if value is not None:
+                values.append(value)
+        return values
 
     def _table_value_for_terms_year(
         self,

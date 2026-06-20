@@ -231,6 +231,55 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "-35.6%")
         self.assertIn("percent_change", answer.calculations[0])
 
+    def test_percent_higher_averages_matching_metric_columns_between_rows(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| years ended december 31 ( in millions ) | 2008 annual average | 2008 maximum | 2008 minimum | 2007 annual average | 2007 maximum | 2007 minimum |\n"
+                    "| --- | --- | --- | --- | --- | --- | --- |\n"
+                    "| foreign exchange products | $ 1.8 | $ 4.7 | $ .3 | $ 1.8 | $ 4.0 | $ .7 |\n"
+                    "| interest-rate products | 1.1 | 2.4 | .6 | 1.4 | 3.7 | .1 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what percent higher is the average var for foreign exchange products than that of interest rate products?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "44%")
+        self.assertIn("relative_difference_between_rows", answer.calculations[0])
+
+    def test_difference_in_percentage_row_between_years_returns_percentage_points(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| year ended december 31, | 2003 | 2002 | 2001 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| americas | 51.2% ( 51.2 % ) | 48.3% ( 48.3 % ) | 47.4% ( 47.4 % ) |\n"
+                    "| europe | 26.3 | 24.4 | 19.5 |\n"
+                    "| asia pacific | 45.3 | 46.1 | 45.4 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the difference in operating profit for the americas as a percentage of net sales between 2001 and 2003?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "3.8%")
+        self.assertIn("percentage_point_row_difference", answer.calculations[0])
+
     def test_percent_change_prefers_ending_balance_for_unrecognized_tax_benefits(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
