@@ -142,6 +142,30 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "275.6%")
         self.assertIn("percent_change", answer.calculations[0])
 
+    def test_year_difference_prefers_ending_or_period_end_row(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| as of or for the year ended december 31 ( in millions ) | 2018 | 2017 | 2016 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| available-for-sale investment securities ( average ) | 203449 | 219345 | 226892 |\n"
+                    "| afs investment securities ( period-end ) | 228681 | 200247 | 236670 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the net change in ending available for sale investment securities from 2017 to 2018?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "28434")
+        self.assertIn("period-end", answer.calculations[0])
+
     def test_percent_change_prefers_specific_table_row(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
@@ -166,6 +190,33 @@ class NumericReasoningTest(unittest.TestCase):
 
         self.assertEqual(answer.text, "-35.6%")
         self.assertIn("percent_change", answer.calculations[0])
+
+    def test_percent_change_prefers_ending_balance_for_unrecognized_tax_benefits(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "The following is a reconciliation of the beginning and ending amounts "
+                    "of unrecognized tax benefits for the periods indicated.\n"
+                    "| december 31, | 2016 | 2015 | 2014 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| balance at january 1 | $ 373 | $ 394 | $ 392 |\n"
+                    "| additions for current year tax positions | 8 | 7 | 7 |\n"
+                    "| balance at december 31 | $ 369 | $ 373 | $ 394 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the percentage change in the unrecognized tax benefits from 2015 to 2016?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "-1.1%")
+        self.assertIn("row=balance at december 31", answer.calculations[0])
 
     def test_percent_change_promotes_wrapped_year_header(self) -> None:
         graph = EvidenceGraph()
@@ -832,6 +883,47 @@ class NumericReasoningTest(unittest.TestCase):
 
         self.assertEqual(answer.text, "34%")
         self.assertIn("denominator_row=total", answer.calculations[0])
+
+    def test_ratio_percent_total_denominator_waits_for_total_row(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="partial",
+                node_type="text",
+                content=(
+                    "| millions of dollars | dec . 31 2008 | dec . 31 2007 |\n"
+                    "| --- | --- | --- |\n"
+                    "| accounts payable | $ 629 | $ 732 |\n"
+                    "| accrued wages and vacation | 367 | 394 |\n"
+                ),
+                source_doc="report.md",
+                metadata={"retrieval_rank": 1},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="complete",
+                node_type="text",
+                content=(
+                    "| millions of dollars | dec . 31 2008 | dec . 31 2007 |\n"
+                    "| --- | --- | --- |\n"
+                    "| accounts payable | $ 629 | $ 732 |\n"
+                    "| accrued wages and vacation | 367 | 394 |\n"
+                    "| total accounts payable and other current liabilities | $ 2560 | $ 2902 |\n"
+                ),
+                source_doc="report.md",
+                metadata={"retrieval_rank": 2},
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "as of december 31 , 2008 what was the percent of the total accounts payable and other liabilities that was accrued wages and vacation",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "14.3%")
+        self.assertEqual(answer.citations, ["complete"])
+        self.assertIn("denominator_row=total accounts payable and other current liabilities", answer.calculations[0])
 
     def test_ratio_percent_due_after_total(self) -> None:
         graph = EvidenceGraph()

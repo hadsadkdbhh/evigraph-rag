@@ -17,7 +17,7 @@ class ClaimVerifier:
         )
         numeric_supported = self._numeric_claim_supported(answer.text, support_graph, answer.calculations)
         calculation_supported = self._calculation_claim_supported(answer.text, answer.calculations)
-        row_grounded = self._row_grounded(query, answer)
+        row_grounded = self._row_grounded(query, answer, support_graph)
         operation_semantics_checked = self._operation_semantics_checked(query, answer)
         semantically_grounded = citation_nodes_exist and row_grounded and operation_semantics_checked and not has_risky_support
         answer_supported = (
@@ -94,7 +94,7 @@ class ClaimVerifier:
             return False
         return all(any(_close(answer_number, calculation_number) for calculation_number in calculation_numbers) for answer_number in answer_numbers)
 
-    def _row_grounded(self, query: str, answer: Answer) -> bool:
+    def _row_grounded(self, query: str, answer: Answer, support_graph: EvidenceGraph) -> bool:
         row_labels = []
         for calculation in answer.calculations:
             row_labels.extend(match.strip() for match in re.findall(r"\brow=([^:;]+)", calculation))
@@ -110,7 +110,34 @@ class ClaimVerifier:
             label_terms = set(_grounding_terms(label))
             if query_terms & label_terms:
                 return True
+            if self._generic_period_row_grounded(label, query_terms, support_graph):
+                return True
         return False
+
+    def _generic_period_row_grounded(
+        self,
+        label: str,
+        query_terms: set[str],
+        support_graph: EvidenceGraph,
+    ) -> bool:
+        label_lower = label.lower()
+        generic_period_label = (
+            "balance at december 31" in label_lower
+            or "period-end" in label_lower
+            or "period end" in label_lower
+            or "period 2013end" in label_lower
+            or ("period" in label_lower and "end" in label_lower)
+        )
+        if not generic_period_label or not query_terms:
+            return False
+        support_terms: set[str] = set()
+        for node in support_graph.nodes.values():
+            content = node.content
+            if isinstance(content, dict):
+                support_terms.update(_grounding_terms(" ".join(str(value) for value in content.values())))
+            else:
+                support_terms.update(_grounding_terms(str(content)))
+        return len(query_terms & support_terms) >= min(2, len(query_terms))
 
     def _operation_semantics_checked(self, query: str, answer: Answer) -> bool:
         expected = _expected_operation(query)

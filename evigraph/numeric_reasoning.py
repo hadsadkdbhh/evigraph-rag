@@ -933,6 +933,16 @@ class NumericReasoner:
                 if prose_answer is not None:
                     return prose_answer
 
+        grouped_table_answer = self._ratio_percent_from_grouped_contexts(
+            query_lower,
+            contexts,
+            numerator_terms,
+            denominator_terms,
+            query_year,
+        )
+        if grouped_table_answer is not None:
+            return grouped_table_answer
+
         cross_context_answer = self._ratio_percent_across_contexts(
             contexts,
             numerator_terms,
@@ -952,6 +962,12 @@ class NumericReasoner:
                 denominator, denominator_meta = self._table_value_for_terms_year_with_label(text, denominator_terms, query_year)
             if denominator is None:
                 denominator, denominator_meta = self._matching_value_with_label(rows, denominator_terms)
+            if (
+                denominator is not None
+                and ("total" in denominator_terms or "total" in query_lower)
+                and "total" not in str(denominator_meta.get("row_label", "")).lower()
+            ):
+                continue
             numerator = None
             numerator_meta = {}
             if "due after" in query_lower:
@@ -1009,6 +1025,61 @@ class NumericReasoner:
                     f"{numerator:g} / {denominator:g} * 100 = {result:.1f}%"
                 ),
                 cited_node_ids=[node_id],
+            )
+        return None
+
+    def _ratio_percent_from_grouped_contexts(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+        numerator_terms: list[str],
+        denominator_terms: list[str],
+        query_year: str | None,
+    ) -> NumericAnswer | None:
+        groups: dict[str, list[tuple[str, str]]] = {}
+        for node_id, text in contexts:
+            groups.setdefault(self._context_source_key(node_id), []).append((node_id, text))
+        for grouped_contexts in groups.values():
+            if len(grouped_contexts) < 2:
+                continue
+            node_ids = [node_id for node_id, _text in grouped_contexts]
+            combined_text = "\n".join(text for _node_id, text in grouped_contexts)
+            answer = self._ratio_percent_from_table_columns(
+                node_ids[0],
+                query_lower,
+                combined_text,
+                numerator_terms,
+                denominator_terms,
+                query_year,
+            )
+            if answer is not None:
+                return NumericAnswer(answer.text, answer.calculation, node_ids)
+            if "total" not in denominator_terms and "total" not in query_lower:
+                continue
+            rows = self._label_value_rows(combined_text)
+            denominator, denominator_meta = self._matching_value_with_label(rows, denominator_terms)
+            if (
+                denominator is not None
+                and ("total" in denominator_terms or "total" in query_lower)
+                and "total" not in str(denominator_meta.get("row_label", "")).lower()
+            ):
+                denominator = None
+            numerator, numerator_meta = self._matching_value_with_label(rows, numerator_terms)
+            if numerator is None or denominator in {None, 0}:
+                continue
+            operation = self.executor.ratio(numerator, denominator)
+            if operation is None:
+                continue
+            result = operation.value * 100.0
+            numerator_label = str(numerator_meta.get("row_label", ""))
+            denominator_label = str(denominator_meta.get("row_label", ""))
+            return NumericAnswer(
+                text=self._format_percent(result),
+                calculation=(
+                    f"ratio_percent row={numerator_label} denominator_row={denominator_label}: "
+                    f"{numerator:g} / {denominator:g} * 100 = {result:.1f}%"
+                ),
+                cited_node_ids=node_ids,
             )
         return None
 
@@ -1097,15 +1168,19 @@ class NumericReasoner:
         column_index = self._ratio_value_column(headers, query_lower, denominator_terms, query_year)
         if column_index is None:
             return None
-        numerator_row = self._ratio_table_row(rows, numerator_terms, prefer_total=False)
+        numerator_row = self._ratio_table_row(rows, numerator_terms, prefer_total=False, query_lower=query_lower)
         if numerator_row is None and "due after" in query_lower:
-            numerator_row = self._ratio_table_row(rows, ["thereafter"], prefer_total=False)
+            numerator_row = self._ratio_table_row(rows, ["thereafter"], prefer_total=False, query_lower=query_lower)
+        denominator_prefers_total = "total" in denominator_terms or "total" in query_lower
         denominator_row = self._ratio_table_row(
             rows,
             denominator_terms,
-            prefer_total="total" in denominator_terms or "total" in query_lower,
+            prefer_total=denominator_prefers_total,
+            query_lower=query_lower,
         )
         if numerator_row is None or denominator_row is None:
+            return None
+        if denominator_prefers_total and "total" not in denominator_row[0].strip().lower():
             return None
         if numerator_row[0].strip().lower() == denominator_row[0].strip().lower():
             return None
@@ -1168,25 +1243,18 @@ class NumericReasoner:
         rows: list[list[str]],
         terms: list[str],
         prefer_total: bool,
+        query_lower: str | None = None,
     ) -> list[str] | None:
         normalized_terms = [term for term in terms if term]
-        if prefer_total:
-            for row in rows:
-                if row and re.fullmatch(r"total(?:\s+.*)?", row[0].strip().lower()):
-                    return row
         if not normalized_terms:
             return None
-        for row in rows:
-            if not row:
-                continue
-            label = row[0].strip().lower()
-            if all(term in label for term in normalized_terms):
-                return row
-        best: tuple[int, int, int, list[str]] | None = None
+        best: tuple[int, int, int, int, list[str]] | None = None
         for row_index, row in enumerate(rows):
             if not row:
                 continue
             label = row[0].strip().lower()
+            if prefer_total and "total" not in label:
+                continue
             matched_terms = [term for term in normalized_terms if term in label]
             if not matched_terms:
                 continue
@@ -1194,10 +1262,13 @@ class NumericReasoner:
             score = sum(len(term) for term in matched_terms)
             if coverage == 1 and len(normalized_terms) >= 3 and matched_terms[0] not in {"total"}:
                 continue
-            candidate = (coverage, score, -row_index, row)
+            intent_score = self._row_intent_score(query_lower or "", label)
+            if all(term in label for term in normalized_terms):
+                intent_score += 3
+            candidate = (coverage, score, intent_score, -row_index, row)
             if best is None or candidate > best:
                 best = candidate
-        return best[3] if best else None
+        return best[4] if best else None
 
     def _ratio_year(self, query_lower: str, years: list[str]) -> str | None:
         if "due after" in query_lower:
@@ -1794,19 +1865,24 @@ class NumericReasoner:
     def _best_query_row(self, query_lower: str, headers: list[str], rows: list[list[str]]) -> list[str] | None:
         query_terms = set(self._keywords(query_lower))
         min_score = 2 if len(query_terms) >= 2 else 1
-        best_row = None
-        best_score = 0
-        for row in rows:
+        best: tuple[int, int, int, int, int, list[str]] | None = None
+        for row_index, row in enumerate(rows):
             if not row:
                 continue
-            label_terms = set(re.findall(r"[a-z0-9]+", row[0].lower()))
-            score = len(query_terms & label_terms)
-            if score > best_score:
-                best_score = score
-                best_row = row
-        if best_score < min_score:
+            label = row[0].lower()
+            label_terms = set(re.findall(r"[a-z0-9]+", label))
+            coverage = len(query_terms & label_terms)
+            intent_score = self._row_intent_score(query_lower, label)
+            if coverage == 0 and intent_score == 0:
+                continue
+            lexical_score = sum(len(term) for term in query_terms if term in label)
+            total_score = coverage * 10 + lexical_score + intent_score
+            candidate = (total_score, coverage, intent_score, lexical_score, -row_index, row)
+            if best is None or candidate > best:
+                best = candidate
+        if best is None or (best[1] < min_score and best[2] < 8):
             return None
-        return best_row
+        return best[5]
 
     def _best_query_row_with_context(
         self,
@@ -1820,22 +1896,48 @@ class NumericReasoner:
             return None
         context_text = " ".join(headers) + " " + text
         context_terms = set(re.findall(r"[a-z0-9]+", context_text.lower()))
-        best_row = None
-        best_score = 0
-        for row in rows:
+        best: tuple[int, int, int, int, list[str]] | None = None
+        for row_index, row in enumerate(rows):
             if not row:
                 continue
-            label_terms = set(re.findall(r"[a-z0-9]+", row[0].lower()))
+            label = row[0].lower()
+            label_terms = set(re.findall(r"[a-z0-9]+", label))
             row_score = len(query_terms & label_terms)
-            if row_score == 0:
+            intent_score = self._row_intent_score(query_lower, label)
+            if row_score == 0 and intent_score == 0:
                 continue
             missing_terms = query_terms - label_terms
             context_score = len(missing_terms & context_terms)
-            score = row_score * 10 + context_score
-            if row_score >= 1 and context_score >= 1 and score > best_score:
-                best_score = score
-                best_row = row
-        return best_row
+            if row_score >= 1 and context_score >= 1:
+                total_score = row_score * 10 + context_score + intent_score
+                candidate = (total_score, row_score, context_score, -row_index, row)
+            elif intent_score >= 4 and context_score >= 2:
+                total_score = context_score + intent_score
+                candidate = (total_score, row_score, context_score, -row_index, row)
+            else:
+                continue
+            if best is None or candidate > best:
+                best = candidate
+        return best[4] if best else None
+
+    def _row_intent_score(self, query_lower: str, label: str) -> int:
+        score = 0
+        if "total" in query_lower and "total" in label:
+            score += 8
+        if any(term in query_lower for term in ["ending", "period end", "period-end", "at december 31"]):
+            label_is_ending = any(
+                term in label
+                for term in ["ending", "period end", "period-end", "period 2013end", "december 31", "balance at december 31"]
+            ) or ("period" in label and "end" in label)
+            if label_is_ending:
+                score += 45
+            if "average" in label:
+                score -= 25
+        if "unrecognized tax benefits" in query_lower and "balance at december 31" in label:
+            score += 35
+        if "balance" in query_lower and "balance" in label:
+            score += 4
+        return score
 
     def _column_index(self, headers: list[str], terms: list[str]) -> int | None:
         for index, header in enumerate(headers):

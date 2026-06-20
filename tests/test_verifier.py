@@ -29,6 +29,37 @@ class ClaimVerifierTest(unittest.TestCase):
         self.assertTrue(verification["answer_supported"])
         self.assertTrue(verification["operation_semantics_checked"])
 
+    def test_row_grounding_accepts_generic_period_row_when_context_names_measure(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                "table",
+                "text",
+                (
+                    "The following is a reconciliation of the beginning and ending amounts "
+                    "of unrecognized tax benefits.\n"
+                    "| december 31, | 2016 | 2015 |\n"
+                    "| balance at december 31 | $ 369 | $ 373 |"
+                ),
+                source_doc="report.md",
+            )
+        )
+        answer = Answer(
+            text="-1.1%",
+            citations=["table"],
+            calculations=["percent_change row=balance at december 31: (369 - 373) / 373 * 100 = -1.1%"],
+        )
+
+        verification = ClaimVerifier().verify(
+            "what was the percentage change in the unrecognized tax benefits from 2015 to 2016?",
+            answer,
+            graph,
+        )
+
+        self.assertTrue(verification["row_grounded"])
+        self.assertTrue(verification["row_operation_grounded"])
+        self.assertTrue(verification["answer_supported"])
+
     def test_row_grounding_rejects_unmatched_calculation_row(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(EvidenceNode("table", "text", "interest rates net 2017 47 2016 73 -35.6", source_doc="report.md"))

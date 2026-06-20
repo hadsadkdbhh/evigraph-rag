@@ -34,10 +34,10 @@ records `source_doc` for oracle-document and source-rerank evaluation.
 
 | setting | full EviGraph exact match |
 | --- | ---: |
-| Oracle-doc | 56/100 |
-| Open BM25 | 47/100 |
-| Open hybrid | 47/100 |
-| BM25 + source rerank | 56/100 |
+| Oracle-doc | 57/100 |
+| Open BM25 | 50/100 |
+| Open hybrid | 49/100 |
+| BM25 + source rerank | 58/100 |
 
 These numbers are diagnostic smoke results, not final benchmark claims.
 
@@ -59,9 +59,10 @@ inside retrieved evidence rather than simple lexical reranking.
 
 The row/operation diagnostic now splits wrong numeric full EviGraph answers into
 multi-label causes. On the current 100-example FinQA smoke subset, open hybrid
-has 19 wrong numeric operation/row cases: 6 wrong-numerator signals, 5
+has 17 wrong numeric operation/row cases: 5 wrong-numerator signals, 3
 wrong-denominator signals, 2 wrong-year-or-period signals, 3 wrong-row-label
 signals, 1 wrong-operation-type signal, and 7 ambiguous supported wrong-number
-cases. The highest-yield next engineering target is therefore operand selection
-for ratio/percent-change calculations, followed by reducing ambiguous supported
-wrong-number cases with better operation intent tracing.
+cases. The highest-yield next engineering target is therefore cross-chunk
+period-end table stitching for cases such as ending investment securities,
+followed by operand selection for ratio/percent-change calculations and reducing
+ambiguous supported wrong-number cases with better operation intent tracing.
