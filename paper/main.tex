@@ -194,7 +194,8 @@ The current draft reports lexical and deterministic hybrid retrieval baselines; 
 The manifest runner emits a failure report that groups unresolved examples by error category.
 Current categories include missing numeric answer, wrong row/operation, additive lookup failures, ratio failures, and percent-operation failures.
 Table~\ref{tab:finqa-failure-categories} reports the current full EviGraph failure profile for the 100-example FinQA diagnostic subset.
-The largest remaining categories are wrong row/operation selection and unresolved numeric-answer extraction, which are the next engineering targets before scaling to larger benchmark runs.
+Table~\ref{tab:finqa-row-operation-diagnostics} further decomposes wrong numeric answers into operand, year/period, row-label, operation-type, and ambiguous supported wrong-number signals.
+The largest remaining actionable categories are operand selection and unresolved numeric-answer extraction, which are the next engineering targets before scaling to larger benchmark runs.
 
 \section{Conclusion}
 

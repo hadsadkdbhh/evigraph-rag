@@ -41,3 +41,20 @@ BM25 + source rerank & 14 & 12 & 10 & 4 & 2 & 2 \\
 \caption{Failure categories for full EviGraph on the FinQA 100-example diagnostic subset. The categories are generated directly from the manifest CSVs and should be used to drive the next engineering iteration.}
 \label{tab:finqa-failure-categories}
 \end{table}
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lrrrrrr}
+\toprule
+Setting & Num. & Den. & Year/period & Row label & Op. type & Ambig. \\
+\midrule
+Oracle-doc & 5 & 3 & 1 & 1 & 0 & 5 \\
+Open BM25 & 6 & 4 & 2 & 2 & 1 & 7 \\
+Open hybrid & 6 & 5 & 2 & 3 & 1 & 7 \\
+BM25 + source rerank & 6 & 3 & 1 & 1 & 0 & 6 \\
+\bottomrule
+\end{tabular}
+\caption{Row/operation diagnostics for wrong numeric full EviGraph answers. Counts are multi-label: one failed example can expose more than one diagnostic signal.}
+\label{tab:finqa-row-operation-diagnostics}
+\end{table}

@@ -29,6 +29,7 @@ Current strengths:
 - Deterministic 100-example FinQA validation subset with source documents recorded.
 - Four clearly separated retrieval settings: oracle-doc, open BM25, deterministic open hybrid, and source-rerank analysis.
 - Generated paper tables for exact match, support diagnostics, and failure categories.
+- Generated row/operation diagnostic tables that split wrong numeric answers by operand, year/period, row-label, operation-type, and ambiguous supported wrong-number signals.
 - Formal subgraph-selection objective with monotone submodular structure.
 - Failure reports that identify the next engineering target instead of relying on anecdotal inspection.
 
@@ -72,7 +73,7 @@ Priority 2: strengthen the empirical story.
 - Add a dense retrieval baseline for open retrieval; the deterministic hybrid baseline is present but does not yet improve exact match over BM25.
 - Scale FinQA beyond the 100-example smoke subset once exact commands and caching are stable.
 - Keep oracle-doc, open BM25, hybrid/dense open retrieval, and source-rerank analysis in separate table blocks.
-- Track failure categories after every manifest run and prioritize the largest open-retrieval error classes.
+- Track failure categories and row/operation diagnostics after every manifest run and prioritize the largest open-retrieval error classes.
 
 Priority 3: prepare supplement.
 

@@ -9,6 +9,7 @@ from typing import Any
 from evigraph.experiment_report import ExperimentReport
 from evigraph.experiment_card import ExperimentCard
 from evigraph.failure_analysis import FailureAnalyzer
+from evigraph.row_operation_diagnostics import RowOperationDiagnosticAnalyzer
 from evigraph.indexing import LocalIndexBuilder
 from evigraph.dataset_adapter import DatasetAdapter
 from evigraph.dataset_inspector import BenchmarkGate, DatasetInspector
@@ -45,6 +46,7 @@ class ManifestRunner:
             "summary": None,
             "card": None,
             "failure_reports": [],
+            "row_operation_diagnostics": [],
         }
         summary_inputs: list[Path] = []
 
@@ -73,6 +75,9 @@ class ManifestRunner:
                     failure_path = self.output_dir / f"{dataset_name}_{experiment['name']}_failures.md"
                     FailureAnalyzer().write(output_path, failure_path, method="full_evigraph")
                     artifacts["failure_reports"].append(str(failure_path))
+                    diagnostic_path = self.output_dir / f"{dataset_name}_{experiment['name']}_row_operation_diagnostics.md"
+                    RowOperationDiagnosticAnalyzer().write(output_path, diagnostic_path, method="full_evigraph")
+                    artifacts["row_operation_diagnostics"].append(str(diagnostic_path))
             if dataset.get("build_index"):
                 artifacts["indexes"].append(str(self._resolve(dataset["index"])))
             if dataset.get("raw_questions"):

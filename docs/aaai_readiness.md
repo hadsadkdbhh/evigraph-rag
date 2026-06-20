@@ -14,6 +14,7 @@ This file tracks what the current repository can and cannot support as paper evi
 - Open BM25 reaches 47/100, deterministic open hybrid reaches 47/100, and source-rerank reaches 56/100 for full EviGraph on the same subset; these are diagnostic baselines, not final claims.
 - The experiment CSVs now separate exact match from verifier diagnostics: arithmetic support, calculation-result support, operation-semantics checking, row-operation grounding, semantic grounding, and final answer support.
 - The manifest runner writes a failure report for batch experiments, grouping unresolved examples by error category for paper-oriented failure analysis.
+- The row/operation diagnostic splits wrong numeric answers into wrong numerator, wrong denominator, wrong year or period, wrong row label, wrong operation type, and ambiguous supported wrong-number cases.
 - The latest calculation-aware verifier raises support auditing fidelity by accepting reproducible calculation results while keeping exact-match claims separate from support diagnostics; row/operation grounding remains a paper-critical risk before making strong benchmark claims.
 
 ## Claims Not Yet Supported
@@ -34,7 +35,7 @@ This file tracks what the current repository can and cannot support as paper evi
 - Add failure analysis and qualitative case studies from real examples.
 - Keep the MVP0 acceptance gate green from a clean checkout.
 - Replace hand-authored stress distractors with real retrieval confounders from benchmark corpora.
-- Improve real-table numerical reasoning; the current rule generator does not solve the FinQA subset yet.
+- Improve real-table numerical reasoning; current diagnostics point first to operand selection for ratio/percent-change calculations and then to ambiguous supported wrong-number cases.
 - Separate oracle-document reasoning from open-document retrieval in future benchmark tables.
 - Improve table operation coverage before using FinQA results as a positive performance claim; current top-k remains a close smoke baseline rather than a solved comparator.
 

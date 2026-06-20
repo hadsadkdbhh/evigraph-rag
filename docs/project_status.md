@@ -56,3 +56,12 @@ overlap features, but it currently ties open BM25 on exact match at 47/100 while
 slightly improving verifier diagnostics. This indicates that the next push
 should focus on row/operation selection errors and unresolved percent operations
 inside retrieved evidence rather than simple lexical reranking.
+
+The row/operation diagnostic now splits wrong numeric full EviGraph answers into
+multi-label causes. On the current 100-example FinQA smoke subset, open hybrid
+has 19 wrong numeric operation/row cases: 6 wrong-numerator signals, 5
+wrong-denominator signals, 2 wrong-year-or-period signals, 3 wrong-row-label
+signals, 1 wrong-operation-type signal, and 7 ambiguous supported wrong-number
+cases. The highest-yield next engineering target is therefore operand selection
+for ratio/percent-change calculations, followed by reducing ambiguous supported
+wrong-number cases with better operation intent tracing.

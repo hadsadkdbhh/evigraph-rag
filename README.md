@@ -148,6 +148,17 @@ Generate a failure report for the FinQA ablation output:
 python scripts/analyze_failures.py --csv outputs/eval/finqa/finqa_subset_ablation.csv --method full_evigraph --output outputs/eval/finqa/finqa_subset_ablation_failures.md
 ```
 
+Break wrong numeric operation/row failures into actionable diagnostic labels:
+
+```powershell
+python scripts/analyze_row_operation_errors.py --csv outputs/eval/finqa/finqa_subset_open_hybrid_ablation.csv --method full_evigraph --output outputs/eval/finqa/finqa_subset_open_hybrid_row_operation_diagnostics.md
+```
+
+The manifest runner writes this row/operation diagnostic automatically for each
+batch experiment. The labels separate wrong numerator, wrong denominator,
+wrong year or period, wrong row label, wrong operation type, and ambiguous
+supported wrong-number cases.
+
 Before reporting real benchmark numbers, follow the protocol in
 `docs/benchmark_protocol.md`. A ChartQA-style manifest template is available at
 `configs/experiments.chartqa.example.json`; populate `data/raw/chartqa_subset.jsonl`

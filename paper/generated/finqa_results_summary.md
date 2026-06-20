@@ -28,6 +28,15 @@ Generated from `outputs/eval/finqa` after the latest manifest run.
 | Open hybrid | 19 | 14 | 11 | 5 | 3 | 1 |
 | BM25 + source rerank | 14 | 12 | 10 | 4 | 2 | 2 |
 
+## Row/Operation Diagnostics
+
+| setting | wrong numerator | wrong denominator | wrong year/period | wrong row label | wrong operation type | ambiguous |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Oracle-doc | 5 | 3 | 1 | 1 | 0 | 5 |
+| Open BM25 | 6 | 4 | 2 | 2 | 1 | 7 |
+| Open hybrid | 6 | 5 | 2 | 3 | 1 | 7 |
+| BM25 + source rerank | 6 | 3 | 1 | 1 | 0 | 6 |
+
 ## Paper-Safe Claims
 
 - Treat these as diagnostic smoke-subset results, not final benchmark claims.
