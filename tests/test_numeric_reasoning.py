@@ -166,6 +166,46 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "28434")
         self.assertIn("period-end", answer.calculations[0])
 
+    def test_year_difference_stitches_period_end_continuation_chunk(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="retrieved_1_case_0_0",
+                node_type="text",
+                content=(
+                    "| as of or for the year ended december 31 ( in millions ) | 2018 | 2017 | 2016 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| investment securities gains/ ( losses ) | $ -395 | $ -78 | $ 132 |\n"
+                    "| available-for-sale investment securities ( average ) | 203449 | 219345 | 226892 |\n"
+                ),
+                source_doc="case.md",
+                metadata={"retrieval_rank": 1},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="retrieved_2_case_0_1",
+                node_type="text",
+                content=(
+                    "| available-for-sale investment securities ( average ) | 203449 | 219345 | 226892 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| held-to-maturity investment securities ( average ) | 31747 | 47927 | 51358 |\n"
+                    "| afs investment securities ( period-end ) | 228681 | 200247 | 236670 |\n"
+                ),
+                source_doc="case.md",
+                metadata={"retrieval_rank": 2},
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the net change in ending available for sale investment securities from 2017 to 2018?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "28434")
+        self.assertIn("period-end", answer.calculations[0])
+        self.assertEqual(answer.citations, ["retrieved_1_case_0_0", "retrieved_2_case_0_1"])
+
     def test_percent_change_prefers_specific_table_row(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

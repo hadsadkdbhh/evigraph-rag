@@ -34,10 +34,10 @@ records `source_doc` for oracle-document and source-rerank evaluation.
 
 | setting | full EviGraph exact match |
 | --- | ---: |
-| Oracle-doc | 57/100 |
+| Oracle-doc | 58/100 |
 | Open BM25 | 50/100 |
 | Open hybrid | 49/100 |
-| BM25 + source rerank | 58/100 |
+| BM25 + source rerank | 59/100 |
 
 These numbers are diagnostic smoke results, not final benchmark claims.
 
@@ -47,22 +47,22 @@ The largest remaining failure classes are wrong numeric operation or row
 selection and unresolved percent-style operations under open retrieval. Open
 BM25 improved after retrieval-prior selection, ordered support extraction,
 less brittle risk wording, stricter row grounding, retrieval-rank anchoring,
-additional percent-change routing, year-label table fallback, and
+additional percent-change routing, year-label table fallback,
 caption/header-aware row selection, prose/table percent-of-total normalization,
 ordinary ratio execution over year-value tables, multi-column ratio selection,
-weak prose-match rejection, and adjacency chunks used as context-only support.
-The deterministic open hybrid reranker adds table, year, number, and operation
-overlap features, but it currently ties open BM25 on exact match at 47/100 while
-slightly improving verifier diagnostics. This indicates that the next push
-should focus on row/operation selection errors and unresolved percent operations
-inside retrieved evidence rather than simple lexical reranking.
+weak prose-match rejection, adjacency chunks used as context-only support, and
+cross-chunk continuation-table stitching for period-end rows. The deterministic
+open hybrid reranker adds table, year, number, and operation overlap features,
+but it remains slightly below open BM25 on exact match while improving some
+verifier diagnostics. This indicates that the next push should focus on
+row/operation intent and operand selection inside retrieved evidence rather than
+simple lexical reranking.
 
 The row/operation diagnostic now splits wrong numeric full EviGraph answers into
 multi-label causes. On the current 100-example FinQA smoke subset, open hybrid
-has 17 wrong numeric operation/row cases: 5 wrong-numerator signals, 3
+has 16 wrong numeric operation/row cases: 4 wrong-numerator signals, 3
 wrong-denominator signals, 2 wrong-year-or-period signals, 3 wrong-row-label
 signals, 1 wrong-operation-type signal, and 7 ambiguous supported wrong-number
-cases. The highest-yield next engineering target is therefore cross-chunk
-period-end table stitching for cases such as ending investment securities,
-followed by operand selection for ratio/percent-change calculations and reducing
-ambiguous supported wrong-number cases with better operation intent tracing.
+cases. The highest-yield next engineering targets are operand selection for
+ratio/percent-change calculations and reducing ambiguous supported wrong-number
+cases with better operation intent tracing.

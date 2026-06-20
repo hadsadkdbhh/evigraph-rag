@@ -246,6 +246,16 @@ class NumericReasoner:
         if len(years) < 2:
             return None
         base_year, target_year = self._difference_years(query_lower, years)
+        grouped = self._grouped_table_year_values(query_lower, contexts, base_year, target_year)
+        if grouped is not None:
+            node_ids, values = grouped
+            operation = self.executor.difference(values[target_year], values[base_year])
+            row_label = str(values.get("__row_label__", ""))
+            return NumericAnswer(
+                text=f"{operation.value:g}",
+                calculation=f"row_year_difference row={row_label}: {operation.expression}",
+                cited_node_ids=node_ids,
+            )
         for node_id, text in contexts:
             values = self._table_year_values(query_lower, text, base_year, target_year)
             if not values or base_year not in values or target_year not in values:
@@ -373,6 +383,18 @@ class NumericReasoner:
                     return answer
             return self._percent_change_latest_table_years(query_lower, contexts)
         base_year, target_year = self._percent_change_years(query_lower, years)
+        grouped = self._grouped_table_year_values(query_lower, contexts, base_year, target_year)
+        if grouped is not None:
+            node_ids, values = grouped
+            if values.get(base_year) not in {None, 0} and target_year in values:
+                operation = self.executor.percent_change(values[target_year], values[base_year])
+                if operation is not None:
+                    row_label = str(values.get("__row_label__", ""))
+                    return NumericAnswer(
+                        text=f"{operation.value:.1f}%",
+                        calculation=f"percent_change row={row_label}: {operation.expression}",
+                        cited_node_ids=node_ids,
+                    )
         for node_id, text in contexts:
             values = self._table_year_values(query_lower, text, base_year, target_year)
             if not values:
@@ -867,10 +889,26 @@ class NumericReasoner:
         base_year: str,
         target_year: str,
     ) -> dict[str, float] | None:
-        table = self._markdown_table(text)
-        if not table:
-            return None
-        headers, rows = table
+        best: tuple[int, int, dict[str, float]] | None = None
+        for table_index, (headers, rows) in enumerate(self._year_table_candidates(text, base_year, target_year)):
+            values = self._table_year_values_from_rows(query_lower, text, headers, rows, base_year, target_year)
+            if values is None:
+                continue
+            row_score = self._row_intent_score(query_lower, str(values.get("__row_label__", "")))
+            candidate = (row_score, -table_index, values)
+            if best is None or candidate > best:
+                best = candidate
+        return best[2] if best else None
+
+    def _table_year_values_from_rows(
+        self,
+        query_lower: str,
+        text: str,
+        headers: list[str],
+        rows: list[list[str]],
+        base_year: str,
+        target_year: str,
+    ) -> dict[str, float] | None:
         base_index = self._header_year_index(headers, base_year)
         target_index = self._header_year_index(headers, target_year)
         if base_index is None or target_index is None:
@@ -895,6 +933,56 @@ class NumericReasoner:
         if base_value is None or target_value is None:
             return None
         return {base_year: base_value, target_year: target_value, "__row_label__": best_row[0]}
+
+    def _year_table_candidates(
+        self,
+        text: str,
+        base_year: str,
+        target_year: str,
+    ) -> list[tuple[list[str], list[list[str]]]]:
+        candidates = []
+        last_year_headers: list[str] | None = None
+        for headers, rows in self._markdown_tables(text):
+            candidates.append((headers, rows))
+            if self._header_year_index(headers, base_year) is not None and self._header_year_index(headers, target_year) is not None:
+                last_year_headers = headers
+                continue
+            if (
+                last_year_headers is not None
+                and len(headers) == len(last_year_headers)
+                and re.search(r"[a-z]", headers[0], flags=re.IGNORECASE)
+                and any(self._first_number(cell) is not None for cell in headers[1:])
+            ):
+                candidates.append((last_year_headers, [headers, *rows]))
+        return candidates
+
+    def _grouped_table_year_values(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+        base_year: str,
+        target_year: str,
+    ) -> tuple[list[str], dict[str, float]] | None:
+        groups: dict[str, list[tuple[str, str]]] = {}
+        for node_id, text in contexts:
+            groups.setdefault(self._context_source_key(node_id), []).append((node_id, text))
+        best: tuple[int, int, list[str], dict[str, float]] | None = None
+        for group_index, grouped_contexts in enumerate(groups.values()):
+            if len(grouped_contexts) < 2:
+                continue
+            node_ids = [node_id for node_id, _text in grouped_contexts]
+            combined_text = "\n".join(text for _node_id, text in grouped_contexts)
+            values = self._table_year_values(query_lower, combined_text, base_year, target_year)
+            if values is None:
+                continue
+            row_score = self._row_intent_score(query_lower, str(values.get("__row_label__", "")))
+            candidate = (row_score, -group_index, node_ids, values)
+            if best is None or candidate > best:
+                best = candidate
+        if best is None:
+            return None
+        _score, _order, node_ids, values = best
+        return node_ids, values
 
     def _promote_year_header(
         self,
