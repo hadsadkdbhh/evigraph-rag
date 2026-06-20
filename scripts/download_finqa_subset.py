@@ -36,7 +36,12 @@ def main() -> int:
     if len(rows) < args.sample_size:
         raise ValueError(f"Requested {args.sample_size} samples but only fetched {len(rows)} rows.")
 
-    sampled = list(rows)
+    sampled = [payload for payload in rows if has_answer(payload.get("row", {}).get("answer"))]
+    if len(sampled) < args.sample_size:
+        raise ValueError(
+            f"Requested {args.sample_size} answerable samples but only fetched {len(sampled)} "
+            f"with non-empty answers from {len(rows)} rows."
+        )
     random.Random(args.seed).shuffle(sampled)
     sampled = sampled[: args.sample_size]
 
@@ -91,19 +96,26 @@ def main() -> int:
 
 
 def fetch_rows(split: str, length: int) -> list[dict[str, Any]]:
-    query = urllib.parse.urlencode(
-        {
-            "dataset": DATASET,
-            "config": CONFIG,
-            "split": split,
-            "offset": 0,
-            "length": length,
-        }
-    )
-    url = f"{API_BASE}/rows?{query}"
-    with urllib.request.urlopen(url, timeout=60) as response:
-        payload = json.loads(response.read().decode("utf-8"))
-    return list(payload["rows"])
+    rows: list[dict[str, Any]] = []
+    page_size = 100
+    for offset in range(0, length, page_size):
+        query = urllib.parse.urlencode(
+            {
+                "dataset": DATASET,
+                "config": CONFIG,
+                "split": split,
+                "offset": offset,
+                "length": min(page_size, length - offset),
+            }
+        )
+        url = f"{API_BASE}/rows?{query}"
+        with urllib.request.urlopen(url, timeout=60) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        page_rows = list(payload["rows"])
+        if not page_rows:
+            break
+        rows.extend(page_rows)
+    return rows
 
 
 def write_corpus_file(path: Path, record: dict[str, Any], split: str) -> None:
@@ -160,6 +172,14 @@ def normalize_answer(value: Any) -> str:
     if isinstance(value, list):
         return "; ".join(str(item) for item in value)
     return str(value)
+
+
+def has_answer(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, list):
+        return any(str(item).strip() for item in value)
+    return bool(str(value).strip())
 
 
 def slugify(value: str) -> str:

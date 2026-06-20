@@ -1,6 +1,6 @@
 # FinQA Paper Assets
 
-Generated from `outputs/eval/finqa` after the latest manifest run.
+Generated from `outputs\eval\finqa` after the latest manifest run.
 
 ## Main Diagnostic Table
 

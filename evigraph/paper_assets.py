@@ -58,7 +58,7 @@ class PaperAssetBuilder:
         }
         Path(paths["latex"]).write_text(self.render_latex(result_rows, failure_rows, diagnostic_rows), encoding="utf-8")
         Path(paths["markdown"]).write_text(
-            self.render_markdown(result_rows, failure_rows, diagnostic_rows),
+            self.render_markdown(result_rows, failure_rows, diagnostic_rows, source_label=str(eval_path)),
             encoding="utf-8",
         )
         return paths
@@ -100,7 +100,7 @@ class PaperAssetBuilder:
             [
                 "\\bottomrule",
                 "\\end{tabular}",
-                "\\caption{FinQA 100-example diagnostic results. EM is numeric exact match. Ans., Calc., OpSem, and Row are verifier diagnostics for answer support, calculation-result support, operation-semantics checking, and row grounding. Open hybrid is a deterministic lexical/numeric reranker; source rerank uses the provided source document and is an analysis setting rather than a deployable open-retrieval claim.}",
+                "\\caption{FinQA diagnostic results. EM is numeric exact match. Ans., Calc., OpSem, and Row are verifier diagnostics for answer support, calculation-result support, operation-semantics checking, and row grounding. Open hybrid is a deterministic lexical/numeric reranker; source rerank uses the provided source document and is an analysis setting rather than a deployable open-retrieval claim.}",
                 "\\label{tab:finqa-diagnostic-results}",
                 "\\end{table}",
                 "",
@@ -177,11 +177,12 @@ class PaperAssetBuilder:
         result_rows: list[dict[str, Any]],
         failure_rows: list[dict[str, Any]],
         diagnostic_rows: list[dict[str, Any]],
+        source_label: str = "outputs/eval/finqa",
     ) -> str:
         lines = [
             "# FinQA Paper Assets",
             "",
-            "Generated from `outputs/eval/finqa` after the latest manifest run.",
+            f"Generated from `{source_label}` after the latest manifest run.",
             "",
             "## Main Diagnostic Table",
             "",
@@ -271,7 +272,8 @@ class PaperAssetBuilder:
     def _result_rows(self, eval_dir: Path) -> list[dict[str, Any]]:
         rows = []
         for spec in DEFAULT_RESULT_SPECS:
-            grouped = self._group_by_method(self._read_csv(eval_dir / spec.csv_name))
+            csv_path = self._spec_csv_path(eval_dir, spec)
+            grouped = self._group_by_method(self._read_csv(csv_path))
             for method in spec.methods:
                 method_rows = grouped.get(method, [])
                 if not method_rows:
@@ -294,7 +296,7 @@ class PaperAssetBuilder:
         rows = []
         analyzer = FailureAnalyzer()
         for spec in DEFAULT_RESULT_SPECS:
-            analysis = analyzer.analyze(eval_dir / spec.csv_name, method="full_evigraph")
+            analysis = analyzer.analyze(self._spec_csv_path(eval_dir, spec), method="full_evigraph")
             categories = analysis["categories"]
             rows.append(
                 {
@@ -313,13 +315,25 @@ class PaperAssetBuilder:
         rows = []
         analyzer = RowOperationDiagnosticAnalyzer()
         for spec in DEFAULT_RESULT_SPECS:
-            analysis = analyzer.analyze(eval_dir / spec.csv_name, method="full_evigraph")
+            analysis = analyzer.analyze(self._spec_csv_path(eval_dir, spec), method="full_evigraph")
             label_counts = analysis["label_counts"]
             row = {"setting": spec.label}
             for label in DIAGNOSTIC_LABELS:
                 row[label] = label_counts.get(label, 0)
             rows.append(row)
         return rows
+
+    def _spec_csv_path(self, eval_dir: Path, spec: ResultSpec) -> Path:
+        exact_path = eval_dir / spec.csv_name
+        if exact_path.exists():
+            return exact_path
+        suffix = spec.csv_name.removeprefix("finqa_subset_")
+        matches = sorted(eval_dir.glob(f"*_{suffix}"))
+        if len(matches) == 1:
+            return matches[0]
+        if not matches:
+            raise FileNotFoundError(f"Required experiment CSV not found: {exact_path}")
+        raise ValueError(f"Ambiguous experiment CSVs for {spec.csv_name}: {matches}")
 
     def _read_csv(self, path: Path) -> list[dict[str, str]]:
         if not path.exists():

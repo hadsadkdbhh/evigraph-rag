@@ -62,6 +62,29 @@ class PaperAssetBuilderTest(unittest.TestCase):
         self.assertIn("wrong row/op", markdown)
         self.assertIn("Paper-Safe Claims", markdown)
 
+    def test_builds_tables_from_alternate_finqa_prefix(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            eval_dir = root / "eval"
+            output_dir = root / "paper"
+            eval_dir.mkdir()
+            for suffix in [
+                "oracle_doc_ablation",
+                "open_bm25_ablation",
+                "open_hybrid_ablation",
+                "source_rerank_ablation",
+            ]:
+                self._write_eval_csv(
+                    eval_dir / f"finqa_300_subset_{suffix}.csv",
+                    [("topk", "0.50", "7"), ("utility_only", "0.45", "7"), ("full_evigraph", "0.55", "9")],
+                )
+
+            paths = PaperAssetBuilder().build(eval_dir, output_dir)
+            latex = Path(paths["latex"]).read_text(encoding="utf-8")
+
+        self.assertIn("\\caption{FinQA diagnostic results.", latex)
+        self.assertIn("Oracle-doc & Full EviGraph", latex)
+
     def _write_eval_csv(self, path: Path, rows: list[tuple[str, str, str]]) -> None:
         fieldnames = [
             "dataset",
