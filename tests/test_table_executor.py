@@ -31,6 +31,37 @@ class TableOperationExecutorTest(unittest.TestCase):
         selected = self.executor.select_column(["metric", "2023", "2022"], rows, ["2023"])
         self.assertEqual(selected, ["100", "20"])
 
+    def test_resolve_value_from_markdown_table_selector(self) -> None:
+        context = """
+| metric | 2023 | 2022 |
+| --- | ---: | ---: |
+| net sales | 100 | 90 |
+| operating income | 20 | 15 |
+"""
+
+        value = self.executor.resolve_value({"label": "operating income", "year": "2023"}, context)
+
+        self.assertIsNotNone(value)
+        self.assertEqual(value.value, 20.0)
+        self.assertEqual(value.row_label, "operating income")
+        self.assertEqual(value.column_label, "2023")
+
+    def test_resolve_value_accepts_row_and_column_terms(self) -> None:
+        context = """
+| metric | current year | prior year |
+| --- | ---: | ---: |
+| weighted average shares | 1,250 | 1,000 |
+"""
+
+        value = self.executor.resolve_value(
+            {"row_terms": ["average", "shares"], "column_terms": ["current"]},
+            context,
+        )
+
+        self.assertIsNotNone(value)
+        self.assertEqual(value.value, 1250.0)
+        self.assertEqual(value.column_label, "current year")
+
     def test_difference(self) -> None:
         result = self.executor.difference(173.2, 171.5)
         self.assertAlmostEqual(result.value, 1.7)

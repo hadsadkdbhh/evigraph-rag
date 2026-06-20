@@ -5,7 +5,8 @@ Last updated from the checked-in FinQA MVP0 run.
 ## Current Stage
 
 - Engineering pipeline: complete for MVP0 reproducibility.
-- MVP0 experiment loop: complete for toy, stress, and 100-example FinQA smoke runs.
+- MVP0 experiment loop: complete for toy, stress, 100-example FinQA smoke, and a
+  300-example FinQA validation-scale diagnostic run.
 - AAAI readiness: early research prototype; the system is not yet at submission-quality benchmark performance.
 
 ## Reproducibility Gates
@@ -40,6 +41,22 @@ records `source_doc` for oracle-document and source-rerank evaluation.
 | BM25 + source rerank | 64/100 |
 
 These numbers are diagnostic smoke results, not final benchmark claims.
+
+The 300-example validation-scale run is now checked in as a reproducibility
+asset and documented in `docs/finqa_300_status.md`. It is a harder reality
+check than the 100-example smoke run:
+
+| setting | full EviGraph exact match |
+| --- | ---: |
+| Oracle-doc | 89/300 |
+| Open BM25 | 61/300 |
+| Open hybrid | 63/300 |
+| BM25 + source rerank | 82/300 |
+
+These 300-example numbers should be treated as diagnostic engineering evidence,
+not as the final paper claim. They show that support diagnostics are much
+stronger than raw exact match, and that the main unsolved issue is still
+operation and operand selection under realistic table variation.
 
 ## Main Bottleneck
 
@@ -76,3 +93,11 @@ selection for ratio and percent-change calculations, especially cases such as
 ADI mutual-fund allocation, LKQ rental-expense period selection, GS commodities
 base-year selection, IP denominator selection, and AMT twelve-month versus
 three-month period intent.
+
+The numeric planner fallback has moved one step closer to a program-style
+executor: an LLM plan may now identify table cells by row label plus year/column
+selector, while the local executor parses the markdown table, retrieves the
+evidence value, executes `difference`, `ratio`, `percent_change`, `sum`, or
+`average`, and records the resolved row/column references in the calculation
+trace. This is the intended path for future failure-driven fixes because it
+separates operation planning from locally auditable arithmetic.

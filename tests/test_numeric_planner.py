@@ -52,6 +52,42 @@ class NumericPlannerFallbackTest(unittest.TestCase):
         self.assertEqual(answer.text, "59.4%")
         self.assertIn("planned_ratio", answer.calculations[0])
 
+    def test_executes_selector_plan_against_markdown_table_cells(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="table",
+                content=(
+                    "| metric | 2023 | 2022 |\n"
+                    "| --- | ---: | ---: |\n"
+                    "| revenue | 125 | 100 |\n"
+                    "| operating income | 30 | 20 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+        planner = NumericPlannerFallback(
+            FakePlanClient(
+                {
+                    "operation": "percent_change",
+                    "node_id": "table",
+                    "target": {"label": "revenue", "year": "2023"},
+                    "base": {"label": "revenue", "year": "2022"},
+                    "scale": "percent",
+                }
+            )
+        )
+
+        answer = SupportOnlyGenerator(planner_fallback=planner).generate(
+            "compute the planned revenue movement from prior year to current year",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "25.0%")
+        self.assertIn("planned_percent_change", answer.calculations[0])
+        self.assertIn("revenue/2023", answer.calculations[0])
+
     def test_rejects_plan_values_not_present_in_context(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

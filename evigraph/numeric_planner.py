@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -47,14 +46,16 @@ class LLMNumericPlanClient:
                     "{"
                     "\"operation\": \"difference|ratio|percent_change|average|sum\", "
                     "\"node_id\": \"context id\", "
-                    "\"target\": {\"label\": \"row or phrase\", \"year\": \"optional\", \"value\": number}, "
-                    "\"base\": {\"label\": \"row or phrase\", \"year\": \"optional\", \"value\": number}, "
-                    "\"values\": [{\"label\": \"row or phrase\", \"year\": \"optional\", \"value\": number}], "
+                    "\"target\": {\"label\": \"row label or phrase\", \"year\": \"optional column/year\", \"value\": number}, "
+                    "\"base\": {\"label\": \"row label or phrase\", \"year\": \"optional column/year\", \"value\": number}, "
+                    "\"values\": [{\"label\": \"row label or phrase\", \"year\": \"optional column/year\", \"value\": number}], "
                     "\"scale\": \"number|percent\", "
                     "\"rationale\": \"short\""
                     "}\n"
                     "Use target/base for difference, ratio, and percent_change. "
-                    "Use values for sum and average. Values must appear in the context."
+                    "Use values for sum and average. Values must appear in the context. "
+                    "If the context is a table, you may omit value when label plus year/column identifies a cell; "
+                    "the executor will read that cell locally."
                 ),
             },
         ]
@@ -72,39 +73,54 @@ class NumericPlanExecutor:
             return None
 
         if operation in {"difference", "ratio", "percent_change"}:
-            target = self._planned_value(plan.get("target"), context_text)
-            base = self._planned_value(plan.get("base"), context_text)
+            target = self.executor.resolve_value(plan.get("target"), context_text)
+            base = self.executor.resolve_value(plan.get("base"), context_text)
             if target is None or base is None:
                 return None
             if operation == "difference":
-                result = self.executor.difference(target, base)
+                result = self.executor.difference(target.value, base.value)
                 return PlannedNumericAnswer(
                     text=f"{result.value:g}",
-                    calculation=f"planned_difference: {result.expression}",
+                    calculation=self._calculation(
+                        "planned_difference",
+                        result.expression,
+                        target,
+                        base,
+                    ),
                 )
             if operation == "ratio":
-                result = self.executor.ratio(target, base)
+                result = self.executor.ratio(target.value, base.value)
                 if result is None:
                     return None
                 value = result.value * 100.0 if str(plan.get("scale")) == "percent" else result.value
                 suffix = "%" if str(plan.get("scale")) == "percent" else ""
                 return PlannedNumericAnswer(
                     text=self._format_number(value, suffix),
-                    calculation=f"planned_ratio: {target:g} / {base:g}{' * 100' if suffix else ''} = {value:.1f}{suffix}",
+                    calculation=self._calculation(
+                        "planned_ratio",
+                        f"{target.value:g} / {base.value:g}{' * 100' if suffix else ''} = {value:.1f}{suffix}",
+                        target,
+                        base,
+                    ),
                 )
-            result = self.executor.percent_change(target, base)
+            result = self.executor.percent_change(target.value, base.value)
             if result is None:
                 return None
             return PlannedNumericAnswer(
                 text=f"{result.value:.1f}%",
-                calculation=f"planned_percent_change: {result.expression}",
+                calculation=self._calculation(
+                    "planned_percent_change",
+                    result.expression,
+                    target,
+                    base,
+                ),
             )
 
         if operation in {"sum", "average"}:
             values = [
-                value
+                value.value
                 for item in plan.get("values", [])
-                if (value := self._planned_value(item, context_text)) is not None
+                if (value := self.executor.resolve_value(item, context_text)) is not None
             ]
             if not values:
                 return None
@@ -126,30 +142,22 @@ class NumericPlanExecutor:
             return contexts[0][1]
         return None
 
-    def _planned_value(self, item: Any, context_text: str) -> float | None:
-        if not isinstance(item, dict) or "value" not in item:
-            return None
-        try:
-            value = float(item["value"])
-        except (TypeError, ValueError):
-            return None
-        if self._value_supported(value, context_text):
-            return value
-        return None
-
-    def _value_supported(self, value: float, context_text: str) -> bool:
-        for number in re.findall(r"[-+]?\d+(?:,\d{3})*(?:\.\d+)?", context_text):
-            try:
-                if abs(float(number.replace(",", "")) - value) < 0.05:
-                    return True
-            except ValueError:
-                continue
-        return False
-
     def _format_number(self, value: float, suffix: str = "") -> str:
         if abs(value - round(value)) < 0.05:
             return f"{round(value):.0f}{suffix}"
         return f"{value:.1f}{suffix}"
+
+    def _calculation(self, operation: str, expression: str, target: Any, base: Any) -> str:
+        target_ref = self._value_ref(target)
+        base_ref = self._value_ref(base)
+        return f"{operation} target={target_ref} base={base_ref}: {expression}"
+
+    def _value_ref(self, value: Any) -> str:
+        row = getattr(value, "row_label", "") or "value"
+        column = getattr(value, "column_label", "")
+        if column:
+            return f"{row}/{column}"
+        return str(row)
 
 
 class NumericPlannerFallback:

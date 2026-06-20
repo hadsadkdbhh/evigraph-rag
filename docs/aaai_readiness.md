@@ -12,10 +12,19 @@ This file tracks what the current repository can and cannot support as paper evi
 - A 100-example real FinQA validation subset is checked in with deterministic sampling metadata and a retrieval corpus built from source pre-text, tables, and post-text.
 - On the checked-in 100-example FinQA smoke subset, the current oracle-document setting reaches 63/100 numeric exact-match accuracy with transparent calculations for ratio, percent-of-total, percent-change, row-average, row/column lookup, year-range-average, ROI, prose average, cross-chunk ratio, cross-chunk continuation-table stitching, relative row difference, percentage-point row difference, fiscal schedule percent-change, grouped table/prose ratio, horizontal and vertical maturity-schedule ratios, and difference cases.
 - Open BM25 reaches 55/100, deterministic open hybrid reaches 54/100, and source-rerank reaches 64/100 for full EviGraph on the same subset; these are diagnostic baselines, not final claims.
+- A 300-example FinQA validation-scale diagnostic subset is checked in with seed
+  13 and source-document metadata. The run is documented in
+  `docs/finqa_300_status.md` and should be used as the current reality check:
+  oracle-doc full EviGraph is 89/300, open BM25 is 61/300, open hybrid is
+  63/300, and source-rerank is 82/300.
 - The experiment CSVs now separate exact match from verifier diagnostics: arithmetic support, calculation-result support, operation-semantics checking, row-operation grounding, semantic grounding, and final answer support.
 - The manifest runner writes a failure report for batch experiments, grouping unresolved examples by error category for paper-oriented failure analysis.
 - The row/operation diagnostic splits wrong numeric answers into wrong numerator, wrong denominator, wrong year or period, wrong row label, wrong operation type, and ambiguous supported wrong-number cases.
 - The latest calculation-aware verifier raises support auditing fidelity by accepting reproducible calculation results while keeping exact-match claims separate from support diagnostics; row/operation grounding remains a paper-critical risk before making strong benchmark claims.
+- The optional LLM numeric planner fallback now supports program-style table-cell
+  selection: plans can specify row labels and year/column selectors, then the
+  local executor resolves the cited cell, performs arithmetic, and logs the
+  resolved row/column references.
 
 ## Claims Not Yet Supported
 
@@ -29,7 +38,8 @@ This file tracks what the current repository can and cannot support as paper evi
 
 ## Evidence Needed Before Submission
 
-- Scale the real benchmark subset beyond the checked-in 100-example FinQA smoke subset.
+- Continue scaling beyond the 300-example FinQA diagnostic subset once the
+  operation planner and open retrieval improve.
 - Add stronger baselines, including dense retrieval and retrieve-then-read RAG; the current deterministic open hybrid baseline is a first reproducible lexical/numeric reranker, not a substitute for dense retrieval.
 - Add task-appropriate metrics beyond brittle numeric/string exact match.
 - Add failure analysis and qualitative case studies from real examples.
@@ -41,5 +51,7 @@ This file tracks what the current repository can and cannot support as paper evi
 
 ## Next Engineering Step
 
-Improve the table numerical reasoning path on the FinQA subset before scaling the
-sample size or reporting benchmark claims.
+Improve the table numerical reasoning path on the FinQA subset before reporting
+benchmark claims. The next concrete target is to make the program-style numeric
+planner handle common FinQA plan shapes such as multiplication, percent of
+increase, and period-disambiguated row selection.
