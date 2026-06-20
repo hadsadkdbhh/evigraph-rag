@@ -11,6 +11,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from evigraph.methods import METHODS, MethodRunner
+from evigraph.retrieval import RETRIEVAL_MODES
 
 
 def load_config(path: str | None) -> dict[str, Any]:
@@ -64,7 +65,7 @@ def main() -> int:
     parser.add_argument("--method", default="full_evigraph", choices=METHODS)
     parser.add_argument("--top-k", type=int, default=8)
     parser.add_argument("--source-doc", default=None)
-    parser.add_argument("--retrieval-mode", default="oracle_doc", choices=["oracle_doc", "open", "source_rerank"])
+    parser.add_argument("--retrieval-mode", default="oracle_doc", choices=RETRIEVAL_MODES)
     args = parser.parse_args()
 
     config = load_config(args.config)

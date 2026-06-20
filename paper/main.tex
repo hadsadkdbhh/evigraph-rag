@@ -43,7 +43,7 @@ Each retrieved item becomes a node with utility, risk, cost, and provenance sign
 The system then selects a support subgraph, expands source context when running oracle-document analysis, executes table operations, and verifies claims against citations.
 
 This skeleton is intentionally conservative.
-The current FinQA experiments use a deterministic 100-example validation subset and report three retrieval settings: oracle-document, open BM25, and BM25 with source reranking.
+The current FinQA experiments use a deterministic 100-example validation subset and report four retrieval settings: oracle-document, open BM25, deterministic open hybrid, and BM25 with source reranking.
 
 \section{Related Work}
 
@@ -179,12 +179,13 @@ This suite is used for mechanism debugging, not public benchmark claims.
 
 \textbf{Oracle-doc} constrains retrieval to the gold \texttt{source\_doc} and expands full source context for numerical evidence.
 \textbf{Open BM25} retrieves from the full corpus without source metadata.
+\textbf{Open hybrid} reranks open BM25 candidates with deterministic table, year, number, and operation-overlap features; it uses no gold source metadata.
 \textbf{BM25 + source rerank} retrieves broadly and softly promotes candidates whose source matches the known \texttt{source\_doc}; this is an analysis setting, not a deployable open-retrieval claim.
 
 \subsection{Baselines and Ablations}
 
 We compare top-k, utility-only, EviGraph without risk, EviGraph without verifier, EviGraph without support extraction, and full EviGraph.
-The current draft reports lexical retrieval baselines; stronger dense or hybrid retrieve-then-read baselines are required before making final benchmark-level claims.
+The current draft reports lexical and deterministic hybrid retrieval baselines; a dense retrieve-then-read baseline is still required before making final benchmark-level claims.
 
 \input{generated/finqa_results_tables}
 

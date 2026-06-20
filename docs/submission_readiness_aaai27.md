@@ -27,7 +27,7 @@ Current strengths:
 
 - End-to-end reproducible pipeline with manifest-driven experiments.
 - Deterministic 100-example FinQA validation subset with source documents recorded.
-- Three clearly separated retrieval settings: oracle-doc, open BM25, and source-rerank analysis.
+- Four clearly separated retrieval settings: oracle-doc, open BM25, deterministic open hybrid, and source-rerank analysis.
 - Generated paper tables for exact match, support diagnostics, and failure categories.
 - Formal subgraph-selection objective with monotone submodular structure.
 - Failure reports that identify the next engineering target instead of relying on anecdotal inspection.
@@ -36,7 +36,7 @@ Current blockers:
 
 - The paper now has a first-pass related-work section, but it still needs final tightening and citation polish.
 - The method figure is now present as a lightweight LaTeX diagram, but it should be polished if space allows.
-- Open retrieval is only lexical BM25; no dense or hybrid baseline is present.
+- Open retrieval now includes lexical BM25 and a deterministic lexical/numeric hybrid reranker, but no dense baseline is present.
 - The current FinQA subset is too small for final benchmark claims.
 - The paper needs a full reproducibility checklist and a clear code/data release note.
 - The exact-match results are diagnostic, not strong enough to sell as benchmark superiority.
@@ -69,7 +69,7 @@ Priority 1: make the paper defensible.
 
 Priority 2: strengthen the empirical story.
 
-- Add a hybrid or dense retrieval baseline for open retrieval.
+- Add a dense retrieval baseline for open retrieval; the deterministic hybrid baseline is present but does not yet improve exact match over BM25.
 - Scale FinQA beyond the 100-example smoke subset once exact commands and caching are stable.
 - Keep oracle-doc, open BM25, hybrid/dense open retrieval, and source-rerank analysis in separate table blocks.
 - Track failure categories after every manifest run and prioritize the largest open-retrieval error classes.

@@ -51,6 +51,16 @@
       ]
     },
     {
+      "name": "open_hybrid_ablation",
+      "type": "batch",
+      "retrieval_mode": "open_hybrid",
+      "methods": [
+        "topk",
+        "utility_only",
+        "full_evigraph"
+      ]
+    },
+    {
       "name": "source_rerank_ablation",
       "type": "batch",
       "retrieval_mode": "source_rerank",
@@ -72,6 +82,6 @@
     "This is a 100-example real FinQA validation subset fetched from Hugging Face Dataset Viewer with a fixed seed.",
     "The current MVP uses text and table evidence serialized to Markdown, not native PDF layout.",
     "The generated corpus excludes the gold answer and gold evidence annotations.",
-    "Oracle-doc results use the provided source_doc field; open BM25 results do not."
+    "Oracle-doc and source-rerank analysis use the provided source_doc field; open BM25 and open hybrid results do not."
   ]
 }

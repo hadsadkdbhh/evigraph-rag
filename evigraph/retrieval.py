@@ -9,6 +9,9 @@ from evigraph.document_loader import DocumentChunk, DocumentLoader, load_chunks_
 from evigraph.schema import EvidenceNode
 
 
+RETRIEVAL_MODES = ("oracle_doc", "open", "open_hybrid", "source_rerank")
+
+
 class MockRetriever:
     """Deterministic candidates for MVP-0 smoke tests."""
 
@@ -106,30 +109,38 @@ class BM25Retriever:
 
         nodes = []
         for rank, (score, chunk) in enumerate(sorted(scored, key=lambda item: item[0], reverse=True)[:top_k], start=1):
-            node_type, modality, content = _infer_node_content(chunk.text)
-            nodes.append(
-                EvidenceNode(
-                    node_id=f"retrieved_{rank}_{chunk.chunk_id}",
-                    node_type=node_type,
-                    content=content,
-                    source_doc=chunk.source_doc,
-                    page_number=chunk.page_number,
-                    modality=modality,
-                    confidence=1.0,
-                    cost={
-                        "tokens": max(1, len(chunk.text.split())),
-                        "tool_calls": 0,
-                        "latency_ms": 10,
-                    },
-                    metadata={
-                        "retrieval_score": round(score, 4),
-                        "retrieval_rank": rank,
-                        "chunk_id": chunk.chunk_id,
-                        **(chunk.metadata or {}),
-                    },
-                )
-            )
+            nodes.append(self._node_from_chunk(rank, score, chunk))
         return nodes
+
+    def _node_from_chunk(
+        self,
+        rank: int,
+        score: float,
+        chunk: DocumentChunk,
+        metadata_extra: dict[str, object] | None = None,
+    ) -> EvidenceNode:
+        node_type, modality, content = _infer_node_content(chunk.text)
+        return EvidenceNode(
+            node_id=f"retrieved_{rank}_{chunk.chunk_id}",
+            node_type=node_type,
+            content=content,
+            source_doc=chunk.source_doc,
+            page_number=chunk.page_number,
+            modality=modality,
+            confidence=1.0,
+            cost={
+                "tokens": max(1, len(chunk.text.split())),
+                "tool_calls": 0,
+                "latency_ms": 10,
+            },
+            metadata={
+                "retrieval_score": round(score, 4),
+                "retrieval_rank": rank,
+                "chunk_id": chunk.chunk_id,
+                **(chunk.metadata or {}),
+                **(metadata_extra or {}),
+            },
+        )
 
     def _score(self, query_terms: list[str], doc_terms: list[str]) -> float:
         k1 = 1.5
@@ -146,6 +157,79 @@ class BM25Retriever:
             denom = tf + k1 * (1 - b + b * doc_len / max(1, self.avg_doc_len))
             score += idf * (tf * (k1 + 1) / denom)
         return score
+
+
+class HybridRetriever(BM25Retriever):
+    """Deterministic BM25 reranker with numeric/table operation features."""
+
+    def retrieve(self, query: str, top_k: int = 8) -> list[EvidenceNode]:
+        query_terms = _tokens(query)
+        query_term_set = set(query_terms)
+        query_years = set(_years(query))
+        query_numbers = set(_numbers(query))
+        query_operations = _operation_cues(query)
+        scored = []
+
+        for chunk, doc_terms in zip(self.chunks, self.tokenized):
+            bm25_score = self._score(query_terms, doc_terms)
+            doc_text = chunk.text
+            doc_term_set = set(doc_terms)
+            doc_years = set(_years(doc_text))
+            doc_numbers = set(_numbers(doc_text))
+            doc_operations = _operation_cues(doc_text)
+
+            lexical_overlap = len(query_term_set & doc_term_set) / max(1, len(query_term_set))
+            year_overlap = len(query_years & doc_years) / max(1, len(query_years)) if query_years else 0.0
+            number_overlap = (
+                len(query_numbers & doc_numbers) / max(1, len(query_numbers)) if query_numbers else 0.0
+            )
+            operation_overlap = 1.0 if query_operations & doc_operations else 0.0
+            table_prior = 1.0 if _looks_like_table(doc_text) and _asks_numeric_table_question(query) else 0.0
+
+            hybrid_score = (
+                bm25_score
+                + 0.45 * lexical_overlap
+                + 0.65 * year_overlap
+                + 0.35 * number_overlap
+                + 0.30 * operation_overlap
+                + 0.25 * table_prior
+            )
+            if hybrid_score > 0:
+                scored.append(
+                    (
+                        hybrid_score,
+                        bm25_score,
+                        {
+                            "hybrid_lexical_overlap": round(lexical_overlap, 4),
+                            "hybrid_year_overlap": round(year_overlap, 4),
+                            "hybrid_number_overlap": round(number_overlap, 4),
+                            "hybrid_operation_overlap": round(operation_overlap, 4),
+                            "hybrid_table_prior": round(table_prior, 4),
+                        },
+                        chunk,
+                    )
+                )
+        if not scored:
+            scored = [(0.0, 0.0, {}, chunk) for chunk in self.chunks]
+
+        nodes = []
+        for rank, (hybrid_score, bm25_score, features, chunk) in enumerate(
+            sorted(scored, key=lambda item: item[0], reverse=True)[:top_k],
+            start=1,
+        ):
+            nodes.append(
+                self._node_from_chunk(
+                    rank,
+                    hybrid_score,
+                    chunk,
+                    {
+                        "retrieval_model": "bm25_numeric_hybrid",
+                        "bm25_score": round(bm25_score, 4),
+                        **features,
+                    },
+                )
+            )
+        return nodes
 
 
 class CorpusRetriever:
@@ -167,6 +251,10 @@ class CorpusRetriever:
             chunks = DocumentLoader().load(path)
         if retrieval_mode == "open":
             nodes = BM25Retriever(chunks).retrieve(query, top_k=top_k)
+            return self._with_adjacent_context(nodes, chunks)
+
+        if retrieval_mode == "open_hybrid":
+            nodes = HybridRetriever(chunks).retrieve(query, top_k=top_k)
             return self._with_adjacent_context(nodes, chunks)
 
         if source_doc and retrieval_mode == "source_rerank":
@@ -291,6 +379,44 @@ class CorpusRetriever:
 
 def _tokens(text: str) -> list[str]:
     return [token for token in re.findall(r"[A-Za-z0-9_]+", text.lower()) if len(token) > 1]
+
+
+def _years(text: str) -> list[str]:
+    return re.findall(r"\b(?:19|20)\d{2}\b", text)
+
+
+def _numbers(text: str) -> list[str]:
+    return [match.replace(",", "") for match in re.findall(r"(?<![A-Za-z])[-+]?\d[\d,]*(?:\.\d+)?%?", text)]
+
+
+def _operation_cues(text: str) -> set[str]:
+    lowered = text.lower()
+    cues = set()
+    cue_groups = {
+        "percent": ("percent", "percentage", "%", "rate", "margin"),
+        "change": ("increase", "decrease", "change", "grew", "declined", "reduction"),
+        "ratio": ("ratio", "represented", "as a percentage of"),
+        "sum": ("total", "combined", "sum"),
+        "average": ("average", "mean"),
+        "difference": ("difference", "higher", "lower", "less", "more"),
+    }
+    for cue, patterns in cue_groups.items():
+        if any(pattern in lowered for pattern in patterns):
+            cues.add(cue)
+    return cues
+
+
+def _looks_like_table(text: str) -> bool:
+    lines = [line for line in text.splitlines() if line.strip()]
+    pipe_rows = [line for line in lines if line.count("|") >= 2]
+    return len(pipe_rows) >= 2
+
+
+def _asks_numeric_table_question(query: str) -> bool:
+    lowered = query.lower()
+    return bool(
+        re.search(r"\b(what|how|calculate|percentage|percent|ratio|average|total|increase|decrease|change)\b", lowered)
+    )
 
 
 def _infer_node_content(text: str) -> tuple[str, str, str | dict]:

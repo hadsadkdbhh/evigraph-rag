@@ -11,7 +11,7 @@ This file tracks what the current repository can and cannot support as paper evi
 - The synthetic stress suite shows that risk-aware evidence selection can reject hand-authored forecast, draft, and press distractors while simple top-k and utility-only baselines accept noisy evidence.
 - A 100-example real FinQA validation subset is checked in with deterministic sampling metadata and a retrieval corpus built from source pre-text, tables, and post-text.
 - On the checked-in 100-example FinQA smoke subset, the current oracle-document setting reaches 56/100 numeric exact-match accuracy with transparent calculations for ratio, percent-of-total, percent-change, row-average, row/column lookup, year-range-average, ROI, prose average, cross-chunk ratio, and difference cases.
-- Open BM25 reaches 47/100 and source-rerank reaches 56/100 for full EviGraph on the same subset; these are diagnostic baselines, not final claims.
+- Open BM25 reaches 47/100, deterministic open hybrid reaches 47/100, and source-rerank reaches 56/100 for full EviGraph on the same subset; these are diagnostic baselines, not final claims.
 - The experiment CSVs now separate exact match from verifier diagnostics: arithmetic support, calculation-result support, operation-semantics checking, row-operation grounding, semantic grounding, and final answer support.
 - The manifest runner writes a failure report for batch experiments, grouping unresolved examples by error category for paper-oriented failure analysis.
 - The latest calculation-aware verifier raises support auditing fidelity by accepting reproducible calculation results while keeping exact-match claims separate from support diagnostics; row/operation grounding remains a paper-critical risk before making strong benchmark claims.
@@ -29,7 +29,7 @@ This file tracks what the current repository can and cannot support as paper evi
 ## Evidence Needed Before Submission
 
 - Scale the real benchmark subset beyond the checked-in 100-example FinQA smoke subset.
-- Add stronger baselines, including dense retrieval and retrieve-then-read RAG.
+- Add stronger baselines, including dense retrieval and retrieve-then-read RAG; the current deterministic open hybrid baseline is a first reproducible lexical/numeric reranker, not a substitute for dense retrieval.
 - Add task-appropriate metrics beyond brittle numeric/string exact match.
 - Add failure analysis and qualitative case studies from real examples.
 - Keep the MVP0 acceptance gate green from a clean checkout.

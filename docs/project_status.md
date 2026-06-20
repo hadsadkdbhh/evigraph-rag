@@ -36,6 +36,7 @@ records `source_doc` for oracle-document and source-rerank evaluation.
 | --- | ---: |
 | Oracle-doc | 56/100 |
 | Open BM25 | 47/100 |
+| Open hybrid | 47/100 |
 | BM25 + source rerank | 56/100 |
 
 These numbers are diagnostic smoke results, not final benchmark claims.
@@ -49,7 +50,9 @@ less brittle risk wording, stricter row grounding, retrieval-rank anchoring,
 additional percent-change routing, year-label table fallback, and
 caption/header-aware row selection, prose/table percent-of-total normalization,
 ordinary ratio execution over year-value tables, multi-column ratio selection,
-weak prose-match rejection, and adjacency chunks used as context-only support;
-it now matches the current top-k smoke baseline, so the next push should focus
-on row/operation selection errors and unresolved percent operations in retrieved
-evidence.
+weak prose-match rejection, and adjacency chunks used as context-only support.
+The deterministic open hybrid reranker adds table, year, number, and operation
+overlap features, but it currently ties open BM25 on exact match at 47/100 while
+slightly improving verifier diagnostics. This indicates that the next push
+should focus on row/operation selection errors and unresolved percent operations
+inside retrieved evidence rather than simple lexical reranking.

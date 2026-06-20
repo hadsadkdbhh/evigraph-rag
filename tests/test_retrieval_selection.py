@@ -7,7 +7,7 @@ from pathlib import Path
 
 from evigraph.evidence_graph import EvidenceGraph
 from evigraph.document_loader import DocumentChunk
-from evigraph.retrieval import BM25Retriever, CorpusRetriever
+from evigraph.retrieval import BM25Retriever, CorpusRetriever, HybridRetriever
 from evigraph.schema import EvidenceNode, EvidenceScore
 from evigraph.selector import EvidenceSetSelector
 
@@ -48,6 +48,27 @@ class RetrievalSelectionTest(unittest.TestCase):
         self.assertEqual(chunk_ids[:2], ["case_0_0", "case_0_1"])
         self.assertTrue(nodes[1].metadata.get("neighbor_context"))
         self.assertEqual(nodes[1].metadata.get("retrieval_rank"), 1)
+
+    def test_hybrid_retrieval_boosts_table_and_operation_overlap(self) -> None:
+        chunks = [
+            DocumentChunk(
+                "text_hit",
+                "percentage percentage percentage percentage generic discussion of revenue",
+                "text.md",
+            ),
+            DocumentChunk(
+                "table_hit",
+                "| year | net sales |\n| 2022 | 100 |\n| 2023 | 125 |\nnet sales increase table",
+                "table.md",
+            ),
+        ]
+
+        nodes = HybridRetriever(chunks).retrieve("what was the percentage increase in net sales from 2022 to 2023", top_k=2)
+
+        self.assertEqual(nodes[0].metadata["chunk_id"], "table_hit")
+        self.assertEqual(nodes[0].metadata["retrieval_model"], "bm25_numeric_hybrid")
+        self.assertGreater(nodes[0].metadata["hybrid_year_overlap"], 0)
+        self.assertEqual(nodes[0].metadata["hybrid_table_prior"], 1.0)
 
     def test_selector_keeps_same_source_distinct_chunks(self) -> None:
         graph = EvidenceGraph()

@@ -33,6 +33,14 @@ class PaperAssetBuilderTest(unittest.TestCase):
                 ],
             )
             self._write_eval_csv(
+                eval_dir / "finqa_subset_open_hybrid_ablation.csv",
+                [
+                    ("topk", "0.35", "7"),
+                    ("utility_only", "0.25", "Based on the selected evidence: x"),
+                    ("full_evigraph", "0.45", "wrong 5"),
+                ],
+            )
+            self._write_eval_csv(
                 eval_dir / "finqa_subset_source_rerank_ablation.csv",
                 [
                     ("topk", "0.50", "7"),
@@ -49,6 +57,7 @@ class PaperAssetBuilderTest(unittest.TestCase):
         self.assertIn("\\label{tab:finqa-diagnostic-results}", latex)
         self.assertIn("Oracle-doc & Full EviGraph", latex)
         self.assertIn("Open BM25", markdown)
+        self.assertIn("Open hybrid", markdown)
         self.assertIn("Full EviGraph", markdown)
         self.assertIn("wrong row/op", markdown)
         self.assertIn("Paper-Safe Claims", markdown)

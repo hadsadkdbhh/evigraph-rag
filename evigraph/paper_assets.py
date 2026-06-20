@@ -28,6 +28,11 @@ DEFAULT_RESULT_SPECS = (
         ("topk", "utility_only", "full_evigraph"),
     ),
     ResultSpec(
+        "Open hybrid",
+        "finqa_subset_open_hybrid_ablation.csv",
+        ("topk", "utility_only", "full_evigraph"),
+    ),
+    ResultSpec(
         "BM25 + source rerank",
         "finqa_subset_source_rerank_ablation.csv",
         ("topk", "utility_only", "full_evigraph"),
@@ -85,7 +90,7 @@ class PaperAssetBuilder:
             [
                 "\\bottomrule",
                 "\\end{tabular}",
-                "\\caption{FinQA 100-example diagnostic results. EM is numeric exact match. Ans., Calc., OpSem, and Row are verifier diagnostics for answer support, calculation-result support, operation-semantics checking, and row grounding. Source rerank uses the provided source document and is an analysis setting rather than a deployable open-retrieval claim.}",
+                "\\caption{FinQA 100-example diagnostic results. EM is numeric exact match. Ans., Calc., OpSem, and Row are verifier diagnostics for answer support, calculation-result support, operation-semantics checking, and row grounding. Open hybrid is a deterministic lexical/numeric reranker; source rerank uses the provided source document and is an analysis setting rather than a deployable open-retrieval claim.}",
                 "\\label{tab:finqa-diagnostic-results}",
                 "\\end{table}",
                 "",
@@ -184,7 +189,7 @@ class PaperAssetBuilder:
                 "## Paper-Safe Claims",
                 "",
                 "- Treat these as diagnostic smoke-subset results, not final benchmark claims.",
-                "- Report open BM25 separately from oracle-doc and source-rerank settings.",
+                "- Report open BM25 and open hybrid separately from oracle-doc and source-rerank settings.",
                 "- Use the failure-category table to justify the next row/operation-selection iteration.",
                 "",
             ]

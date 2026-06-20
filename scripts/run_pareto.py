@@ -12,6 +12,7 @@ if str(ROOT) not in sys.path:
 
 from evigraph.methods import MethodRunner
 from evigraph.metrics import summarize_result
+from evigraph.retrieval import RETRIEVAL_MODES
 from scripts.run_query import load_config
 
 
@@ -22,7 +23,7 @@ def main() -> int:
     parser.add_argument("--config", default=str(ROOT / "configs" / "default.yaml"))
     parser.add_argument("--budgets", default="1,2,4,8")
     parser.add_argument("--corpus", default=None)
-    parser.add_argument("--retrieval-mode", default="oracle_doc", choices=["oracle_doc", "open", "source_rerank"])
+    parser.add_argument("--retrieval-mode", default="oracle_doc", choices=RETRIEVAL_MODES)
     args = parser.parse_args()
 
     config = load_config(args.config)
