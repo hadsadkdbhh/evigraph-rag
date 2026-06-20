@@ -6,36 +6,36 @@ Generated from `outputs/eval/finqa` after the latest manifest run.
 
 | setting | method | EM | answer supported | calculation supported | operation semantics | row grounded | tokens |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Oracle-doc | topk | 0.60 | 0.82 | 0.65 | 0.89 | 0.86 | 1433.58 |
-| Oracle-doc | utility_only | 0.60 | 0.82 | 0.65 | 0.89 | 0.86 | 1318.61 |
-| Oracle-doc | full_evigraph | 0.60 | 0.82 | 0.65 | 0.89 | 0.86 | 1189.47 |
-| Open BM25 | topk | 0.52 | 0.82 | 0.62 | 0.85 | 0.84 | 840.41 |
-| Open BM25 | utility_only | 0.42 | 0.71 | 0.50 | 0.75 | 0.73 | 839.26 |
-| Open BM25 | full_evigraph | 0.52 | 0.82 | 0.62 | 0.87 | 0.84 | 842.87 |
-| Open hybrid | topk | 0.52 | 0.83 | 0.63 | 0.86 | 0.85 | 845.99 |
-| Open hybrid | utility_only | 0.43 | 0.71 | 0.50 | 0.75 | 0.73 | 849.18 |
-| Open hybrid | full_evigraph | 0.51 | 0.83 | 0.63 | 0.87 | 0.85 | 849.60 |
-| BM25 + source rerank | topk | 0.58 | 0.81 | 0.64 | 0.88 | 0.85 | 1252.04 |
-| BM25 + source rerank | utility_only | 0.53 | 0.76 | 0.58 | 0.82 | 0.79 | 1157.64 |
-| BM25 + source rerank | full_evigraph | 0.61 | 0.83 | 0.65 | 0.89 | 0.86 | 1367.17 |
+| Oracle-doc | topk | 0.62 | 0.83 | 0.66 | 0.90 | 0.87 | 1433.58 |
+| Oracle-doc | utility_only | 0.62 | 0.83 | 0.66 | 0.90 | 0.87 | 1318.61 |
+| Oracle-doc | full_evigraph | 0.62 | 0.83 | 0.66 | 0.90 | 0.87 | 1189.47 |
+| Open BM25 | topk | 0.53 | 0.82 | 0.62 | 0.85 | 0.84 | 840.41 |
+| Open BM25 | utility_only | 0.44 | 0.71 | 0.50 | 0.75 | 0.73 | 839.26 |
+| Open BM25 | full_evigraph | 0.54 | 0.82 | 0.62 | 0.87 | 0.84 | 842.87 |
+| Open hybrid | topk | 0.53 | 0.83 | 0.63 | 0.86 | 0.85 | 845.99 |
+| Open hybrid | utility_only | 0.45 | 0.72 | 0.51 | 0.76 | 0.74 | 849.18 |
+| Open hybrid | full_evigraph | 0.53 | 0.83 | 0.63 | 0.87 | 0.85 | 849.60 |
+| BM25 + source rerank | topk | 0.60 | 0.82 | 0.65 | 0.89 | 0.86 | 1252.04 |
+| BM25 + source rerank | utility_only | 0.55 | 0.77 | 0.59 | 0.83 | 0.80 | 1157.64 |
+| BM25 + source rerank | full_evigraph | 0.63 | 0.84 | 0.66 | 0.90 | 0.87 | 1367.17 |
 
 ## Full EviGraph Failure Categories
 
 | setting | wrong row/op | no numeric | no percent | additive/lookup | ratio | unsupported |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Oracle-doc | 9 | 13 | 9 | 4 | 2 | 3 |
-| Open BM25 | 13 | 14 | 10 | 5 | 3 | 3 |
-| Open hybrid | 15 | 14 | 10 | 5 | 3 | 2 |
-| BM25 + source rerank | 9 | 12 | 9 | 4 | 2 | 3 |
+| Oracle-doc | 8 | 13 | 8 | 4 | 2 | 3 |
+| Open BM25 | 11 | 14 | 10 | 5 | 3 | 3 |
+| Open hybrid | 13 | 14 | 10 | 5 | 3 | 2 |
+| BM25 + source rerank | 8 | 12 | 8 | 4 | 2 | 3 |
 
 ## Row/Operation Diagnostics
 
 | setting | wrong numerator | wrong denominator | wrong year/period | wrong row label | wrong operation type | ambiguous |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Oracle-doc | 2 | 1 | 1 | 2 | 0 | 4 |
-| Open BM25 | 4 | 2 | 1 | 2 | 1 | 6 |
-| Open hybrid | 4 | 3 | 2 | 3 | 1 | 6 |
-| BM25 + source rerank | 3 | 1 | 1 | 2 | 0 | 4 |
+| Oracle-doc | 2 | 0 | 1 | 2 | 0 | 4 |
+| Open BM25 | 3 | 1 | 1 | 1 | 0 | 6 |
+| Open hybrid | 3 | 2 | 2 | 2 | 0 | 6 |
+| BM25 + source rerank | 2 | 0 | 1 | 2 | 0 | 4 |
 
 ## Paper-Safe Claims
 

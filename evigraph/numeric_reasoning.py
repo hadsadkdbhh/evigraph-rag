@@ -397,6 +397,9 @@ class NumericReasoner:
                     return answer
             return self._percent_change_latest_table_years(query_lower, contexts)
         base_year, target_year = self._percent_change_years(query_lower, years)
+        year_label_answer = self._percent_change_year_label_candidates(query_lower, contexts, base_year, target_year)
+        if year_label_answer is not None:
+            return year_label_answer
         grouped = self._grouped_table_year_values(query_lower, contexts, base_year, target_year)
         if grouped is not None:
             node_ids, values = grouped
@@ -454,6 +457,44 @@ class NumericReasoner:
                 cited_node_ids=[node_id],
             )
         return None
+
+    def _percent_change_year_label_candidates(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+        base_year: str,
+        target_year: str,
+    ) -> NumericAnswer | None:
+        query_terms = set(self._keywords(query_lower)) - {"growth"}
+        if not query_terms:
+            return None
+        best: tuple[int, int, int, int, NumericAnswer] | None = None
+        for context_index, (node_id, text) in enumerate(contexts):
+            values, value_label = self._year_label_values_with_label(query_lower, text)
+            if base_year not in values or target_year not in values or values[base_year] == 0:
+                continue
+            operation = self.executor.percent_change(values[target_year], values[base_year])
+            if operation is None:
+                continue
+            text_terms = set(re.findall(r"[a-z0-9]+", text.lower()))
+            matched_terms = query_terms & text_terms
+            if len(matched_terms) < min(2, len(query_terms)):
+                continue
+            label_terms = set(self._keywords(value_label))
+            label_score = len(query_terms & label_terms)
+            nonzero_score = 1 if abs(operation.value) >= 0.05 else 0
+            schedule_score = 1 if self._has_year_label_schedule(text, base_year, target_year) else 0
+            total_score = len(matched_terms) * 10 + label_score * 3 + nonzero_score * 4 + schedule_score * 2
+            row_label = value_label or " ".join(sorted(matched_terms)[:6])
+            answer = NumericAnswer(
+                text=f"{operation.value:.1f}%",
+                calculation=f"percent_change row={row_label}: {operation.expression}",
+                cited_node_ids=[node_id],
+            )
+            candidate = (total_score, nonzero_score, schedule_score, -context_index, answer)
+            if best is None or candidate > best:
+                best = candidate
+        return best[4] if best else None
 
     def _query_scored_year_values(
         self,
@@ -1230,6 +1271,15 @@ class NumericReasoner:
             )
             if answer is not None:
                 return NumericAnswer(answer.text, answer.calculation, node_ids)
+            if "total" in denominator_terms or "total" in query_lower:
+                mixed_answer = self._prose_ratio_percent(
+                    node_ids[0],
+                    combined_text,
+                    numerator_terms,
+                    denominator_terms,
+                )
+                if mixed_answer is not None:
+                    return NumericAnswer(mixed_answer.text, mixed_answer.calculation, node_ids)
             if "total" not in denominator_terms and "total" not in query_lower:
                 continue
             rows = self._label_value_rows(combined_text)
@@ -1656,6 +1706,10 @@ class NumericReasoner:
     def _prose_amount_for_terms(self, text: str, terms: list[str]) -> tuple[float | None, str]:
         if not terms:
             return None, ""
+        if "total" in terms:
+            terminal_value, terminal_label = self._terminal_prose_amount_for_terms(text, terms)
+            if terminal_value is not None:
+                return terminal_value, terminal_label
         best: tuple[int, float, str] | None = None
         min_matches = self._minimum_term_matches(terms)
         for sentence in self._prose_sentences(text):
@@ -1682,6 +1736,33 @@ class NumericReasoner:
                 score = len(matched_terms) * 1000 - distance
                 if best is None or score > best[0]:
                     best = (score, value, " ".join(matched_terms))
+        if best is None:
+            return None, ""
+        _score, value, label = best
+        return value, label
+
+    def _terminal_prose_amount_for_terms(self, text: str, terms: list[str]) -> tuple[float | None, str]:
+        content_terms = [term for term in terms if term != "total"]
+        if not content_terms:
+            return None, ""
+        min_matches = min(2, len(content_terms))
+        best: tuple[int, float, str] | None = None
+        for sentence in self._prose_sentences(text):
+            lower_sentence = sentence.lower()
+            matched_terms = [term for term in content_terms if term in lower_sentence]
+            if len(matched_terms) < min_matches:
+                continue
+            for amount in re.finditer(
+                r"\b(?:to|was|were|totaled|amounted to)\s+(\$)?\s*([-+]?\d+(?:\.\d+)?)\s*(billion|million|thousand)?",
+                sentence,
+                flags=re.IGNORECASE,
+            ):
+                if not amount.group(1) and not amount.group(3):
+                    continue
+                value = self._scaled_number(amount.group(2), amount.group(3).lower() if amount.group(3) else None)
+                score = len(matched_terms) * 1000 + amount.start()
+                if best is None or score > best[0]:
+                    best = (score, value, " ".join(["total", *matched_terms]))
         if best is None:
             return None, ""
         _score, value, label = best
@@ -1776,8 +1857,9 @@ class NumericReasoner:
     def _year_label_values(self, text: str) -> dict[str, float]:
         values = {}
         for label, value in self._label_value_rows(text):
-            if re.fullmatch(r"20\d{2}", label):
-                values.setdefault(label, value)
+            year_match = re.search(r"\b(20\d{2})\b", label)
+            if year_match:
+                values.setdefault(year_match.group(1), value)
         return values
 
     def _year_label_values_with_label(self, query_lower: str, text: str) -> tuple[dict[str, float], str]:
@@ -1807,6 +1889,10 @@ class NumericReasoner:
             return self._year_label_values(text), ""
         score, _count, _column_index, label, values = best
         return values, label if score else ""
+
+    def _has_year_label_schedule(self, text: str, base_year: str, target_year: str) -> bool:
+        labels = [label for label, _value in self._label_value_rows(text)]
+        return any(base_year in label for label in labels) and any(target_year in label for label in labels)
 
     def _label_value_rows(self, text: str) -> list[tuple[str, float]]:
         rows = []

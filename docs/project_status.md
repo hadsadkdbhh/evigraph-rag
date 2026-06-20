@@ -34,10 +34,10 @@ records `source_doc` for oracle-document and source-rerank evaluation.
 
 | setting | full EviGraph exact match |
 | --- | ---: |
-| Oracle-doc | 60/100 |
-| Open BM25 | 52/100 |
-| Open hybrid | 51/100 |
-| BM25 + source rerank | 61/100 |
+| Oracle-doc | 62/100 |
+| Open BM25 | 54/100 |
+| Open hybrid | 53/100 |
+| BM25 + source rerank | 63/100 |
 
 These numbers are diagnostic smoke results, not final benchmark claims.
 
@@ -54,18 +54,23 @@ weak prose-match rejection, adjacency chunks used as context-only support, and
 cross-chunk continuation-table stitching for period-end rows. The latest
 operation-intent pass also handles relative row differences such as "percent
 higher than" and percentage-point row differences such as "X as a percentage of
-Y between years." The deterministic open hybrid reranker adds table, year,
-number, and operation overlap features, but it remains slightly below open BM25
-on exact match while improving some verifier diagnostics. This indicates that
-the next push should focus on row/operation intent and operand selection inside
-retrieved evidence rather than simple lexical reranking.
+Y between years." The current numeric path now also scores year-label
+percent-change candidates across contexts, which helps fiscal schedules such as
+estimated amortization expense, and combines same-source table/prose evidence for
+total-denominator ratios such as segment operating income over total operating
+income. The deterministic open hybrid reranker adds table, year, number, and
+operation overlap features, but it remains slightly below open BM25 on exact
+match while improving some verifier diagnostics. This indicates that the next
+push should focus on row/operation intent and operand selection inside retrieved
+evidence rather than simple lexical reranking.
 
 The row/operation diagnostic now splits wrong numeric full EviGraph answers into
 multi-label causes. On the current 100-example FinQA smoke subset, open hybrid
-has 15 wrong numeric operation/row cases: 4 wrong-numerator signals, 3
-wrong-denominator signals, 2 wrong-year-or-period signals, 3 wrong-row-label
-signals, 1 wrong-operation-type signal, and 6 ambiguous supported wrong-number
+has 13 wrong numeric operation/row cases: 3 wrong-numerator signals, 2
+wrong-denominator signals, 2 wrong-year-or-period signals, 2 wrong-row-label
+signals, 0 wrong-operation-type signals, and 6 ambiguous supported wrong-number
 cases. The highest-yield next engineering targets are numerator/denominator
 selection for ratio and percent-change calculations, especially cases such as
-ADI mutual-fund allocation, HOLX amortization growth, AON segment operating
-income, and AMT twelve-month versus three-month period intent.
+ADI mutual-fund allocation, LKQ rental-expense period selection, GS commodities
+base-year selection, IP denominator selection, and AMT twelve-month versus
+three-month period intent.

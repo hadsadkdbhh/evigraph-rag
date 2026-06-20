@@ -694,6 +694,47 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "5.5%")
         self.assertIn("percent_change", answer.calculations[0])
 
+    def test_percent_change_prefers_nonzero_fiscal_schedule_over_earlier_lookalike(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="lookalike",
+                node_type="text",
+                content=(
+                    "The following table summarizes the estimated aggregate amortization expense.\n"
+                    "| year | amortization amount ( in millions ) |\n"
+                    "| --- | --- |\n"
+                    "| 2016 | $ 45 |\n"
+                    "| 2017 | $ 45 |\n"
+                ),
+                source_doc="wrong.md",
+                metadata={"retrieval_rank": 1},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="schedule",
+                node_type="text",
+                content=(
+                    "The estimated amortization expense for each of the five succeeding fiscal years was as follows.\n"
+                    "| fiscal 2016 | $ 377.0 |\n"
+                    "| --- | --- |\n"
+                    "| fiscal 2017 | $ 365.6 |\n"
+                    "| fiscal 2018 | $ 355.1 |\n"
+                ),
+                source_doc="correct.md",
+                metadata={"retrieval_rank": 2},
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the expected growth rate in amortization expense from 2016 to 2017?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "-3.0%")
+        self.assertEqual(answer.citations, ["schedule"])
+
     def test_roi_from_stock_return_table_uses_index_row(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
@@ -1110,6 +1151,33 @@ class NumericReasoningTest(unittest.TestCase):
 
         self.assertEqual(answer.text, "166.4%")
         self.assertIn("ratio_percent", answer.calculations[0])
+
+    def test_ratio_percent_uses_terminal_total_operating_income_denominator(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="mixed",
+                node_type="text",
+                content=(
+                    "Operating income increased $54 million or 6% from 2008 to $900 million in 2009. "
+                    "These items were partially offset by an increase of $140 million in restructuring costs.\n"
+                    "| years ended december 31, | 2009 | 2008 | 2007 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| segment revenue | $ 1267 | $ 1356 | $ 1345 |\n"
+                    "| segment operating income | 203 | 208 | 180 |\n"
+                    "| segment operating income margin | 16.0% | 15.3% | 13.4% |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "considering the year 2009 , what is the percentage of the segment's operating income among the total operating income?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "22.6%")
+        self.assertIn("203 / 900", answer.calculations[0])
 
     def test_ratio_percent_from_that_was_prose_amounts(self) -> None:
         graph = EvidenceGraph()
