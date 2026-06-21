@@ -75,13 +75,25 @@ class HeuristicNumericPlanClient:
         lowered = query.lower()
         years = re.findall(r"\b(20\d{2})\b", lowered)
         period = self._period(lowered)
+        operation_terms = self._content_terms(lowered)
+
+        if self._is_complement_percent(lowered):
+            row_terms = self._complement_terms(lowered) or operation_terms
+            return {
+                "operation": "complement_percent",
+                "node_id": self._node_id(contexts, row_terms),
+                "target": {"row_terms": row_terms, "period": period},
+                "scale": "percent",
+                "rationale": "heuristic complement-percent program",
+            }
+
         if "percent of the increase" in lowered or "percentage of the increase" in lowered:
             target_year, base_year = self._target_base_years(lowered, years)
             numerator_terms = self._terms_after(lowered, ["from", "came from", "attributable to"]) or self._content_terms(lowered)
             denominator_terms = self._terms_after(lowered, ["increase in", "change in"]) or self._content_terms(lowered)
             return {
                 "operation": "percent_of_increase",
-                "node_id": self._node_id(contexts),
+                "node_id": self._node_id(contexts, [*numerator_terms, *denominator_terms]),
                 "numerator_target": {"row_terms": numerator_terms, "year": target_year, "period": period},
                 "numerator_base": {"row_terms": numerator_terms, "year": base_year, "period": period},
                 "denominator_target": {"row_terms": denominator_terms, "year": target_year, "period": period},
@@ -90,16 +102,79 @@ class HeuristicNumericPlanClient:
                 "rationale": "heuristic percent-of-increase program",
             }
 
-        if any(token in lowered for token in ("percent change", "percentage change", "increase", "decrease", "growth")):
+        if self._is_ratio_percent(lowered):
+            numerator_terms, denominator_terms = self._ratio_terms(lowered)
+            target_year, _ = self._target_base_years(lowered, years)
+            return {
+                "operation": "ratio",
+                "node_id": self._node_id(contexts, [*numerator_terms, *denominator_terms]),
+                "target": {"row_terms": numerator_terms, "year": target_year, "period": period},
+                "base": {"row_terms": denominator_terms, "year": target_year, "period": period},
+                "scale": "percent",
+                "rationale": "heuristic ratio-percent program",
+            }
+
+        if re.search(r"\bratio\s+of\b", lowered):
+            numerator_terms, denominator_terms = self._ratio_terms(lowered)
+            target_year, _ = self._target_base_years(lowered, years)
+            return {
+                "operation": "ratio",
+                "node_id": self._node_id(contexts, [*numerator_terms, *denominator_terms]),
+                "target": {"row_terms": numerator_terms, "year": target_year, "period": period},
+                "base": {"row_terms": denominator_terms, "year": target_year, "period": period},
+                "scale": "number",
+                "rationale": "heuristic ratio program",
+            }
+
+        if self._is_percent_change(lowered):
             target_year, base_year = self._target_base_years(lowered, years)
             row_terms = self._content_terms(lowered)
             return {
                 "operation": "percent_change",
-                "node_id": self._node_id(contexts),
+                "node_id": self._node_id(contexts, row_terms),
                 "target": {"row_terms": row_terms, "year": target_year, "period": period},
                 "base": {"row_terms": row_terms, "year": base_year, "period": period},
                 "scale": "percent",
                 "rationale": "heuristic period-aware percent-change program",
+            }
+
+        if self._is_difference(lowered):
+            target_year, base_year = self._target_base_years(lowered, years)
+            row_terms = self._difference_terms(lowered) or operation_terms
+            return {
+                "operation": "difference",
+                "node_id": self._node_id(contexts, row_terms),
+                "target": {"row_terms": row_terms, "year": target_year, "period": period},
+                "base": {"row_terms": row_terms, "year": base_year, "period": period},
+                "rationale": "heuristic difference program",
+            }
+
+        if self._is_average(lowered):
+            year_list = self._year_series(lowered, years)
+            row_terms = self._aggregate_terms(lowered) or operation_terms
+            values = [
+                {"row_terms": row_terms, "year": year, "period": period}
+                for year in year_list
+            ] or [{"row_terms": row_terms, "period": period}]
+            return {
+                "operation": "average",
+                "node_id": self._node_id(contexts, row_terms),
+                "values": values,
+                "rationale": "heuristic average program",
+            }
+
+        if self._is_sum(lowered):
+            year_list = self._year_series(lowered, years)
+            row_terms = self._aggregate_terms(lowered) or operation_terms
+            values = [
+                {"row_terms": row_terms, "year": year, "period": period}
+                for year in year_list
+            ] or [{"row_terms": row_terms, "period": period}]
+            return {
+                "operation": "sum",
+                "node_id": self._node_id(contexts, row_terms),
+                "values": values,
+                "rationale": "heuristic sum program",
             }
 
         if any(token in lowered for token in ("multiply", "product", "annualized")):
@@ -108,15 +183,28 @@ class HeuristicNumericPlanClient:
                 values.append({"label": "days in year", "value": 365})
             return {
                 "operation": "product",
-                "node_id": self._node_id(contexts),
+                "node_id": self._node_id(contexts, operation_terms),
                 "values": values,
                 "rationale": "heuristic product program",
             }
 
-        return {"operation": "unsupported", "node_id": self._node_id(contexts)}
+        return {"operation": "unsupported", "node_id": self._node_id(contexts, operation_terms)}
 
-    def _node_id(self, contexts: list[tuple[str, str]]) -> str:
-        return contexts[0][0] if contexts else ""
+    def _node_id(self, contexts: list[tuple[str, str]], terms: list[str] | None = None) -> str:
+        if not contexts:
+            return ""
+        normalized_terms = self._content_terms(" ".join(terms or []))
+        if not normalized_terms:
+            return contexts[0][0]
+        best: tuple[int, int, str] | None = None
+        for index, (node_id, text) in enumerate(contexts):
+            lowered = text.lower()
+            score = sum(1 for term in normalized_terms if term in lowered)
+            table_bonus = 2 if "|" in text else 0
+            candidate = (score + table_bonus, -index, node_id)
+            if best is None or candidate > best:
+                best = candidate
+        return best[2] if best else contexts[0][0]
 
     def _target_base_years(self, lowered: str, years: list[str]) -> tuple[str, str]:
         compared = re.search(r"\b(20\d{2})\b.+?\b(?:compared with|compared to|from)\s+(20\d{2})\b", lowered)
@@ -136,17 +224,105 @@ class HeuristicNumericPlanClient:
             return "twelve months ended"
         return ""
 
+    def _is_complement_percent(self, lowered: str) -> bool:
+        return bool(
+            re.search(r"\b(?:not|non|un)\s*-?\s*(?:leased|vested|exercised|paid|current)\b", lowered)
+            and ("percent" in lowered or "percentage" in lowered)
+        )
+
+    def _is_ratio_percent(self, lowered: str) -> bool:
+        markers = [
+            "what percentage of",
+            "what percent of",
+            "what portion of",
+            "what share of",
+            "as a percentage of",
+            "represented by",
+            "relative to",
+        ]
+        return any(marker in lowered for marker in markers) and not self._is_percent_change(lowered)
+
+    def _is_percent_change(self, lowered: str) -> bool:
+        percent_markers = ("percent change", "percentage change", "percentage increase", "percent increase")
+        if any(marker in lowered for marker in percent_markers):
+            return True
+        if ("percent" in lowered or "percentage" in lowered) and any(
+            token in lowered for token in ("increase", "decrease", "growth", "decline")
+        ):
+            return True
+        return False
+
+    def _is_difference(self, lowered: str) -> bool:
+        if self._is_percent_change(lowered):
+            return False
+        return bool(
+            re.search(r"\b(?:difference|change|increase|decrease|decline)\b", lowered)
+            and re.search(r"\b(?:between|from|compared with|compared to)\b", lowered)
+        )
+
+    def _is_average(self, lowered: str) -> bool:
+        return bool(re.search(r"\baverage\b", lowered)) and not any(
+            token in lowered for token in ("average daily", "average price")
+        )
+
+    def _is_sum(self, lowered: str) -> bool:
+        return bool(re.search(r"\b(?:sum|total|combined|aggregate)\b", lowered)) and not self._is_ratio_percent(lowered)
+
+    def _ratio_terms(self, lowered: str) -> tuple[list[str], list[str]]:
+        patterns = [
+            r"what (?:percentage|percent|portion|share) of (?P<base>.+?) (?:was|were|is|are) (?:represented by|attributable to|allocated to|related to|comprised of|made up by) (?P<target>.+?)(?:\?|$)",
+            r"(?P<target>.+?) as a percentage of (?P<base>.+?)(?:\?|$)",
+            r"ratio of (?P<target>.+?) to (?P<base>.+?)(?:\?|$)",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, lowered)
+            if match:
+                return self._content_terms(match.group("target")), self._content_terms(match.group("base"))
+
+        target = self._terms_after(lowered, ["represented by", "allocated to", "attributable to", "related to"])
+        base = self._terms_after(lowered, ["percentage of", "percent of", "portion of", "share of", "relative to"])
+        return target or self._content_terms(lowered), base or self._content_terms(lowered)
+
+    def _difference_terms(self, lowered: str) -> list[str]:
+        return self._terms_after(lowered, ["difference in", "change in", "increase in", "decrease in", "decline in"])
+
+    def _aggregate_terms(self, lowered: str) -> list[str]:
+        return self._terms_after(lowered, ["average", "sum of", "total of", "total amount of", "combined"])
+
+    def _complement_terms(self, lowered: str) -> list[str]:
+        terms = self._content_terms(lowered)
+        complement_noise = {"not", "non", "un", "percentage", "percent"}
+        cleaned = [term for term in terms if term not in complement_noise]
+        for preferred in ("leased", "vested", "exercised", "paid", "current"):
+            if preferred in cleaned:
+                return [preferred]
+        return cleaned
+
     def _terms_after(self, lowered: str, markers: list[str]) -> list[str]:
         for marker in markers:
             index = lowered.find(marker)
             if index == -1:
                 continue
             fragment = lowered[index + len(marker) :]
-            fragment = re.split(r"\b(?:in|for|during|from|to|compared|was|were|came)\b", fragment, maxsplit=1)[0]
+            fragment = re.split(r"\b(?:in|for|during|from|to|compared|was|were|came|represented|allocated)\b", fragment, maxsplit=1)[0]
             terms = self._content_terms(fragment)
             if terms:
                 return terms
         return []
+
+    def _year_series(self, lowered: str, years: list[str]) -> list[str]:
+        range_match = re.search(r"\b(20\d{2})\b\s+(?:through|to|-)\s+\b(20\d{2})\b", lowered)
+        if range_match:
+            start = int(range_match.group(1))
+            end = int(range_match.group(2))
+            if abs(start - end) <= 10:
+                step = 1 if end >= start else -1
+                return [str(year) for year in range(start, end + step, step)]
+        seen = []
+        for year in years:
+            if year not in seen:
+                seen.append(year)
+        return seen
 
     def _product_terms(self, lowered: str) -> list[list[str]]:
         groups = []
@@ -249,6 +425,21 @@ class NumericPlanExecutor:
                     result.expression,
                     target,
                     base,
+                ),
+            )
+
+        if operation == "complement_percent":
+            target = self.executor.resolve_value(plan.get("target"), context_text, support_text=query)
+            if target is None:
+                return None
+            percent = 100.0 - target.value
+            if percent < -0.05 or percent > 100.05:
+                return None
+            return PlannedNumericAnswer(
+                text=self._format_number(percent, "%"),
+                calculation=(
+                    f"planned_complement_percent target={self._value_ref(target)}: "
+                    f"100 - {target.value:g} = {percent:.1f}%"
                 ),
             )
 
@@ -371,6 +562,13 @@ class NumericPlannerFallback:
             if source_key in config:
                 llm_config[target_key] = config[source_key]
         fallback_client = HeuristicNumericPlanClient() if config.get("fallback_to_heuristic", False) else None
+        provider = str(llm_config.get("provider") or "").lower()
+        if provider in {"heuristic", "local", "program", "local_program"} or not config.get("primary_enabled", True):
+            return cls(
+                HeuristicNumericPlanClient(),
+                strict=bool(config.get("strict", False)),
+                log_errors=bool(config.get("log_errors", False)),
+            )
         return cls(
             LLMNumericPlanClient(make_llm_client(llm_config)),
             strict=bool(config.get("strict", False)),

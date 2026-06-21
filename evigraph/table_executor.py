@@ -102,6 +102,8 @@ class TableOperationExecutor:
     def column_index(self, headers: list[str], terms: list[str], period_terms: list[str] | None = None) -> int | None:
         normalized_terms = self._terms(terms)
         normalized_period_terms = self._terms(period_terms or [])
+        if not normalized_terms and not normalized_period_terms:
+            return None
         if normalized_period_terms:
             best = self._period_aware_column_index(headers, normalized_terms, normalized_period_terms)
             if best is not None:
@@ -126,11 +128,13 @@ class TableOperationExecutor:
         row_terms = self._selector_terms(spec, "row_terms", "label", "row", "metric")
         period_terms = self._period_terms(spec)
         column_terms = self._selector_terms(spec, "column_terms", "column", "year")
-        if not row_terms or not column_terms:
+        if not row_terms:
             return None
 
         for headers, rows in self.markdown_tables(context_text):
             column_index = self.column_index(headers, column_terms, period_terms=period_terms)
+            if column_index is None and not column_terms:
+                column_index = self._single_numeric_column_index(rows)
             if column_index is None:
                 continue
             row = self.select_best_row(headers, rows, [*row_terms, *period_terms])
@@ -149,6 +153,20 @@ class TableOperationExecutor:
                 period_label=self._period_label(spec),
             )
         return None
+
+    def _single_numeric_column_index(self, rows: list[list[str]]) -> int | None:
+        if not rows:
+            return None
+        width = max(len(row) for row in rows)
+        numeric_columns = []
+        for index in range(1, width):
+            numeric_count = 0
+            for row in rows:
+                if index < len(row) and self.first_number(row[index]) is not None:
+                    numeric_count += 1
+            if numeric_count:
+                numeric_columns.append(index)
+        return numeric_columns[0] if len(numeric_columns) == 1 else None
 
     def sum(self, values: list[float]) -> TableOperationResult | None:
         if not values:

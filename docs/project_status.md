@@ -131,3 +131,15 @@ It did not improve exact match, but it raised calculation-support diagnostics by
 about three points across oracle-doc, open BM25, and source-rerank settings.
 Treat this as a negative diagnostic and infrastructure validation, not as an
 LLM-planner result.
+
+A stronger fully local program planner is now available through
+`configs/default_local_planner.yaml` and
+`configs/experiments.finqa_300.local_planner.json`. It avoids external API
+dependencies and supports ratio-percent, ordinary ratio, difference, sum,
+average, product, percent-of-increase, period-aware percent change, and
+complement-percent operations. On FinQA-300 full EviGraph it improves exact
+match from 0.297 to 0.310 under oracle-doc, 0.203 to 0.213 under open BM25, and
+0.273 to 0.290 under BM25 plus source-rerank. The larger movement is in
+calculation support: oracle-doc rises from 0.373 to 0.513, open BM25 from 0.370
+to 0.473, and source-rerank from 0.383 to 0.520. This is now the best
+reproducible numeric-planner baseline in the repo.

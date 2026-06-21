@@ -80,3 +80,49 @@ program and operands before execution.
 The next credible experiment requires a working external planner backend or a
 substantially stronger local program planner. Until then, use this run as a
 negative diagnostic rather than a performance claim.
+
+## Stronger Local Program Planner
+
+The next run replaces the failed external-planner dependency with a local
+program planner:
+
+```powershell
+python .\scripts\run_manifest.py --manifest .\configs\experiments.finqa_300.local_planner.json
+```
+
+Output directory:
+
+```text
+outputs/eval/finqa_300_local_planner
+```
+
+This planner does not require API credentials. It adds local plans for
+ratio-percent, ordinary ratio, difference, sum, average, product,
+percent-of-increase, period-aware percent change, and complement-percent cases
+such as "not leased". It also selects the best evidence node by term overlap and
+can resolve a table row when the table has only one numeric value column.
+
+## Strong Local Planner Results
+
+| setting | full EviGraph EM | answer supported | calculation supported |
+| --- | ---: | ---: | ---: |
+| Oracle-doc local planner | 0.310 | 0.710 | 0.513 |
+| Open BM25 local planner | 0.213 | 0.723 | 0.473 |
+| BM25 + source-rerank local planner | 0.290 | 0.733 | 0.520 |
+
+Compared with the non-planner 300-example run:
+
+| setting | EM delta | calculation-support delta |
+| --- | ---: | ---: |
+| Oracle-doc | +0.013 | +0.140 |
+| Open BM25 | +0.010 | +0.103 |
+| BM25 + source-rerank | +0.017 | +0.137 |
+
+Compared with the previous planner-fallback run, the stronger local planner
+turns the planner path from a pure infrastructure check into a measurable
+performance change. The exact-match gain is still modest, but the large
+calculation-support gain means the executor now covers substantially more
+auditable arithmetic programs. The next target remains operand and operation
+selection: the source-rerank local-planner diagnostic reports 83
+wrong-operation-or-row failures, with 43 primary wrong-operation-type cases and
+21 ambiguous supported wrong-number cases.

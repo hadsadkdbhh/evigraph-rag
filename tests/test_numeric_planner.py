@@ -253,6 +253,87 @@ class NumericPlannerFallbackTest(unittest.TestCase):
         self.assertEqual(answer.text, "50.0%")
         self.assertTrue(planner.primary_disabled)
 
+    def test_heuristic_plans_ratio_percent_with_numerator_and_denominator_rows(self) -> None:
+        context = (
+            "| asset class | 2011 |\n"
+            "| --- | ---: |\n"
+            "| mutual funds | 17187 |\n"
+            "| total investment | 26410 |\n"
+        )
+        planner = NumericPlannerFallback(HeuristicNumericPlanClient())
+
+        answer = planner.answer(
+            "what percentage of total investment was represented by mutual funds in 2011?",
+            [("table", context)],
+        )
+
+        self.assertIsNotNone(answer)
+        self.assertEqual(answer.text, "65.1%")
+        self.assertIn("planned_ratio", answer.calculation)
+
+    def test_heuristic_plans_average_over_year_range(self) -> None:
+        context = (
+            "| metric | 2008 | 2009 | 2010 |\n"
+            "| --- | ---: | ---: | ---: |\n"
+            "| stock based compensation expense | 180 | 210 | 264 |\n"
+        )
+        planner = NumericPlannerFallback(HeuristicNumericPlanClient())
+
+        answer = planner.answer(
+            "what was the average stock based compensation expense from 2008 to 2010?",
+            [("table", context)],
+        )
+
+        self.assertIsNotNone(answer)
+        self.assertEqual(answer.text, "218")
+        self.assertIn("planned_average", answer.calculation)
+
+    def test_heuristic_plans_sum_over_listed_years(self) -> None:
+        context = (
+            "| metric | 2004 | 2005 | 2006 |\n"
+            "| --- | ---: | ---: | ---: |\n"
+            "| matching buy sell volumes | 10 | 20 | 30 |\n"
+        )
+        planner = NumericPlannerFallback(HeuristicNumericPlanClient())
+
+        answer = planner.answer(
+            "what was the total matching buy sell volumes in 2006, 2005 and 2004?",
+            [("table", context)],
+        )
+
+        self.assertIsNotNone(answer)
+        self.assertEqual(answer.text, "60")
+        self.assertIn("planned_sum", answer.calculation)
+
+    def test_heuristic_complement_percent(self) -> None:
+        context = (
+            "| metric | percent |\n"
+            "| --- | ---: |\n"
+            "| leased | 35 |\n"
+        )
+        planner = NumericPlannerFallback(HeuristicNumericPlanClient())
+
+        answer = planner.answer(
+            "what percentage of stores were not leased?",
+            [("table", context)],
+        )
+
+        self.assertIsNotNone(answer)
+        self.assertEqual(answer.text, "65%")
+        self.assertIn("planned_complement_percent", answer.calculation)
+
+    def test_local_planner_config_does_not_require_llm_environment(self) -> None:
+        planner = NumericPlannerFallback.from_config(
+            {
+                "enabled": True,
+                "llm_provider": "heuristic",
+                "strict": False,
+            }
+        )
+
+        self.assertIsNotNone(planner)
+        self.assertIsInstance(planner.plan_client, HeuristicNumericPlanClient)
+
 
 if __name__ == "__main__":
     unittest.main()
