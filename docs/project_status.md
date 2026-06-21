@@ -194,3 +194,13 @@ segment revenue case now predicts `1.7%` from `(6305 - 6197) / 6197 * 100`.
 The next target is no longer broad operation type; it is the larger
 ambiguous-supported-wrong-number bucket and concrete operand semantics inside
 ratio/percent-change cases.
+
+The current ambiguous-supported-wrong-number pass fixes one concrete waterfall
+contribution pattern: `percent of the change between DEN in BASE and TARGET was
+due to NUM`. The planner now treats the contribution row as a numerator delta
+and divides it by the denominator row's target-base change, while the executor
+can resolve year-qualified row labels in single-value waterfall tables. The ETR
+2008 rider-revenue case now returns `18%` from `3.9 / (252.7 - 231) * 100`. On
+FinQA-300, oracle-doc rises to 0.333 and open BM25 rises to 0.257; source-rerank
+stays at 0.310. This is a quota-conscious semantic repair, not a broad
+breakthrough.

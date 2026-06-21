@@ -189,6 +189,33 @@ class ClaimVerifierTest(unittest.TestCase):
         self.assertTrue(verification["operation_semantics_checked"])
         self.assertTrue(verification["answer_supported"])
 
+    def test_operation_semantics_accepts_percent_of_change_contribution_plan(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                "table",
+                "text",
+                "2007 net revenue 231.0 rider revenue 3.9 2008 net revenue 252.7 18.0",
+                source_doc="report.md",
+            )
+        )
+        answer = Answer(
+            text="18%",
+            citations=["table"],
+            calculations=[
+                "planned_percent_of_increase numerator=rider revenue/amount denominator=2008 net revenue/amount-2007 net revenue/amount: 3.9 / (252.7 - 231) * 100 = 18.0%"
+            ],
+        )
+
+        verification = ClaimVerifier().verify(
+            "what percent of the change between net revenue in 2007 and 2008 was due to rider revenue?",
+            answer,
+            graph,
+        )
+
+        self.assertTrue(verification["operation_semantics_checked"])
+        self.assertTrue(verification["answer_supported"])
+
     def test_operation_semantics_accepts_planned_percent_change(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(EvidenceNode("table", "text", "operating expenses 2017 100 2018 127.5 27.5", source_doc="report.md"))

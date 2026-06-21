@@ -111,6 +111,22 @@ class TableOperationExecutorTest(unittest.TestCase):
         self.assertEqual(value.value, 120.0)
         self.assertEqual(value.row_label, "revenue twelve months ended")
 
+    def test_resolve_value_uses_year_in_row_label_for_single_value_waterfall(self) -> None:
+        context = """
+| metric | amount |
+| --- | ---: |
+| 2007 net revenue | 231.0 |
+| rider revenue | 3.9 |
+| 2008 net revenue | 252.7 |
+"""
+
+        value = self.executor.resolve_value({"row_terms": ["net", "revenue"], "year": "2008"}, context)
+
+        self.assertIsNotNone(value)
+        self.assertEqual(value.value, 252.7)
+        self.assertEqual(value.row_label, "2008 net revenue")
+        self.assertEqual(value.column_label, "amount")
+
     def test_difference(self) -> None:
         result = self.executor.difference(173.2, 171.5)
         self.assertAlmostEqual(result.value, 1.7)

@@ -217,6 +217,11 @@ class RowOperationDiagnosticAnalyzer:
     def _expected_operation(self, query: str, gold: str) -> str:
         lowered = query.lower()
         has_percent_answer = "%" in gold or any(token in lowered for token in ("percent", "percentage", "percentual", "portion"))
+        if (
+            re.search(r"\b(?:percent|percentage)\s+of\s+the\s+change\b", lowered)
+            and re.search(r"\b(?:due to|came from|attributable to)\b", lowered)
+        ):
+            return "percent_of_increase"
         if any(token in lowered for token in ("average", "mean")):
             return "average"
         if any(
@@ -250,6 +255,7 @@ class RowOperationDiagnosticAnalyzer:
         compatible = {
             "average": {"average", "planned_average", "row_values_average", "year_range_average"},
             "percent_change": {"percent_change", "planned_percent_change", "roi"},
+            "percent_of_increase": {"planned_percent_of_increase"},
             "ratio_percent": {"ratio_percent"},
             "difference": {"difference", "planned_difference", "row_year_difference"},
             "sum_or_lookup": {"sum", "planned_sum", "lookup", "planned_lookup", "row_lookup"},

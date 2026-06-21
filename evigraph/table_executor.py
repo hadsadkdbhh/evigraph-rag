@@ -133,11 +133,15 @@ class TableOperationExecutor:
 
         for headers, rows in self.markdown_tables(context_text):
             column_index = self.column_index(headers, column_terms, period_terms=period_terms)
+            row_lookup_terms = [*row_terms, *period_terms]
+            if column_index is None and self._year_terms(column_terms):
+                column_index = self._single_numeric_column_index(rows)
+                row_lookup_terms = [*row_terms, *period_terms, *column_terms]
             if column_index is None and not column_terms:
                 column_index = self._single_numeric_column_index(rows)
             if column_index is None:
                 continue
-            row = self.select_best_row(headers, rows, [*row_terms, *period_terms])
+            row = self.select_best_row(headers, rows, row_lookup_terms)
             if row is None and period_terms:
                 row = self.select_best_row(headers, rows, row_terms)
             if row is None or column_index >= len(row):
@@ -167,6 +171,9 @@ class TableOperationExecutor:
             if numeric_count:
                 numeric_columns.append(index)
         return numeric_columns[0] if len(numeric_columns) == 1 else None
+
+    def _year_terms(self, terms: list[str]) -> bool:
+        return bool(terms) and all(re.fullmatch(r"(?:19|20)\d{2}", term) for term in terms)
 
     def sum(self, values: list[float]) -> TableOperationResult | None:
         if not values:

@@ -7,6 +7,7 @@ from pathlib import Path
 from evigraph.evidence_graph import EvidenceGraph
 from evigraph.generator import SupportOnlyGenerator
 from evigraph.metrics import numeric_exact_match
+from evigraph.numeric_planner import HeuristicNumericPlanClient, NumericPlannerFallback
 from evigraph.retrieval import CorpusRetriever
 from evigraph.schema import EvidenceNode
 
@@ -378,6 +379,32 @@ class NumericReasoningTest(unittest.TestCase):
 
         self.assertEqual(answer.text, "1.7%")
         self.assertIn("percent_change", answer.calculations[0])
+
+    def test_percent_of_change_due_to_contribution_uses_planner(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| metric | amount |\n"
+                    "| --- | ---: |\n"
+                    "| 2007 net revenue | 231.0 |\n"
+                    "| rider revenue | 3.9 |\n"
+                    "| 2008 net revenue | 252.7 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+        planner = NumericPlannerFallback(HeuristicNumericPlanClient())
+
+        answer = SupportOnlyGenerator(planner_fallback=planner).generate(
+            "what percent of the change between net revenue in 2007 and 2008 was due to rider revenue?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "18%")
+        self.assertIn("planned_percent_of_increase", answer.calculations[0])
 
     def test_percentual_increase_routes_to_percent_change(self) -> None:
         graph = EvidenceGraph()

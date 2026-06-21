@@ -51,6 +51,10 @@ class NumericReasoner:
             or is_roi_query
             or "percent of the increase" in query_lower
         ):
+            if self._is_percent_of_change_contribution(query_lower):
+                planned = self._planner_answer(query, contexts)
+                if planned:
+                    return planned
             answer = self._roi_from_table(query_lower, contexts)
             if answer:
                 return answer
@@ -78,6 +82,11 @@ class NumericReasoner:
                 return answer
 
         if "percent of the increase" in query_lower or "percentage of the increase" in query_lower:
+            planned = self._planner_answer(query, contexts)
+            if planned:
+                return planned
+
+        if self._is_percent_of_change_contribution(query_lower):
             planned = self._planner_answer(query, contexts)
             if planned:
                 return planned
@@ -166,6 +175,12 @@ class NumericReasoner:
             text=planned.text,
             calculation=planned.calculation,
             cited_node_ids=[contexts[0][0]],
+        )
+
+    def _is_percent_of_change_contribution(self, query_lower: str) -> bool:
+        return bool(
+            re.search(r"\b(?:percent|percentage)\s+of\s+the\s+change\b", query_lower)
+            and re.search(r"\b(?:due to|came from|attributable to)\b", query_lower)
         )
 
     def _year_range_average_v2(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:

@@ -225,6 +225,11 @@ def _is_year(value: float) -> bool:
 def _expected_operation(query: str) -> set[str] | None:
     query_lower = query.lower()
     if (
+        re.search(r"\b(?:percent|percentage)\s+of\s+the\s+change\b", query_lower)
+        and re.search(r"\b(?:due to|came from|attributable to)\b", query_lower)
+    ):
+        return {"percent_of_increase"}
+    if (
         "difference" in query_lower
         and "as a percentage of" in query_lower
         and len(re.findall(r"\b20\d{2}\b", query_lower)) >= 2
@@ -295,6 +300,7 @@ def _calculation_operation(calculation: str) -> str | None:
         "percent_change": "percent_change",
         "percent_change_from_to": "percent_change",
         "planned_percent_change": "percent_change",
+        "planned_percent_of_increase": "percent_of_increase",
         "percent_delta": "percent_delta",
         "ratio_percent": "ratio_percent",
         "planned_ratio": "ratio_percent",

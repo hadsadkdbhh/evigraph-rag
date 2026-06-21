@@ -197,3 +197,17 @@ source-rerank. Source-rerank wrong-operation-type labels fall from 30 to 11.
 Ambiguous-supported-wrong-number rises from 19 to 38 because many former
 operation-type reports were reclassified as supported-but-wrong operand/number
 cases rather than hidden under a planned-operation name mismatch.
+
+The first ambiguous-supported-wrong-number pass targets one concrete subpattern
+instead of adding broad rules: questions of the form `percent of the change
+between DEN in BASE and TARGET was due to NUM`. In waterfall tables, the NUM row
+is often already a contribution delta rather than a year-specific value. The
+local planner now routes this form through `percent_of_increase` with a direct
+`numerator_delta`, while the table executor can resolve year-qualified rows such
+as `2007 net revenue` and `2008 net revenue` in single-value waterfall tables.
+This fixes the ETR 2008 rider-revenue case, producing `3.9 / (252.7 - 231) *
+100 = 18.0%` instead of treating rider revenue as an ordinary percent change.
+On FinQA-300, exact match moves to 0.333 oracle-doc and 0.257 open BM25, while
+source-rerank remains 0.310. This is a narrow semantic fix, not a broad quality
+jump; the next useful target remains operand selection inside the larger
+ambiguous-supported-wrong-number bucket.

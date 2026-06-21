@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from evigraph.clients import LLMClient, make_llm_client
-from evigraph.table_executor import TableOperationExecutor
+from evigraph.table_executor import TableOperationExecutor, TableOperationResult
 
 
 @dataclass
@@ -51,6 +51,7 @@ class LLMNumericPlanClient:
                     "\"base\": {\"label\": \"row label or phrase\", \"year\": \"optional column/year\", \"period\": \"optional duration\", \"value\": number}, "
                     "\"numerator_target\": {\"label\": \"row label\", \"year\": \"target year\", \"period\": \"optional duration\", \"value\": number}, "
                     "\"numerator_base\": {\"label\": \"row label\", \"year\": \"base year\", \"period\": \"optional duration\", \"value\": number}, "
+                    "\"numerator_delta\": {\"label\": \"waterfall contribution row\", \"period\": \"optional duration\", \"value\": number}, "
                     "\"denominator_target\": {\"label\": \"row label\", \"year\": \"target year\", \"period\": \"optional duration\", \"value\": number}, "
                     "\"denominator_base\": {\"label\": \"row label\", \"year\": \"base year\", \"period\": \"optional duration\", \"value\": number}, "
                     "\"values\": [{\"label\": \"row label or phrase\", \"year\": \"optional column/year\", \"period\": \"optional duration\", \"value\": number}], "
@@ -59,6 +60,8 @@ class LLMNumericPlanClient:
                     "}\n"
                     "Use target/base for difference, ratio, and percent_change. Use target for lookup. "
                     "Use numerator_target/base and denominator_target/base for percent_of_increase. "
+                    "When a waterfall table gives the contribution row directly, use numerator_delta "
+                    "with denominator_target/base for percent_of_increase. "
                     "Use values for sum, average, and product. Values must appear in the context or question. "
                     "If the context is a table, you may omit value when label plus year/column identifies a cell; "
                     "the executor will read that cell locally. When multiple columns share a year, set period to "
@@ -100,6 +103,19 @@ class HeuristicNumericPlanClient:
                 "denominator_base": {"row_terms": denominator_terms, "year": base_year, "period": period},
                 "scale": "percent",
                 "rationale": "heuristic percent-of-increase program",
+            }
+
+        if self._is_percent_of_change_contribution(lowered):
+            target_year, base_year = self._target_base_years(lowered, years)
+            numerator_terms, denominator_terms = self._percent_of_change_contribution_terms(lowered)
+            return {
+                "operation": "percent_of_increase",
+                "node_id": self._node_id(contexts, [*numerator_terms, *denominator_terms]),
+                "numerator_delta": {"row_terms": numerator_terms, "period": period},
+                "denominator_target": {"row_terms": denominator_terms, "year": target_year, "period": period},
+                "denominator_base": {"row_terms": denominator_terms, "year": base_year, "period": period},
+                "scale": "percent",
+                "rationale": "heuristic percent-of-change contribution program",
             }
 
         if self._is_due_after_ratio(lowered):
@@ -315,6 +331,12 @@ class HeuristicNumericPlanClient:
             return True
         return False
 
+    def _is_percent_of_change_contribution(self, lowered: str) -> bool:
+        return bool(
+            re.search(r"\b(?:percent|percentage)\s+of\s+the\s+change\b", lowered)
+            and re.search(r"\b(?:due to|came from|attributable to)\b", lowered)
+        )
+
     def _is_difference(self, lowered: str) -> bool:
         if self._is_percent_change(lowered):
             return False
@@ -356,6 +378,25 @@ class HeuristicNumericPlanClient:
         target = self._terms_after(lowered, ["represented by", "allocated to", "attributable to", "related to"])
         base = self._terms_after(lowered, ["percentage of", "percent of", "portion of", "share of", "relative to"])
         return target or self._content_terms(lowered), base or self._content_terms(lowered)
+
+    def _percent_of_change_contribution_terms(self, lowered: str) -> tuple[list[str], list[str]]:
+        numerator_terms = (
+            self._terms_after(lowered, ["due to", "came from", "attributable to"])
+            or self._content_terms(lowered)
+        )
+
+        denominator_terms: list[str] = []
+        for pattern in (
+            r"\bchange\s+between\s+(?P<label>.+?)\s+(?:in\s+)?(?:19|20)\d{2}\b",
+            r"\bchange\s+in\s+(?P<label>.+?)(?:\s+from\s+(?:19|20)\d{2}|\s+between\s+(?:19|20)\d{2}|\?|$)",
+        ):
+            match = re.search(pattern, lowered)
+            if match:
+                denominator_terms = self._content_terms(match.group("label"))
+                if denominator_terms:
+                    break
+
+        return numerator_terms, denominator_terms or self._content_terms(lowered)
 
     def _difference_terms(self, lowered: str) -> list[str]:
         return self._terms_after(lowered, ["difference in", "change in", "increase in", "decrease in", "decline in"])
@@ -543,6 +584,11 @@ class NumericPlanExecutor:
             )
 
         if operation == "percent_of_increase":
+            numerator_delta_value = self.executor.resolve_value(
+                plan.get("numerator_delta"),
+                context_text,
+                support_text=query,
+            )
             numerator_target = self.executor.resolve_value(plan.get("numerator_target"), context_text, support_text=query)
             numerator_base = self.executor.resolve_value(plan.get("numerator_base"), context_text, support_text=query)
             denominator_target = self.executor.resolve_value(
@@ -551,10 +597,22 @@ class NumericPlanExecutor:
                 support_text=query,
             )
             denominator_base = self.executor.resolve_value(plan.get("denominator_base"), context_text, support_text=query)
-            operands = [numerator_target, numerator_base, denominator_target, denominator_base]
-            if any(value is None for value in operands):
+            if denominator_target is None or denominator_base is None:
                 return None
-            numerator_delta = self.executor.difference(numerator_target.value, numerator_base.value)
+            if numerator_delta_value is not None:
+                numerator_delta = TableOperationResult(
+                    "difference",
+                    numerator_delta_value.value,
+                    f"{numerator_delta_value.value:g}",
+                )
+                numerator_ref = self._value_ref(numerator_delta_value)
+                numerator_expr = f"{numerator_delta_value.value:g}"
+            else:
+                if numerator_target is None or numerator_base is None:
+                    return None
+                numerator_delta = self.executor.difference(numerator_target.value, numerator_base.value)
+                numerator_ref = f"{self._value_ref(numerator_target)}-{self._value_ref(numerator_base)}"
+                numerator_expr = f"({numerator_target.value:g} - {numerator_base.value:g})"
             denominator_delta = self.executor.difference(denominator_target.value, denominator_base.value)
             ratio = self.executor.ratio(numerator_delta.value, denominator_delta.value)
             if ratio is None:
@@ -562,9 +620,9 @@ class NumericPlanExecutor:
             percent = ratio.value * 100.0
             calculation = (
                 "planned_percent_of_increase "
-                f"numerator={self._value_ref(numerator_target)}-{self._value_ref(numerator_base)} "
+                f"numerator={numerator_ref} "
                 f"denominator={self._value_ref(denominator_target)}-{self._value_ref(denominator_base)}: "
-                f"({numerator_target.value:g} - {numerator_base.value:g}) / "
+                f"{numerator_expr} / "
                 f"({denominator_target.value:g} - {denominator_base.value:g}) * 100 = {percent:.1f}%"
             )
             return PlannedNumericAnswer(text=self._format_number(percent, "%"), calculation=calculation)

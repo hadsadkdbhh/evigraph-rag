@@ -289,6 +289,27 @@ class NumericPlannerFallbackTest(unittest.TestCase):
         self.assertIn("2008", answer.calculation)
         self.assertIn("2007", answer.calculation)
 
+    def test_heuristic_plans_percent_of_change_due_to_contribution(self) -> None:
+        context = (
+            "| metric | amount |\n"
+            "| --- | ---: |\n"
+            "| 2007 net revenue | 231.0 |\n"
+            "| rider revenue | 3.9 |\n"
+            "| 2008 net revenue | 252.7 |\n"
+        )
+        planner = NumericPlannerFallback(HeuristicNumericPlanClient())
+
+        answer = planner.answer(
+            "what percent of the change between net revenue in 2007 and 2008 was due to rider revenue?",
+            [("table", context)],
+        )
+
+        self.assertIsNotNone(answer)
+        self.assertEqual(answer.text, "18%")
+        self.assertIn("planned_percent_of_increase", answer.calculation)
+        self.assertIn("rider revenue/amount", answer.calculation)
+        self.assertIn("2008 net revenue/amount-2007 net revenue/amount", answer.calculation)
+
     def test_heuristic_plans_ratio_percent_with_numerator_and_denominator_rows(self) -> None:
         context = (
             "| asset class | 2011 |\n"
