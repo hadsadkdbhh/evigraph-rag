@@ -106,23 +106,25 @@ can resolve a table row when the table has only one numeric value column.
 
 | setting | full EviGraph EM | answer supported | calculation supported |
 | --- | ---: | ---: | ---: |
-| Oracle-doc local planner | 0.310 | 0.710 | 0.513 |
-| Open BM25 local planner | 0.213 | 0.723 | 0.473 |
-| BM25 + source-rerank local planner | 0.290 | 0.733 | 0.520 |
+| Oracle-doc local planner | 0.310 | 0.710 | 0.500 |
+| Open BM25 local planner | 0.213 | 0.723 | 0.463 |
+| BM25 + source-rerank local planner | 0.290 | 0.733 | 0.503 |
 
 Compared with the non-planner 300-example run:
 
 | setting | EM delta | calculation-support delta |
 | --- | ---: | ---: |
-| Oracle-doc | +0.013 | +0.140 |
-| Open BM25 | +0.010 | +0.103 |
-| BM25 + source-rerank | +0.017 | +0.137 |
+| Oracle-doc | +0.013 | +0.127 |
+| Open BM25 | +0.010 | +0.093 |
+| BM25 + source-rerank | +0.017 | +0.120 |
 
 Compared with the previous planner-fallback run, the stronger local planner
 turns the planner path from a pure infrastructure check into a measurable
 performance change. The exact-match gain is still modest, but the large
 calculation-support gain means the executor now covers substantially more
-auditable arithmetic programs. The next target remains operand and operation
-selection: the source-rerank local-planner diagnostic reports 83
-wrong-operation-or-row failures, with 43 primary wrong-operation-type cases and
-21 ambiguous supported wrong-number cases.
+auditable arithmetic programs. A follow-up local-planner refinement adds
+same-row `due after` ratios, explicit lookup plans, and better ratio phrasing.
+It does not move exact match, but it reduces the source-rerank
+wrong-operation-or-row bucket from 83 to 78 and primary wrong-operation-type
+cases from 43 to 38. The remaining next target is operand selection, especially
+wrong numerator/denominator and ambiguous supported wrong-number cases.

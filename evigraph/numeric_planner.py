@@ -45,7 +45,7 @@ class LLMNumericPlanClient:
                     f"Context:\n{compact_context}\n\n"
                     "Return a JSON object with this schema:\n"
                     "{"
-                    "\"operation\": \"difference|ratio|percent_change|percent_of_increase|average|sum|product\", "
+                    "\"operation\": \"difference|ratio|percent_change|percent_of_increase|average|sum|product|lookup\", "
                     "\"node_id\": \"context id\", "
                     "\"target\": {\"label\": \"row label or phrase\", \"year\": \"optional column/year\", \"period\": \"optional duration\", \"value\": number}, "
                     "\"base\": {\"label\": \"row label or phrase\", \"year\": \"optional column/year\", \"period\": \"optional duration\", \"value\": number}, "
@@ -57,7 +57,7 @@ class LLMNumericPlanClient:
                     "\"scale\": \"number|percent\", "
                     "\"rationale\": \"short\""
                     "}\n"
-                    "Use target/base for difference, ratio, and percent_change. "
+                    "Use target/base for difference, ratio, and percent_change. Use target for lookup. "
                     "Use numerator_target/base and denominator_target/base for percent_of_increase. "
                     "Use values for sum, average, and product. Values must appear in the context or question. "
                     "If the context is a table, you may omit value when label plus year/column identifies a cell; "
@@ -73,7 +73,7 @@ class HeuristicNumericPlanClient:
 
     def plan(self, query: str, contexts: list[tuple[str, str]]) -> dict[str, Any]:
         lowered = query.lower()
-        years = re.findall(r"\b(20\d{2})\b", lowered)
+        years = self._years(lowered)
         period = self._period(lowered)
         operation_terms = self._content_terms(lowered)
 
@@ -100,6 +100,21 @@ class HeuristicNumericPlanClient:
                 "denominator_base": {"row_terms": denominator_terms, "year": base_year, "period": period},
                 "scale": "percent",
                 "rationale": "heuristic percent-of-increase program",
+            }
+
+        if self._is_due_after_ratio(lowered):
+            row_terms = self._due_after_row_terms(lowered) or operation_terms
+            return {
+                "operation": "ratio",
+                "node_id": self._node_id(contexts, row_terms),
+                "target": {
+                    "row_terms": row_terms,
+                    "column_terms": ["thereafter", "after"],
+                    "period": period,
+                },
+                "base": {"row_terms": row_terms, "column_terms": ["total"], "period": period},
+                "scale": "percent",
+                "rationale": "heuristic due-after same-row ratio program",
             }
 
         if self._is_ratio_percent(lowered):
@@ -147,6 +162,16 @@ class HeuristicNumericPlanClient:
                 "target": {"row_terms": row_terms, "year": target_year, "period": period},
                 "base": {"row_terms": row_terms, "year": base_year, "period": period},
                 "rationale": "heuristic difference program",
+            }
+
+        if self._is_lookup(lowered, years):
+            row_terms = self._lookup_terms(lowered) or operation_terms
+            target_year = years[0] if len(years) == 1 else ""
+            return {
+                "operation": "lookup",
+                "node_id": self._node_id(contexts, row_terms),
+                "target": {"row_terms": row_terms, "year": target_year, "period": period},
+                "rationale": "heuristic lookup program",
             }
 
         if self._is_average(lowered):
@@ -224,10 +249,23 @@ class HeuristicNumericPlanClient:
             return "twelve months ended"
         return ""
 
+    def _years(self, lowered: str) -> list[str]:
+        seen = []
+        for year in re.findall(r"\b(20\d{2})(?:\b|(?=end\b))", lowered):
+            if year not in seen:
+                seen.append(year)
+        return seen
+
     def _is_complement_percent(self, lowered: str) -> bool:
         return bool(
             re.search(r"\b(?:not|non|un)\s*-?\s*(?:leased|vested|exercised|paid|current)\b", lowered)
             and ("percent" in lowered or "percentage" in lowered)
+        )
+
+    def _is_due_after_ratio(self, lowered: str) -> bool:
+        return bool(
+            ("percent" in lowered or "percentage" in lowered or "portion" in lowered)
+            and ("due after" in lowered or "thereafter" in lowered)
         )
 
     def _is_ratio_percent(self, lowered: str) -> bool:
@@ -268,11 +306,21 @@ class HeuristicNumericPlanClient:
     def _is_sum(self, lowered: str) -> bool:
         return bool(re.search(r"\b(?:sum|total|combined|aggregate)\b", lowered)) and not self._is_ratio_percent(lowered)
 
+    def _is_lookup(self, lowered: str, years: list[str]) -> bool:
+        if self._is_sum(lowered) and len(years) > 1:
+            return False
+        return bool(
+            re.search(r"\b(?:what (?:are|is|was|were) the )?(?:total amount|amount|value|number) of\b", lowered)
+            and not any(token in lowered for token in ("average", "ratio", "percentage", "percent", "portion", "share"))
+        )
+
     def _ratio_terms(self, lowered: str) -> tuple[list[str], list[str]]:
         patterns = [
             r"what (?:percentage|percent|portion|share) of (?P<base>.+?) (?:was|were|is|are) (?:represented by|attributable to|allocated to|related to|comprised of|made up by) (?P<target>.+?)(?:\?|$)",
             r"(?P<target>.+?) as a percentage of (?P<base>.+?)(?:\?|$)",
             r"ratio of (?P<target>.+?) to (?P<base>.+?)(?:\?|$)",
+            r"ratio of (?P<target>.+?) compared to (?P<base>.+?)(?:\?|$)",
+            r"ratio of (?P<target>.+?) compared with (?P<base>.+?)(?:\?|$)",
         ]
         for pattern in patterns:
             match = re.search(pattern, lowered)
@@ -287,7 +335,22 @@ class HeuristicNumericPlanClient:
         return self._terms_after(lowered, ["difference in", "change in", "increase in", "decrease in", "decline in"])
 
     def _aggregate_terms(self, lowered: str) -> list[str]:
-        return self._terms_after(lowered, ["average", "sum of", "total of", "total amount of", "combined"])
+        terms = self._terms_after(lowered, ["average", "sum of", "total of", "total amount of", "combined"])
+        if terms:
+            return terms
+        total_match = re.search(r"\btotal\s+(?P<label>.+?)(?:\s+in\s+20\d{2}|\s+from\s+20\d{2}|\?|$)", lowered)
+        if total_match:
+            return self._content_terms(total_match.group("label"))
+        return []
+
+    def _lookup_terms(self, lowered: str) -> list[str]:
+        return self._terms_after(lowered, ["total amount of", "amount of", "value of", "number of"])
+
+    def _due_after_row_terms(self, lowered: str) -> list[str]:
+        match = re.search(r"percentage of (?P<label>.+?) (?:is|are|was|were)?\s*due after", lowered)
+        if match:
+            return self._content_terms(match.group("label"))
+        return self._terms_after(lowered, ["percentage of", "percent of", "portion of"])
 
     def _complement_terms(self, lowered: str) -> list[str]:
         terms = self._content_terms(lowered)
@@ -354,6 +417,7 @@ class HeuristicNumericPlanClient:
             "increase",
             "decrease",
             "growth",
+            "total",
             "compared",
             "months",
             "month",
@@ -383,6 +447,15 @@ class NumericPlanExecutor:
 
         if operation in {"multiply", "multiplication"}:
             operation = "product"
+
+        if operation == "lookup":
+            target = self.executor.resolve_value(plan.get("target"), context_text, support_text=query)
+            if target is None:
+                return None
+            return PlannedNumericAnswer(
+                text=f"{target.value:g}",
+                calculation=f"planned_lookup target={self._value_ref(target)}: {target.value:g}",
+            )
 
         if operation in {"difference", "ratio", "percent_change"}:
             target = self.executor.resolve_value(plan.get("target"), context_text, support_text=query)

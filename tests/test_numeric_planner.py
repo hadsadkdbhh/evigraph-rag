@@ -334,6 +334,79 @@ class NumericPlannerFallbackTest(unittest.TestCase):
         self.assertIsNotNone(planner)
         self.assertIsInstance(planner.plan_client, HeuristicNumericPlanClient)
 
+    def test_heuristic_due_after_uses_thereafter_over_total_columns(self) -> None:
+        context = (
+            "| commitment | 2021 | thereafter | total |\n"
+            "| --- | ---: | ---: | ---: |\n"
+            "| long-term debt | 71 | 631 | 710 |\n"
+        )
+        planner = NumericPlannerFallback(HeuristicNumericPlanClient())
+
+        answer = planner.answer(
+            "what percentage of long-term debt is due after 2021?",
+            [("table", context)],
+        )
+
+        self.assertIsNotNone(answer)
+        self.assertEqual(answer.text, "88.9%")
+        self.assertIn("planned_ratio", answer.calculation)
+        self.assertIn("thereafter", answer.calculation)
+
+    def test_heuristic_ratio_compared_to_uses_distinct_operands(self) -> None:
+        context = (
+            "| metric | 2018 | 2017 | 2016 |\n"
+            "| --- | ---: | ---: | ---: |\n"
+            "| htm investment securities period-end | 31434 | 47733 | 50168 |\n"
+            "| investment securities portfolio period-end | 260115 | 247980 | 286838 |\n"
+        )
+        planner = NumericPlannerFallback(HeuristicNumericPlanClient())
+
+        answer = planner.answer(
+            "in 2017 what was the ratio of the htm investment securities period-end compared to investment securities portfolio period-end",
+            [("table", context)],
+        )
+
+        self.assertIsNotNone(answer)
+        self.assertEqual(answer.text, "0.2")
+        self.assertIn("htm investment securities period-end/2017", answer.calculation)
+        self.assertIn("investment securities portfolio period-end/2017", answer.calculation)
+
+    def test_heuristic_total_amount_without_year_list_is_lookup_not_sum(self) -> None:
+        context = (
+            "| item | value |\n"
+            "| --- | ---: |\n"
+            "| net tangible assets obtained through the acquisition | 62154 |\n"
+            "| customer-related intangible assets | 42721 |\n"
+        )
+        planner = NumericPlannerFallback(HeuristicNumericPlanClient())
+
+        answer = planner.answer(
+            "what are the total amount of net tangible assets obtained through the acquisition?",
+            [("table", context)],
+        )
+
+        self.assertIsNotNone(answer)
+        self.assertEqual(answer.text, "62154")
+        self.assertIn("planned_lookup", answer.calculation)
+
+    def test_heuristic_total_sum_drops_total_as_row_term(self) -> None:
+        context = (
+            "| metric | 2004 | 2005 | 2006 |\n"
+            "| --- | ---: | ---: | ---: |\n"
+            "| matching buy sell volumes | 50 | 59 | 63 |\n"
+            "| total shipments | 1400 | 1455 | 1425 |\n"
+        )
+        planner = NumericPlannerFallback(HeuristicNumericPlanClient())
+
+        answer = planner.answer(
+            "in tpd , what were total matching buy/sell volumes in 2006 , 2005 and 2004?",
+            [("table", context)],
+        )
+
+        self.assertIsNotNone(answer)
+        self.assertEqual(answer.text, "172")
+        self.assertIn("matching buy sell volumes/2006", answer.calculation)
+
 
 if __name__ == "__main__":
     unittest.main()
