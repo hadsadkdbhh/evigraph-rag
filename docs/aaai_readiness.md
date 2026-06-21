@@ -24,7 +24,9 @@ This file tracks what the current repository can and cannot support as paper evi
 - The optional LLM numeric planner fallback now supports program-style table-cell
   selection: plans can specify row labels and year/column selectors, then the
   local executor resolves the cited cell, performs arithmetic, and logs the
-  resolved row/column references.
+  resolved row/column references. The supported operation set now includes
+  product-style multiplication and percent-of-increase programs in addition to
+  ratio, difference, percent change, sum, and average.
 
 ## Claims Not Yet Supported
 
@@ -53,5 +55,6 @@ This file tracks what the current repository can and cannot support as paper evi
 
 Improve the table numerical reasoning path on the FinQA subset before reporting
 benchmark claims. The next concrete target is to make the program-style numeric
-planner handle common FinQA plan shapes such as multiplication, percent of
-increase, and period-disambiguated row selection.
+planner handle period-disambiguated row selection and then rerun the 300-example
+planner manifest to measure whether the new operations reduce the largest
+failure classes.

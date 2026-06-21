@@ -88,6 +88,81 @@ class NumericPlannerFallbackTest(unittest.TestCase):
         self.assertIn("planned_percent_change", answer.calculations[0])
         self.assertIn("revenue/2023", answer.calculations[0])
 
+    def test_executes_product_plan_with_question_supported_constant(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="table",
+                content=(
+                    "| metric | amount |\n"
+                    "| --- | ---: |\n"
+                    "| average daily volume | 2.5 |\n"
+                    "| average price | 4.0 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+        planner = NumericPlannerFallback(
+            FakePlanClient(
+                {
+                    "operation": "product",
+                    "node_id": "table",
+                    "values": [
+                        {"label": "average daily volume", "column": "amount"},
+                        {"label": "average price", "column": "amount"},
+                        {"label": "days in year", "value": 365},
+                    ],
+                }
+            )
+        )
+
+        answer = SupportOnlyGenerator(planner_fallback=planner).generate(
+            "compute the annualized traded value using 365 days",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "3650")
+        self.assertIn("planned_product", answer.calculations[0])
+        self.assertIn("average daily volume/amount", answer.calculations[0])
+
+    def test_executes_percent_of_increase_plan(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="table",
+                content=(
+                    "| metric | 2023 | 2022 |\n"
+                    "| --- | ---: | ---: |\n"
+                    "| product revenue | 160 | 100 |\n"
+                    "| total revenue | 250 | 150 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+        planner = NumericPlannerFallback(
+            FakePlanClient(
+                {
+                    "operation": "percent_of_increase",
+                    "node_id": "table",
+                    "numerator_target": {"label": "product revenue", "year": "2023"},
+                    "numerator_base": {"label": "product revenue", "year": "2022"},
+                    "denominator_target": {"label": "total revenue", "year": "2023"},
+                    "denominator_base": {"label": "total revenue", "year": "2022"},
+                }
+            )
+        )
+
+        answer = SupportOnlyGenerator(planner_fallback=planner).generate(
+            "what percentage of the increase in total revenue came from product revenue?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "60%")
+        self.assertIn("planned_percent_of_increase", answer.calculations[0])
+        self.assertIn("product revenue/2023-product revenue/2022", answer.calculations[0])
+
     def test_rejects_plan_values_not_present_in_context(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

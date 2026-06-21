@@ -14,6 +14,11 @@ class TableOperationExecutorTest(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertEqual(result.value, 6.0)
 
+    def test_product(self) -> None:
+        result = self.executor.product([2.5, 4.0, 365.0])
+        self.assertIsNotNone(result)
+        self.assertEqual(result.value, 3650.0)
+
     def test_select_rows(self) -> None:
         rows = [
             ["net sales", "100", "90"],
@@ -61,6 +66,16 @@ class TableOperationExecutorTest(unittest.TestCase):
         self.assertIsNotNone(value)
         self.assertEqual(value.value, 1250.0)
         self.assertEqual(value.column_label, "current year")
+
+    def test_resolve_explicit_value_can_be_supported_by_question_text(self) -> None:
+        value = self.executor.resolve_value(
+            {"label": "days in year", "value": 365},
+            "The table reports daily average volume.",
+            support_text="What is the annualized amount using 365 days?",
+        )
+
+        self.assertIsNotNone(value)
+        self.assertEqual(value.value, 365.0)
 
     def test_difference(self) -> None:
         result = self.executor.difference(173.2, 171.5)

@@ -68,6 +68,11 @@ class NumericReasoner:
             if answer:
                 return answer
 
+        if "percent of the increase" in query_lower or "percentage of the increase" in query_lower:
+            planned = self._planner_answer(query, contexts)
+            if planned:
+                return planned
+
         if (
             "difference" in query_lower
             and "as a percentage of" in query_lower
@@ -132,15 +137,23 @@ class NumericReasoner:
                 return answer
 
         if self.planner_fallback is not None:
-            planned = self.planner_fallback.answer(query, contexts)
-            if planned is not None:
-                return NumericAnswer(
-                    text=planned.text,
-                    calculation=planned.calculation,
-                    cited_node_ids=[contexts[0][0]],
-                )
+            planned = self._planner_answer(query, contexts)
+            if planned:
+                return planned
 
         return None
+
+    def _planner_answer(self, query: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
+        if self.planner_fallback is None:
+            return None
+        planned = self.planner_fallback.answer(query, contexts)
+        if planned is None:
+            return None
+        return NumericAnswer(
+            text=planned.text,
+            calculation=planned.calculation,
+            cited_node_ids=[contexts[0][0]],
+        )
 
     def _year_range_average_v2(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
         range_match = re.search(r"\b(?:from\s+)?(20\d{2})\s*(?:[-\s]|\bto\b)+\s*(20\d{2})\b", query_lower)

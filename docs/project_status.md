@@ -97,7 +97,11 @@ three-month period intent.
 The numeric planner fallback has moved one step closer to a program-style
 executor: an LLM plan may now identify table cells by row label plus year/column
 selector, while the local executor parses the markdown table, retrieves the
-evidence value, executes `difference`, `ratio`, `percent_change`, `sum`, or
-`average`, and records the resolved row/column references in the calculation
-trace. This is the intended path for future failure-driven fixes because it
-separates operation planning from locally auditable arithmetic.
+evidence value, executes `difference`, `ratio`, `percent_change`,
+`percent_of_increase`, `sum`, `average`, or `product`, and records the resolved
+row/column references in the calculation trace. Percent-of-increase questions
+are routed to this planner path before the older ratio-percent heuristic, which
+prevents the system from answering with a current-value ratio when the question
+asks for contribution to a period-over-period increase. This is the intended
+path for future failure-driven fixes because it separates operation planning
+from locally auditable arithmetic.

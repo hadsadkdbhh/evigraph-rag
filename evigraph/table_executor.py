@@ -110,10 +110,10 @@ class TableOperationExecutor:
                 return index
         return None
 
-    def resolve_value(self, spec: Any, context_text: str) -> TableValue | None:
+    def resolve_value(self, spec: Any, context_text: str, support_text: str | None = None) -> TableValue | None:
         if not isinstance(spec, dict):
             return None
-        explicit = self._explicit_value(spec, context_text)
+        explicit = self._explicit_value(spec, context_text, support_text=support_text)
         if explicit is not None:
             return explicit
 
@@ -141,6 +141,18 @@ class TableOperationExecutor:
             return None
         result = sum(values)
         return TableOperationResult("sum", result, " + ".join(f"{value:g}" for value in values) + f" = {result:g}")
+
+    def product(self, values: list[float]) -> TableOperationResult | None:
+        if not values:
+            return None
+        result = 1.0
+        for value in values:
+            result *= value
+        return TableOperationResult(
+            "product",
+            result,
+            " * ".join(f"{value:g}" for value in values) + f" = {result:g}",
+        )
 
     def difference(self, target: float, base: float) -> TableOperationResult:
         result = target - base
@@ -200,14 +212,20 @@ class TableOperationExecutor:
             return None
         return rows[0], body
 
-    def _explicit_value(self, spec: dict[str, Any], context_text: str) -> TableValue | None:
+    def _explicit_value(
+        self,
+        spec: dict[str, Any],
+        context_text: str,
+        support_text: str | None = None,
+    ) -> TableValue | None:
         if "value" not in spec:
             return None
         try:
             value = float(spec["value"])
         except (TypeError, ValueError):
             return None
-        if not self._value_supported(value, context_text):
+        support = context_text if support_text is None else f"{context_text}\n{support_text}"
+        if not self._value_supported(value, support):
             return None
         row_label = str(spec.get("label") or spec.get("row") or "")
         column_label = str(spec.get("year") or spec.get("column") or spec.get("period") or "")

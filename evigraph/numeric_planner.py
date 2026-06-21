@@ -44,16 +44,21 @@ class LLMNumericPlanClient:
                     f"Context:\n{compact_context}\n\n"
                     "Return a JSON object with this schema:\n"
                     "{"
-                    "\"operation\": \"difference|ratio|percent_change|average|sum\", "
+                    "\"operation\": \"difference|ratio|percent_change|percent_of_increase|average|sum|product\", "
                     "\"node_id\": \"context id\", "
                     "\"target\": {\"label\": \"row label or phrase\", \"year\": \"optional column/year\", \"value\": number}, "
                     "\"base\": {\"label\": \"row label or phrase\", \"year\": \"optional column/year\", \"value\": number}, "
+                    "\"numerator_target\": {\"label\": \"row label\", \"year\": \"target year\", \"value\": number}, "
+                    "\"numerator_base\": {\"label\": \"row label\", \"year\": \"base year\", \"value\": number}, "
+                    "\"denominator_target\": {\"label\": \"row label\", \"year\": \"target year\", \"value\": number}, "
+                    "\"denominator_base\": {\"label\": \"row label\", \"year\": \"base year\", \"value\": number}, "
                     "\"values\": [{\"label\": \"row label or phrase\", \"year\": \"optional column/year\", \"value\": number}], "
                     "\"scale\": \"number|percent\", "
                     "\"rationale\": \"short\""
                     "}\n"
                     "Use target/base for difference, ratio, and percent_change. "
-                    "Use values for sum and average. Values must appear in the context. "
+                    "Use numerator_target/base and denominator_target/base for percent_of_increase. "
+                    "Use values for sum, average, and product. Values must appear in the context or question. "
                     "If the context is a table, you may omit value when label plus year/column identifies a cell; "
                     "the executor will read that cell locally."
                 ),
@@ -72,9 +77,12 @@ class NumericPlanExecutor:
         if context_text is None:
             return None
 
+        if operation in {"multiply", "multiplication"}:
+            operation = "product"
+
         if operation in {"difference", "ratio", "percent_change"}:
-            target = self.executor.resolve_value(plan.get("target"), context_text)
-            base = self.executor.resolve_value(plan.get("base"), context_text)
+            target = self.executor.resolve_value(plan.get("target"), context_text, support_text=query)
+            base = self.executor.resolve_value(plan.get("base"), context_text, support_text=query)
             if target is None or base is None:
                 return None
             if operation == "difference":
@@ -116,20 +124,56 @@ class NumericPlanExecutor:
                 ),
             )
 
-        if operation in {"sum", "average"}:
+        if operation == "percent_of_increase":
+            numerator_target = self.executor.resolve_value(plan.get("numerator_target"), context_text, support_text=query)
+            numerator_base = self.executor.resolve_value(plan.get("numerator_base"), context_text, support_text=query)
+            denominator_target = self.executor.resolve_value(
+                plan.get("denominator_target"),
+                context_text,
+                support_text=query,
+            )
+            denominator_base = self.executor.resolve_value(plan.get("denominator_base"), context_text, support_text=query)
+            operands = [numerator_target, numerator_base, denominator_target, denominator_base]
+            if any(value is None for value in operands):
+                return None
+            numerator_delta = self.executor.difference(numerator_target.value, numerator_base.value)
+            denominator_delta = self.executor.difference(denominator_target.value, denominator_base.value)
+            ratio = self.executor.ratio(numerator_delta.value, denominator_delta.value)
+            if ratio is None:
+                return None
+            percent = ratio.value * 100.0
+            calculation = (
+                "planned_percent_of_increase "
+                f"numerator={self._value_ref(numerator_target)}-{self._value_ref(numerator_base)} "
+                f"denominator={self._value_ref(denominator_target)}-{self._value_ref(denominator_base)}: "
+                f"({numerator_target.value:g} - {numerator_base.value:g}) / "
+                f"({denominator_target.value:g} - {denominator_base.value:g}) * 100 = {percent:.1f}%"
+            )
+            return PlannedNumericAnswer(text=self._format_number(percent, "%"), calculation=calculation)
+
+        if operation in {"sum", "average", "product"}:
+            resolved_values = [
+                value
+                for item in plan.get("values", [])
+                if (value := self.executor.resolve_value(item, context_text, support_text=query)) is not None
+            ]
             values = [
                 value.value
-                for item in plan.get("values", [])
-                if (value := self.executor.resolve_value(item, context_text)) is not None
+                for value in resolved_values
             ]
             if not values:
                 return None
-            result = self.executor.sum(values) if operation == "sum" else self.executor.average(values)
+            if operation == "sum":
+                result = self.executor.sum(values)
+            elif operation == "average":
+                result = self.executor.average(values)
+            else:
+                result = self.executor.product(values)
             if result is None:
                 return None
             return PlannedNumericAnswer(
                 text=f"{result.value:g}",
-                calculation=f"planned_{operation}: {result.expression}",
+                calculation=f"planned_{operation} values={self._value_refs(resolved_values)}: {result.expression}",
             )
         return None
 
@@ -158,6 +202,9 @@ class NumericPlanExecutor:
         if column:
             return f"{row}/{column}"
         return str(row)
+
+    def _value_refs(self, values: list[Any]) -> str:
+        return ", ".join(self._value_ref(value) for value in values)
 
 
 class NumericPlannerFallback:
