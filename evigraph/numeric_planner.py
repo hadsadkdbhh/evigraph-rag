@@ -290,10 +290,26 @@ class HeuristicNumericPlanClient:
         ) and not self._is_percent_change(lowered)
 
     def _is_percent_change(self, lowered: str) -> bool:
-        percent_markers = ("percent change", "percentage change", "percentage increase", "percent increase")
+        percent_markers = (
+            "percent change",
+            "percentage change",
+            "percent of the change",
+            "percentage of the change",
+            "percent of change",
+            "percentage of change",
+            "percentage increase",
+            "percent increase",
+            "percentual increase",
+            "percentage decrease",
+            "percent decrease",
+            "percentual decrease",
+            "percentage growth",
+            "percent growth",
+            "percentual growth",
+        )
         if any(marker in lowered for marker in percent_markers):
             return True
-        if ("percent" in lowered or "percentage" in lowered) and any(
+        if ("percent" in lowered or "percentage" in lowered or "percentual" in lowered) and any(
             token in lowered for token in ("increase", "decrease", "growth", "decline")
         ):
             return True

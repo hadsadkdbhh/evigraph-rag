@@ -69,6 +69,33 @@ class RowOperationDiagnosticAnalyzerTest(unittest.TestCase):
         self.assertEqual(analysis["primary_counts"]["wrong_operation_type"], 1)
         self.assertIn("wrong_operation_type", analysis["diagnostics"][0]["labels"])
 
+    def test_planned_percent_change_matches_percent_of_change_query(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            run_dir = self._write_run(
+                root,
+                "planned_percent_change target=segment revenue/2009 base=segment revenue/2008: "
+                "(6305 - 6197) / 6197 * 100 = 1.7%",
+                "segment revenue | 2008 | 6197\nsegment revenue | 2009 | 6305",
+            )
+            csv_path = self._write_csv(
+                root,
+                [
+                    {
+                        "id": "case-planned-percent-change",
+                        "query": "what was the percent of the change in segment revenue from 2008 2009",
+                        "answer": "1.6%",
+                        "prediction": "1.7%",
+                        "accuracy": "0.0",
+                        "run_dir": str(run_dir),
+                    }
+                ],
+            )
+
+            analysis = RowOperationDiagnosticAnalyzer().analyze(csv_path)
+
+        self.assertNotIn("wrong_operation_type", analysis["diagnostics"][0]["labels"])
+
     def test_diagnoses_missing_row_label_trace(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

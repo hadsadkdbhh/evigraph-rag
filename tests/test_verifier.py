@@ -171,6 +171,42 @@ class ClaimVerifierTest(unittest.TestCase):
         self.assertFalse(verification["answer_supported"])
         self.assertIn("Calculation operation type does not match query intent.", verification["missing_evidence"])
 
+    def test_operation_semantics_accepts_percent_of_the_change_query(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(EvidenceNode("table", "text", "segment revenue 2008 6197 2009 6305 1.7", source_doc="report.md"))
+        answer = Answer(
+            text="1.7%",
+            citations=["table"],
+            calculations=["percent_change row=segment revenue: (6305 - 6197) / 6197 * 100 = 1.7%"],
+        )
+
+        verification = ClaimVerifier().verify(
+            "what was the percent of the change in the risk and insurance brokerage services segment revenue from 2008 2009",
+            answer,
+            graph,
+        )
+
+        self.assertTrue(verification["operation_semantics_checked"])
+        self.assertTrue(verification["answer_supported"])
+
+    def test_operation_semantics_accepts_planned_percent_change(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(EvidenceNode("table", "text", "operating expenses 2017 100 2018 127.5 27.5", source_doc="report.md"))
+        answer = Answer(
+            text="27.5%",
+            citations=["table"],
+            calculations=["planned_percent_change target=operating expenses/2018 base=operating expenses/2017: (127.5 - 100) / 100 * 100 = 27.5%"],
+        )
+
+        verification = ClaimVerifier().verify(
+            "what is the percentual increase in the operating expenses during 2017 and 2018?",
+            answer,
+            graph,
+        )
+
+        self.assertTrue(verification["operation_semantics_checked"])
+        self.assertTrue(verification["answer_supported"])
+
     def test_operation_semantics_accepts_ratio_for_portion_query(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(EvidenceNode("table", "text", "mutual funds 9223 total investments 26410 34.9", source_doc="report.md"))

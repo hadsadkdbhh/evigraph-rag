@@ -181,3 +181,16 @@ oracle-doc, 0.247 open BM25, and 0.303 source-rerank. The repaired JPM example
 now predicts `0.19` from `47733 / 247980`. The next target is operand semantics
 inside wrong-operation-type and ambiguous-supported-wrong-number cases rather
 than chunk availability.
+
+The current wrong-operation-type pass makes that diagnostic more honest and
+fixes a real percent-change routing gap. Explicit percent-like change questions
+such as `percent of the change` and `percentual increase` now route to
+percent-change programs instead of raw difference or sum fallbacks, and the
+verifier/diagnostic stack maps `planned_*` calculation names back to their base
+operation families. On FinQA-300, the current local planner numbers are 0.330
+oracle-doc, 0.253 open BM25, and 0.310 source-rerank. Source-rerank
+wrong-operation-type labels fall from 30 to 11. The AON 2009 risk-and-insurance
+segment revenue case now predicts `1.7%` from `(6305 - 6197) / 6197 * 100`.
+The next target is no longer broad operation type; it is the larger
+ambiguous-supported-wrong-number bucket and concrete operand semantics inside
+ratio/percent-change cases.

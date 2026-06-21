@@ -355,6 +355,53 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "-3.2%")
         self.assertIn("percent_change", answer.calculations[0])
 
+    def test_percent_of_the_change_routes_to_percent_change(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| year | segment revenue |\n"
+                    "| --- | ---: |\n"
+                    "| 2008 | 6197 |\n"
+                    "| 2009 | 6305 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the percent of the change in the risk and insurance brokerage services segment revenue from 2008 2009",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "1.7%")
+        self.assertIn("percent_change", answer.calculations[0])
+
+    def test_percentual_increase_routes_to_percent_change(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| metric | 2017 | 2018 |\n"
+                    "| --- | ---: | ---: |\n"
+                    "| operating expenses | 100 | 127.5 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the percentual increase in the operating expenses during 2017 and 2018?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "27.5%")
+        self.assertIn("percent_change", answer.calculations[0])
+
     def test_percent_increase_routes_to_percent_change(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

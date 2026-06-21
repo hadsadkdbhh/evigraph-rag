@@ -33,11 +33,20 @@ class NumericReasoner:
             or "percent change" in query_lower
             or "percentage increase" in query_lower
             or "percent increase" in query_lower
+            or "percentual increase" in query_lower
+            or "percentage decrease" in query_lower
+            or "percent decrease" in query_lower
+            or "percentual decrease" in query_lower
             or "percentage growth" in query_lower
             or "percent growth" in query_lower
+            or "percentual growth" in query_lower
             or "percentage reduction" in query_lower
             or "percent reduction" in query_lower
             or "percentual reduction" in query_lower
+            or "percent of the change" in query_lower
+            or "percentage of the change" in query_lower
+            or "percent of change" in query_lower
+            or "percentage of change" in query_lower
             or "growth rate" in query_lower
             or is_roi_query
             or "percent of the increase" in query_lower

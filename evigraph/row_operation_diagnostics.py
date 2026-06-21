@@ -216,9 +216,22 @@ class RowOperationDiagnosticAnalyzer:
 
     def _expected_operation(self, query: str, gold: str) -> str:
         lowered = query.lower()
-        has_percent_answer = "%" in gold or any(token in lowered for token in ("percent", "percentage", "portion"))
+        has_percent_answer = "%" in gold or any(token in lowered for token in ("percent", "percentage", "percentual", "portion"))
         if any(token in lowered for token in ("average", "mean")):
             return "average"
+        if any(
+            token in lowered
+            for token in (
+                "percent of the change",
+                "percentage of the change",
+                "percent of change",
+                "percentage of change",
+                "percentual increase",
+                "percentual decrease",
+                "percentual growth",
+            )
+        ):
+            return "percent_change"
         if has_percent_answer and any(
             token in lowered
             for token in ("percentage change", "percent change", "growth", "increase", "decrease", "reduction", "from")
@@ -235,11 +248,11 @@ class RowOperationDiagnosticAnalyzer:
 
     def _operation_matches(self, expected: str, actual: str) -> bool:
         compatible = {
-            "average": {"average", "row_values_average", "year_range_average"},
-            "percent_change": {"percent_change", "roi"},
+            "average": {"average", "planned_average", "row_values_average", "year_range_average"},
+            "percent_change": {"percent_change", "planned_percent_change", "roi"},
             "ratio_percent": {"ratio_percent"},
-            "difference": {"difference", "row_year_difference"},
-            "sum_or_lookup": {"sum", "lookup", "row_lookup"},
+            "difference": {"difference", "planned_difference", "row_year_difference"},
+            "sum_or_lookup": {"sum", "planned_sum", "lookup", "planned_lookup", "row_lookup"},
         }
         return actual in compatible.get(expected, {expected})
 

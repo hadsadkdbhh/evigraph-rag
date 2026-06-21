@@ -182,3 +182,18 @@ to 0.323 oracle-doc, 0.247 open BM25, and 0.303 source-rerank. Source-rerank
 wrong-operation-or-row remains 66, but the previously targeted chunk-truncated
 ratio case is now covered by a regression test and the open-retrieval setting
 also improves.
+
+The wrong-operation-type pass separates real operation mistakes from diagnostic
+name mismatches. The reasoner and local planner now route explicit percent-like
+change phrasings, including `percent of the change` and `percentual increase`,
+to percent-change programs instead of raw difference or sum fallbacks. The
+verifier and row-operation diagnostic now recognize the same intent and map
+`planned_percent_change`, `planned_average`, `planned_difference`,
+`planned_sum`, and `planned_lookup` to their base operation families. This fixes
+`AON/2009/page_46.pdf-3`, changing the risk-and-insurance segment revenue answer
+from raw difference `108` to `(6305 - 6197) / 6197 * 100 = 1.7%`. On FinQA-300,
+exact match rises to 0.330 oracle-doc, 0.253 open BM25, and 0.310
+source-rerank. Source-rerank wrong-operation-type labels fall from 30 to 11.
+Ambiguous-supported-wrong-number rises from 19 to 38 because many former
+operation-type reports were reclassified as supported-but-wrong operand/number
+cases rather than hidden under a planned-operation name mismatch.
