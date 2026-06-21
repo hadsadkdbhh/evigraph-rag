@@ -147,3 +147,13 @@ wrong-operation-or-row diagnostics from 83 to 75, primary wrong-operation-type
 cases from 43 to 38, wrong-numerator labels from 9 to 7, and ambiguous supported
 wrong-number cases from 21 to 20. This is now the best reproducible
 numeric-planner baseline in the repo.
+
+The current code also includes a stricter local-planner guard for percent,
+portion, share, and ratio questions. Questions phrased as "percent of DEN that
+was NUM" are now planned as ratio programs, and erroneous `sum` plans are
+rejected for ratio-like queries. This fixes the UNP 2008 accrued-wages ratio
+case in open retrieval and reduces source-rerank wrong-operation-or-row
+diagnostics from 75 to 71 on FinQA-300. The exact-match result is mixed:
+oracle-doc is 0.313, open BM25 is 0.223, and source-rerank is 0.297. The next
+highest-yield target remains wrong-operation-type and operand selection, not
+more ad hoc arithmetic rules.

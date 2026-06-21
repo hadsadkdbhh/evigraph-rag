@@ -1066,6 +1066,48 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "24.7%")
         self.assertEqual(answer.citations, ["complete_mmboe_table"])
 
+    def test_ratio_percent_prefers_context_with_query_year(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="retrieved_1_unp_2011",
+                node_type="text",
+                content=(
+                    "# Evidence UNP/2011/page_76.pdf-1\n"
+                    "| millions | dec . 31 2011 | dec . 31 2010 |\n"
+                    "| --- | ---: | ---: |\n"
+                    "| accrued wages and vacation | 363 | 357 |\n"
+                    "| total accounts payable and other current liabilities | 3108 | 2713 |\n"
+                ),
+                source_doc="unp_2011.md",
+                metadata={"retrieval_rank": 1},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="retrieved_2_unp_2008",
+                node_type="text",
+                content=(
+                    "# Evidence UNP/2008/page_77.pdf-1\n"
+                    "| millions of dollars | dec . 31 2008 | dec . 31 2007 |\n"
+                    "| --- | ---: | ---: |\n"
+                    "| accrued wages and vacation | 367 | 394 |\n"
+                    "| total accounts payable and other current liabilities | 2560 | 2902 |\n"
+                ),
+                source_doc="unp_2008.md",
+                metadata={"retrieval_rank": 2},
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "as of december 31 , 2008 what was the percent of the total accounts payable and other liabilities that was accrued wages and vacation",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "14.3%")
+        self.assertEqual(answer.citations, ["retrieved_2_unp_2008"])
+        self.assertIn("column=dec . 31 2008", answer.calculations[0])
+
     def test_ratio_percent_total_denominator_prefers_total_row(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

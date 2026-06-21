@@ -271,6 +271,49 @@ class NumericPlannerFallbackTest(unittest.TestCase):
         self.assertEqual(answer.text, "65.1%")
         self.assertIn("planned_ratio", answer.calculation)
 
+    def test_heuristic_plans_percent_of_base_that_was_target_as_ratio(self) -> None:
+        context = (
+            "| millions of dollars | dec . 31 2008 | dec . 31 2007 |\n"
+            "| --- | ---: | ---: |\n"
+            "| accrued wages and vacation | 367 | 394 |\n"
+            "| total accounts payable and other current liabilities | 2560 | 2902 |\n"
+        )
+        planner = NumericPlannerFallback(HeuristicNumericPlanClient())
+
+        answer = planner.answer(
+            "as of december 31 , 2008 what was the percent of the total accounts payable and other liabilities that was accrued wages and vacation",
+            [("table", context)],
+        )
+
+        self.assertIsNotNone(answer)
+        self.assertEqual(answer.text, "14.3%")
+        self.assertIn("planned_ratio", answer.calculation)
+        self.assertIn("accrued wages and vacation/dec . 31 2008", answer.calculation)
+
+    def test_percent_question_rejects_sum_plan(self) -> None:
+        context = (
+            "| millions of dollars | dec . 31 2008 | dec . 31 2007 |\n"
+            "| --- | ---: | ---: |\n"
+            "| accrued wages and vacation | 367 | 394 |\n"
+            "| total accounts payable and other current liabilities | 2560 | 2902 |\n"
+        )
+        planner = NumericPlannerFallback(
+            FakePlanClient(
+                {
+                    "operation": "sum",
+                    "node_id": "table",
+                    "values": [{"label": "accrued wages and vacation", "year": "2008"}],
+                }
+            )
+        )
+
+        answer = planner.answer(
+            "as of december 31 , 2008 what was the percent of the total accounts payable and other liabilities that was accrued wages and vacation",
+            [("table", context)],
+        )
+
+        self.assertIsNone(answer)
+
     def test_heuristic_plans_average_over_year_range(self) -> None:
         context = (
             "| metric | 2008 | 2009 | 2010 |\n"

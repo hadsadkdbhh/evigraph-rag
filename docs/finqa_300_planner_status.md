@@ -146,3 +146,14 @@ institutional-securities share case. The current FinQA-300 local-planner
 baseline is 0.317 oracle-doc, 0.220 open BM25, and 0.297 source-rerank. The
 source-rerank wrong-operation-or-row bucket is now 75, and ambiguous supported
 wrong-number cases fall from 21 to 20.
+
+The latest local-planner guard pass adds explicit handling for questions phrased
+as "percent of DEN that was NUM" and rejects `sum` plans for percent, portion,
+share, or ratio questions. It fixes the UNP 2008 accrued-wages ratio case across
+open BM25, oracle-doc, and source-rerank paths by forcing a ratio program rather
+than a scalar sum fallback. On the full FinQA-300 run, the current checked-in
+numbers are 0.313 oracle-doc, 0.223 open BM25, and 0.297 source-rerank. The
+source-rerank wrong-operation-or-row bucket falls from 75 to 71, with primary
+wrong-year-or-period cases falling from 8 to 7. This is a mixed result: the guard
+reduces bad supported numeric behavior and slightly improves open retrieval, but
+it is not a broad exact-match jump.

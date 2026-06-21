@@ -1144,6 +1144,15 @@ class NumericReasoner:
         query_year = self._ratio_year(query_lower, years)
         denominator_terms = self._denominator_terms(query_lower)
         numerator_terms = self._ratio_numerator_terms(query_lower)
+        contexts = self._year_aligned_contexts(query_year, contexts)
+        if query_year:
+            compatible_contexts = [
+                (node_id, text)
+                for node_id, text in contexts
+                if self._context_year_compatible(query_year, node_id, text)
+            ]
+            if compatible_contexts:
+                contexts = compatible_contexts
 
         for node_id, text in contexts:
             table_answer = self._ratio_percent_from_table_columns(
@@ -1757,6 +1766,42 @@ class NumericReasoner:
         if len(years) == 1:
             return years[0]
         return None
+
+    def _year_aligned_contexts(
+        self,
+        query_year: str | None,
+        contexts: list[tuple[str, str]],
+    ) -> list[tuple[str, str]]:
+        if not query_year:
+            return contexts
+
+        def score(indexed_item: tuple[int, tuple[str, str]]) -> tuple[int, int]:
+            index, item = indexed_item
+            node_id, text = item
+            header = " ".join(text.splitlines()[:3]).lower()
+            source = f"{node_id.lower()} {header}"
+            years = set(re.findall(r"\b(20\d{2})\b", source))
+            value = 0
+            if query_year in years:
+                value += 4
+            if re.search(rf"(?:_|/){re.escape(query_year)}(?:_|/)", source):
+                value += 6
+            if years and query_year not in years:
+                value -= 3
+            return (-value, index)
+
+        return [item for _, item in sorted(enumerate(contexts), key=score)]
+
+    def _context_year_compatible(self, query_year: str, node_id: str, text: str) -> bool:
+        header = " ".join(text.splitlines()[:8]).lower()
+        source = f"{node_id.lower()} {header}"
+        years = set(re.findall(r"\b(20\d{2})\b", source))
+        if query_year in years:
+            return True
+        if re.search(rf"(?:_|/){re.escape(query_year)}(?:_|/)", source):
+            return True
+        source_years = set(re.findall(r"(?:_|/)(20\d{2})(?:_|/)", source))
+        return not source_years or query_year in source_years
 
     def _higher_than_row_terms(self, query_lower: str) -> tuple[list[str], list[str]] | None:
         match = re.search(

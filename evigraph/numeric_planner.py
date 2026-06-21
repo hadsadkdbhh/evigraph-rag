@@ -278,7 +278,10 @@ class HeuristicNumericPlanClient:
             "represented by",
             "relative to",
         ]
-        return any(marker in lowered for marker in markers) and not self._is_percent_change(lowered)
+        return (
+            any(marker in lowered for marker in markers)
+            or bool(re.search(r"\b(?:percentage|percent|portion|share)\s+of\b.+?\b(?:that|which)\s+(?:was|were|is|are)\b", lowered))
+        ) and not self._is_percent_change(lowered)
 
     def _is_percent_change(self, lowered: str) -> bool:
         percent_markers = ("percent change", "percentage change", "percentage increase", "percent increase")
@@ -316,6 +319,7 @@ class HeuristicNumericPlanClient:
 
     def _ratio_terms(self, lowered: str) -> tuple[list[str], list[str]]:
         patterns = [
+            r"(?:what\s+(?:was|were|is|are)\s+the\s+)?(?:percentage|percent|portion|share) of (?P<base>.+?) (?:that|which) (?:was|were|is|are) (?P<target>.+?)(?:\?|$)",
             r"what (?:percentage|percent|portion|share) of (?P<base>.+?) (?:was|were|is|are) (?:represented by|attributable to|allocated to|related to|comprised of|made up by) (?P<target>.+?)(?:\?|$)",
             r"(?P<target>.+?) as a percentage of (?P<base>.+?)(?:\?|$)",
             r"ratio of (?P<target>.+?) to (?P<base>.+?)(?:\?|$)",
@@ -543,6 +547,9 @@ class NumericPlanExecutor:
             )
             return PlannedNumericAnswer(text=self._format_number(percent, "%"), calculation=calculation)
 
+        if operation == "sum" and self._query_requires_ratio_like_operation(query):
+            return None
+
         if operation in {"sum", "average", "product"}:
             resolved_values = [
                 value
@@ -568,6 +575,10 @@ class NumericPlanExecutor:
                 calculation=f"planned_{operation} values={self._value_refs(resolved_values)}: {result.expression}",
             )
         return None
+
+    def _query_requires_ratio_like_operation(self, query: str) -> bool:
+        lowered = query.lower()
+        return bool(re.search(r"\b(?:percent|percentage|portion|share|ratio)\b", lowered))
 
     def _context_text(self, node_id: str, contexts: list[tuple[str, str]]) -> str | None:
         if node_id:
