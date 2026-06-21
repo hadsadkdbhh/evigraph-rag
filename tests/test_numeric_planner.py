@@ -4,7 +4,7 @@ import unittest
 
 from evigraph.evidence_graph import EvidenceGraph
 from evigraph.generator import SupportOnlyGenerator
-from evigraph.numeric_planner import NumericPlannerFallback
+from evigraph.numeric_planner import HeuristicNumericPlanClient, NumericPlannerFallback
 from evigraph.schema import EvidenceNode
 
 
@@ -230,6 +230,28 @@ class NumericPlannerFallbackTest(unittest.TestCase):
 
         with self.assertRaises(RuntimeError):
             planner.answer("query", [("node", "value 1")])
+
+    def test_falls_back_to_heuristic_after_planner_error(self) -> None:
+        context = (
+            "| metric | three months ended 2023 | three months ended 2022 |\n"
+            "| --- | ---: | ---: |\n"
+            "| revenue | 30 | 20 |\n"
+        )
+        planner = NumericPlannerFallback(
+            FailingPlanClient(),
+            strict=False,
+            fallback_client=HeuristicNumericPlanClient(),
+            disable_primary_after_error=True,
+        )
+
+        answer = planner.answer(
+            "what was the percentage increase in revenue for the three months ended 2023 compared with 2022?",
+            [("table", context)],
+        )
+
+        self.assertIsNotNone(answer)
+        self.assertEqual(answer.text, "50.0%")
+        self.assertTrue(planner.primary_disabled)
 
 
 if __name__ == "__main__":

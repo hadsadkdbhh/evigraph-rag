@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -65,6 +66,132 @@ class LLMNumericPlanClient:
                 ),
             },
         ]
+
+
+class HeuristicNumericPlanClient:
+    """Local program planner used when an external LLM planner is unavailable."""
+
+    def plan(self, query: str, contexts: list[tuple[str, str]]) -> dict[str, Any]:
+        lowered = query.lower()
+        years = re.findall(r"\b(20\d{2})\b", lowered)
+        period = self._period(lowered)
+        if "percent of the increase" in lowered or "percentage of the increase" in lowered:
+            target_year, base_year = self._target_base_years(lowered, years)
+            numerator_terms = self._terms_after(lowered, ["from", "came from", "attributable to"]) or self._content_terms(lowered)
+            denominator_terms = self._terms_after(lowered, ["increase in", "change in"]) or self._content_terms(lowered)
+            return {
+                "operation": "percent_of_increase",
+                "node_id": self._node_id(contexts),
+                "numerator_target": {"row_terms": numerator_terms, "year": target_year, "period": period},
+                "numerator_base": {"row_terms": numerator_terms, "year": base_year, "period": period},
+                "denominator_target": {"row_terms": denominator_terms, "year": target_year, "period": period},
+                "denominator_base": {"row_terms": denominator_terms, "year": base_year, "period": period},
+                "scale": "percent",
+                "rationale": "heuristic percent-of-increase program",
+            }
+
+        if any(token in lowered for token in ("percent change", "percentage change", "increase", "decrease", "growth")):
+            target_year, base_year = self._target_base_years(lowered, years)
+            row_terms = self._content_terms(lowered)
+            return {
+                "operation": "percent_change",
+                "node_id": self._node_id(contexts),
+                "target": {"row_terms": row_terms, "year": target_year, "period": period},
+                "base": {"row_terms": row_terms, "year": base_year, "period": period},
+                "scale": "percent",
+                "rationale": "heuristic period-aware percent-change program",
+            }
+
+        if any(token in lowered for token in ("multiply", "product", "annualized")):
+            values = [{"row_terms": terms} for terms in self._product_terms(lowered)]
+            if "365" in lowered:
+                values.append({"label": "days in year", "value": 365})
+            return {
+                "operation": "product",
+                "node_id": self._node_id(contexts),
+                "values": values,
+                "rationale": "heuristic product program",
+            }
+
+        return {"operation": "unsupported", "node_id": self._node_id(contexts)}
+
+    def _node_id(self, contexts: list[tuple[str, str]]) -> str:
+        return contexts[0][0] if contexts else ""
+
+    def _target_base_years(self, lowered: str, years: list[str]) -> tuple[str, str]:
+        compared = re.search(r"\b(20\d{2})\b.+?\b(?:compared with|compared to|from)\s+(20\d{2})\b", lowered)
+        if compared:
+            return compared.group(1), compared.group(2)
+        if len(years) >= 2:
+            return years[0], years[1]
+        if len(years) == 1:
+            return years[0], str(int(years[0]) - 1)
+        return "", ""
+
+    def _period(self, lowered: str) -> str:
+        match = re.search(r"\b(?:three|six|nine|twelve|3|6|9|12)\s+months?\s+ended\b", lowered)
+        if match:
+            return match.group(0)
+        if "year ended" in lowered or "twelve months ended" in lowered:
+            return "twelve months ended"
+        return ""
+
+    def _terms_after(self, lowered: str, markers: list[str]) -> list[str]:
+        for marker in markers:
+            index = lowered.find(marker)
+            if index == -1:
+                continue
+            fragment = lowered[index + len(marker) :]
+            fragment = re.split(r"\b(?:in|for|during|from|to|compared|was|were|came)\b", fragment, maxsplit=1)[0]
+            terms = self._content_terms(fragment)
+            if terms:
+                return terms
+        return []
+
+    def _product_terms(self, lowered: str) -> list[list[str]]:
+        groups = []
+        for phrase in ("average daily volume", "average price", "volume", "price"):
+            if phrase in lowered:
+                groups.append(self._content_terms(phrase))
+        return groups
+
+    def _content_terms(self, text: str) -> list[str]:
+        stopwords = {
+            "what",
+            "was",
+            "were",
+            "the",
+            "a",
+            "an",
+            "of",
+            "in",
+            "for",
+            "from",
+            "to",
+            "by",
+            "with",
+            "and",
+            "or",
+            "percentage",
+            "percent",
+            "change",
+            "increase",
+            "decrease",
+            "growth",
+            "compared",
+            "months",
+            "month",
+            "ended",
+            "three",
+            "six",
+            "nine",
+            "twelve",
+        }
+        return [
+            token
+            for token in re.findall(r"[a-z&]+", text.lower())
+            if token not in stopwords and len(token) > 1
+        ][:8]
 
 
 class NumericPlanExecutor:
@@ -212,11 +339,21 @@ class NumericPlanExecutor:
 
 
 class NumericPlannerFallback:
-    def __init__(self, plan_client: NumericPlanClient, strict: bool = False, log_errors: bool = False) -> None:
+    def __init__(
+        self,
+        plan_client: NumericPlanClient,
+        strict: bool = False,
+        log_errors: bool = False,
+        fallback_client: NumericPlanClient | None = None,
+        disable_primary_after_error: bool = False,
+    ) -> None:
         self.plan_client = plan_client
         self.executor = NumericPlanExecutor()
         self.strict = strict
         self.log_errors = log_errors
+        self.fallback_client = fallback_client
+        self.disable_primary_after_error = disable_primary_after_error
+        self.primary_disabled = False
 
     @classmethod
     def from_config(cls, config: dict[str, Any] | None = None) -> NumericPlannerFallback | None:
@@ -233,21 +370,31 @@ class NumericPlannerFallback:
         ]:
             if source_key in config:
                 llm_config[target_key] = config[source_key]
+        fallback_client = HeuristicNumericPlanClient() if config.get("fallback_to_heuristic", False) else None
         return cls(
             LLMNumericPlanClient(make_llm_client(llm_config)),
             strict=bool(config.get("strict", False)),
             log_errors=bool(config.get("log_errors", False)),
+            fallback_client=fallback_client,
+            disable_primary_after_error=bool(config.get("disable_primary_after_error", False)),
         )
 
     def answer(self, query: str, contexts: list[tuple[str, str]]) -> PlannedNumericAnswer | None:
-        try:
-            plan = self.plan_client.plan(query, contexts)
-        except Exception as exc:
-            if self.log_errors:
-                print(f"[numeric_planner] planner request failed: {exc}", flush=True)
-            if self.strict:
-                raise
-            return None
+        if self.primary_disabled and self.fallback_client is not None:
+            plan = self.fallback_client.plan(query, contexts)
+        else:
+            try:
+                plan = self.plan_client.plan(query, contexts)
+            except Exception as exc:
+                if self.log_errors:
+                    print(f"[numeric_planner] planner request failed: {exc}", flush=True)
+                if self.fallback_client is None:
+                    if self.strict:
+                        raise
+                    return None
+                if self.disable_primary_after_error:
+                    self.primary_disabled = True
+                plan = self.fallback_client.plan(query, contexts)
         answer = self.executor.execute(query, contexts, plan)
         if answer is None and self.log_errors:
             print(f"[numeric_planner] planner returned unverifiable plan: {plan}", flush=True)

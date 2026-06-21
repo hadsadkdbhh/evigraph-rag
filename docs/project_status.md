@@ -123,3 +123,11 @@ python .\scripts\run_manifest.py --manifest .\configs\experiments.finqa_300.plan
 
 The manifest writes to `outputs/eval/finqa_300_planner` and should be compared
 against the non-planner 300-example run in `outputs/eval/finqa_300`.
+
+The first FinQA-300 planner run completed and is summarized in
+`docs/finqa_300_planner_status.md`. Because the configured CC Switch `lucen`
+provider failed as an LLM backend, the run used the local heuristic fallback.
+It did not improve exact match, but it raised calculation-support diagnostics by
+about three points across oracle-doc, open BM25, and source-rerank settings.
+Treat this as a negative diagnostic and infrastructure validation, not as an
+LLM-planner result.

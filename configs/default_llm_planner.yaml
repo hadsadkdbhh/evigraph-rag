@@ -12,8 +12,10 @@ scoring:
   lambda_uncertainty: 0.7
 numeric_planner:
   enabled: true
-  strict: true
+  strict: false
   log_errors: true
+  fallback_to_heuristic: true
+  disable_primary_after_error: true
   llm_provider: openai_compatible
 actions:
   enable_mock_actions: true
