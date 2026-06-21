@@ -1716,7 +1716,7 @@ class NumericReasoner:
         normalized_terms = [term for term in terms if term]
         if not normalized_terms:
             return None
-        best: tuple[int, int, int, int, list[str]] | None = None
+        best: tuple[int, int, int, int, int, list[str]] | None = None
         for row_index, row in enumerate(rows):
             if not row:
                 continue
@@ -1728,15 +1728,18 @@ class NumericReasoner:
                 continue
             coverage = len(matched_terms)
             score = sum(len(term) for term in matched_terms)
+            label_terms = set(self._keywords(label))
+            extra_terms = len(label_terms - set(matched_terms))
+            compactness = -extra_terms
             if coverage == 1 and len(normalized_terms) >= 3 and matched_terms[0] not in {"total"}:
                 continue
             intent_score = self._row_intent_score(query_lower or "", label)
             if all(term in label for term in normalized_terms):
                 intent_score += 3
-            candidate = (coverage, score, intent_score, -row_index, row)
+            candidate = (coverage, score, compactness, intent_score, -row_index, row)
             if best is None or candidate > best:
                 best = candidate
-        return best[4] if best else None
+        return best[5] if best else None
 
     def _ratio_year(self, query_lower: str, years: list[str]) -> str | None:
         if "due after" in query_lower:
@@ -1826,21 +1829,45 @@ class NumericReasoner:
                     if value is not None:
                         return value, {"row_label": row[0]}
             return None, {}
-        for row in rows:
-            if year_index >= len(row):
-                continue
-            label = row[0].lower()
-            if all(term in label for term in terms):
-                return self._first_number(row[year_index]), {"row_label": row[0]}
+        exact = self._best_table_value_row(rows, terms, year_index, require_all=True)
+        if exact is not None:
+            row = exact
+            return self._first_number(row[year_index]), {"row_label": row[0]}
         if not allow_partial:
             return None, {}
-        for row in rows:
-            if year_index >= len(row):
+        partial = self._best_table_value_row(rows, terms, year_index, require_all=False)
+        if partial is not None:
+            row = partial
+            return self._first_number(row[year_index]), {"row_label": row[0]}
+        return None, {}
+
+    def _best_table_value_row(
+        self,
+        rows: list[list[str]],
+        terms: list[str],
+        value_index: int,
+        require_all: bool,
+    ) -> list[str] | None:
+        best: tuple[int, int, int, int, list[str]] | None = None
+        normalized_terms = [term for term in terms if term]
+        for row_index, row in enumerate(rows):
+            if value_index >= len(row) or not row:
+                continue
+            if self._first_number(row[value_index]) is None:
                 continue
             label = row[0].lower()
-            if any(term in label for term in terms):
-                return self._first_number(row[year_index]), {"row_label": row[0]}
-        return None, {}
+            matched_terms = [term for term in normalized_terms if term in label]
+            if require_all and len(matched_terms) != len(normalized_terms):
+                continue
+            if not require_all and not matched_terms:
+                continue
+            label_terms = set(self._keywords(label))
+            compactness = -len(label_terms - set(matched_terms))
+            score = sum(len(term) for term in matched_terms)
+            candidate = (len(matched_terms), compactness, score, -row_index, row)
+            if best is None or candidate > best:
+                best = candidate
+        return best[4] if best else None
 
     def _table_context_matches_terms(self, text: str, terms: list[str]) -> bool:
         if not terms:
@@ -2212,7 +2239,7 @@ class NumericReasoner:
         normalized_terms = [term for term in terms if term]
         if not normalized_terms:
             return None, {}
-        best_match: tuple[int, int, int, int, int, str, float] | None = None
+        best_match: tuple[int, int, int, int, int, int, str, float] | None = None
         for row_index, (label, value) in enumerate(rows):
             matched_terms = [term for term in normalized_terms if term in label]
             if not matched_terms:
@@ -2221,6 +2248,8 @@ class NumericReasoner:
             if coverage == 1 and len(normalized_terms) >= 3 and matched_terms[0] != "total":
                 continue
             lexical_score = sum(len(term) for term in matched_terms)
+            label_terms = set(self._keywords(label))
+            compactness = -len(label_terms - set(matched_terms))
             intent_score = self._ratio_operand_intent_score(
                 query_lower,
                 label,
@@ -2228,12 +2257,12 @@ class NumericReasoner:
                 denominator_label=denominator_label,
             )
             exact_score = 1 if all(term in label for term in normalized_terms) else 0
-            candidate = (coverage, exact_score, intent_score, lexical_score, -row_index, label, value)
+            candidate = (coverage, exact_score, compactness, intent_score, lexical_score, -row_index, label, value)
             if best_match is None or candidate > best_match:
                 best_match = candidate
         if best_match is None:
             return None, {}
-        _coverage, _exact, _intent, _lexical, _row_order, label, value = best_match
+        _coverage, _exact, _compactness, _intent, _lexical, _row_order, label, value = best_match
         return value, {"row_label": label}
 
     def _ratio_operand_intent_score(
@@ -2324,7 +2353,7 @@ class NumericReasoner:
         else:
             return []
         tail = re.split(
-            r"\b(that\s+was|that\s+were|which\s+was|which\s+were|was|were|is|are|comes from|represented by|allocated to|related to|due to|due after)\b",
+            r"\b(that\s+was|that\s+were|which\s+was|which\s+were|was|were|is|are|where represented by|where|comes from|represented by|allocated to|related to|due to|due after)\b",
             tail,
             maxsplit=1,
         )[0]
@@ -2338,6 +2367,8 @@ class NumericReasoner:
     def _ratio_numerator_terms(self, query_lower: str) -> list[str]:
         patterns = [
             r"what\s+(?:are|is|was|were)\s+(.+?)\s+as\s+a\s+percentage\s+of",
+            r"(.+?)\s+where\s+what\s+percentage\s+of",
+            r"what\s+(?:percentage|percent)\s+of\s+.+?\s+(?:is|are|was|were)\s+(.+?)\??$",
             r"payments?\s+for\s+(.+?)\s+as\s+a\s+percentage\s+of",
             r"\b(?:that|which)\s+(?:was|were|is|are)\s+(.+?)(?:\s+in\s+20\d{2})?\??$",
             r"represented by\s+(.+?)\??$",
@@ -2379,6 +2410,7 @@ class NumericReasoner:
             "the",
             "were",
             "was",
+            "where",
             "by",
             "in",
             "for",

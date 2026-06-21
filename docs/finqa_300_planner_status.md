@@ -106,17 +106,17 @@ can resolve a table row when the table has only one numeric value column.
 
 | setting | full EviGraph EM | answer supported | calculation supported |
 | --- | ---: | ---: | ---: |
-| Oracle-doc local planner | 0.310 | 0.710 | 0.500 |
-| Open BM25 local planner | 0.213 | 0.723 | 0.463 |
-| BM25 + source-rerank local planner | 0.290 | 0.733 | 0.503 |
+| Oracle-doc local planner | 0.313 | 0.707 | 0.497 |
+| Open BM25 local planner | 0.217 | 0.723 | 0.463 |
+| BM25 + source-rerank local planner | 0.293 | 0.730 | 0.500 |
 
 Compared with the non-planner 300-example run:
 
 | setting | EM delta | calculation-support delta |
 | --- | ---: | ---: |
-| Oracle-doc | +0.013 | +0.127 |
-| Open BM25 | +0.010 | +0.093 |
-| BM25 + source-rerank | +0.017 | +0.120 |
+| Oracle-doc | +0.016 | +0.124 |
+| Open BM25 | +0.014 | +0.093 |
+| BM25 + source-rerank | +0.020 | +0.117 |
 
 Compared with the previous planner-fallback run, the stronger local planner
 turns the planner path from a pure infrastructure check into a measurable
@@ -128,3 +128,13 @@ It does not move exact match, but it reduces the source-rerank
 wrong-operation-or-row bucket from 83 to 78 and primary wrong-operation-type
 cases from 43 to 38. The remaining next target is operand selection, especially
 wrong numerator/denominator and ambiguous supported wrong-number cases.
+
+A subsequent operand-selection pass improves ratio phrasing and row selection:
+phrases like "what percentage of DEN is NUM" now take the suffix as the
+numerator, prefix questions like "X where what percentage of DEN" take the
+prefix as numerator, and row matching prefers compact exact labels over longer
+rows that merely contain the same terms. This fixes cases such as IPR&D over
+total purchase price net of cash acquired. On FinQA-300, exact match rises to
+0.313 oracle-doc, 0.217 open BM25, and 0.293 source-rerank. The source-rerank
+wrong-operation-or-row bucket falls further from 78 to 76, and wrong-numerator
+labels fall from 9 to 7.

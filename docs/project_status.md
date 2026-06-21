@@ -138,11 +138,11 @@ A stronger fully local program planner is now available through
 dependencies and supports ratio-percent, ordinary ratio, difference, lookup,
 sum, average, product, percent-of-increase, period-aware percent change,
 same-row `due after` ratios, and complement-percent operations. On FinQA-300
-full EviGraph it improves exact match from 0.297 to 0.310 under oracle-doc,
-0.203 to 0.213 under open BM25, and 0.273 to 0.290 under BM25 plus
+full EviGraph it improves exact match from 0.297 to 0.313 under oracle-doc,
+0.203 to 0.217 under open BM25, and 0.273 to 0.293 under BM25 plus
 source-rerank. The larger movement is in calculation support: oracle-doc rises
-from 0.373 to 0.500, open BM25 from 0.370 to 0.463, and source-rerank from
-0.383 to 0.503. The latest refinement does not move exact match, but it reduces
-source-rerank wrong-operation-or-row diagnostics from 83 to 78 and primary
-wrong-operation-type cases from 43 to 38. This is now the best reproducible
-numeric-planner baseline in the repo.
+from 0.373 to 0.497, open BM25 from 0.370 to 0.463, and source-rerank from
+0.383 to 0.500. The latest refinements reduce source-rerank
+wrong-operation-or-row diagnostics from 83 to 76, primary wrong-operation-type
+cases from 43 to 38, and wrong-numerator labels from 9 to 7. This is now the
+best reproducible numeric-planner baseline in the repo.

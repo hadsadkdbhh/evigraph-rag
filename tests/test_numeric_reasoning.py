@@ -924,6 +924,56 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "34.9%")
         self.assertIn("ratio_percent", answer.calculations[0])
 
+    def test_ratio_percent_is_phrase_uses_suffix_as_numerator(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| item | amount |\n"
+                    "| --- | ---: |\n"
+                    "| total purchase price net of cash acquired | 182.2 |\n"
+                    "| ipr&d | 52.84 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what percentage of the total purchase price net of cash acquired is ipr&d ?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "29%")
+        self.assertIn("row=ipr&d", answer.calculations[0])
+        self.assertIn("denominator_row=total purchase price net of cash acquired", answer.calculations[0])
+
+    def test_ratio_percent_prefix_where_phrase_uses_prefix_as_numerator(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| segment | 2008 |\n"
+                    "| --- | ---: |\n"
+                    "| north american consumer packaging net sales | 2492 |\n"
+                    "| consumer packaging sales | 3195 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "north american consumer packaging net sales where what percentage of consumer packaging sales in 2008?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "78%")
+        self.assertIn("north american consumer packaging net sales", answer.calculations[0])
+        self.assertIn("denominator_row=consumer packaging sales", answer.calculations[0])
+
     def test_ratio_percent_selects_query_measure_column(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
