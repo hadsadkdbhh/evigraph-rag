@@ -168,3 +168,16 @@ Source-rerank wrong-operation-or-row diagnostics are down to 66, with
 wrong-operation-type labels down to 30. The next target is now narrower:
 chunk-truncated ratio evidence and operand semantics for cases such as HTM
 investment securities versus the investment securities portfolio.
+
+The latest chunk-truncated ratio-evidence pass fixes that HTM investment
+securities case by adding source-rerank adjacent chunks as explicit
+context-only expansions instead of promoting them as normal retrieved evidence.
+The support extractor now accepts neighbors expanded from the selected anchor
+chunk, including duplicated retrieved nodes that share the same chunk id. The
+numeric reasoner adds same-year row-ratio recovery for `in YEAR ... ratio of
+NUM compared to DEN` questions and filters OCR year noise such as `2013end`
+from row operands. On FinQA-300, the current local planner numbers are 0.323
+oracle-doc, 0.247 open BM25, and 0.303 source-rerank. The repaired JPM example
+now predicts `0.19` from `47733 / 247980`. The next target is operand semantics
+inside wrong-operation-type and ambiguous-supported-wrong-number cases rather
+than chunk availability.

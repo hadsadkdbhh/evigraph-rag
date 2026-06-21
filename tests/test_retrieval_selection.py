@@ -49,6 +49,86 @@ class RetrievalSelectionTest(unittest.TestCase):
         self.assertTrue(nodes[1].metadata.get("neighbor_context"))
         self.assertEqual(nodes[1].metadata.get("retrieval_rank"), 1)
 
+    def test_source_rerank_adds_adjacent_chunk_context(self) -> None:
+        chunks = [
+            DocumentChunk("case_0_0", "setup paragraph", "case.md", metadata={"char_start": 0}),
+            DocumentChunk("case_0_1", "htm investment securities period-end 2017 query hit", "case.md", metadata={"char_start": 900}),
+            DocumentChunk("case_0_2", "investment securities portfolio period-end 2017 continuation", "case.md", metadata={"char_start": 1800}),
+            DocumentChunk("other_0_0", "htm investment securities distracting table", "other.md", metadata={"char_start": 0}),
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            index_path = Path(tmpdir) / "index.json"
+            index_path.write_text(
+                json.dumps({"chunks": [chunk.to_dict() for chunk in chunks]}),
+                encoding="utf-8",
+            )
+
+            nodes = CorpusRetriever().retrieve(
+                "htm investment securities period-end",
+                str(index_path),
+                top_k=1,
+                source_doc="case.md",
+                retrieval_mode="source_rerank",
+            )
+
+        chunk_ids = [node.metadata.get("chunk_id") for node in nodes]
+        self.assertIn("case_0_1", chunk_ids)
+        self.assertIn("case_0_2", chunk_ids)
+        neighbor = next(node for node in nodes if node.metadata.get("chunk_id") == "case_0_2")
+        self.assertTrue(neighbor.metadata.get("neighbor_context"))
+
+    def test_existing_adjacent_candidate_is_marked_as_context_expansion(self) -> None:
+        chunks = [
+            DocumentChunk("case_0_0", "setup paragraph", "case.md", metadata={"char_start": 0}),
+            DocumentChunk("case_0_1", "alpha query htm investment securities period-end", "case.md", metadata={"char_start": 900}),
+            DocumentChunk("case_0_2", "alpha query portfolio period-end continuation", "case.md", metadata={"char_start": 1800}),
+            DocumentChunk("case_0_3", "tail paragraph", "case.md", metadata={"char_start": 2700}),
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            index_path = Path(tmpdir) / "index.json"
+            index_path.write_text(
+                json.dumps({"chunks": [chunk.to_dict() for chunk in chunks]}),
+                encoding="utf-8",
+            )
+
+            nodes = CorpusRetriever().retrieve(
+                "alpha query htm investment securities portfolio period-end",
+                str(index_path),
+                top_k=2,
+                source_doc="case.md",
+                retrieval_mode="source_rerank",
+            )
+
+        continuation = next(node for node in nodes if node.metadata.get("chunk_id") == "case_0_2")
+        self.assertTrue(continuation.metadata.get("neighbor_context"))
+        self.assertEqual(continuation.metadata.get("expanded_from"), "retrieved_1_case_0_1")
+        self.assertEqual(continuation.metadata.get("expanded_from_chunk_id"), "case_0_1")
+
+    def test_open_retrieval_does_not_relabel_existing_adjacent_candidate(self) -> None:
+        chunks = [
+            DocumentChunk("case_0_0", "setup paragraph", "case.md", metadata={"char_start": 0}),
+            DocumentChunk("case_0_1", "alpha query htm investment securities period-end", "case.md", metadata={"char_start": 900}),
+            DocumentChunk("case_0_2", "alpha query portfolio period-end continuation", "case.md", metadata={"char_start": 1800}),
+            DocumentChunk("case_0_3", "tail paragraph", "case.md", metadata={"char_start": 2700}),
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            index_path = Path(tmpdir) / "index.json"
+            index_path.write_text(
+                json.dumps({"chunks": [chunk.to_dict() for chunk in chunks]}),
+                encoding="utf-8",
+            )
+
+            nodes = CorpusRetriever().retrieve(
+                "alpha query htm investment securities portfolio period-end",
+                str(index_path),
+                top_k=2,
+                retrieval_mode="open",
+            )
+
+        continuation = next(node for node in nodes if node.metadata.get("chunk_id") == "case_0_2")
+        self.assertFalse(continuation.metadata.get("neighbor_context", False))
+        self.assertEqual(continuation.metadata.get("retrieval_rank"), 2)
+
     def test_hybrid_retrieval_boosts_table_and_operation_overlap(self) -> None:
         chunks = [
             DocumentChunk(

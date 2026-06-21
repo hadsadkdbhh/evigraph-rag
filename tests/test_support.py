@@ -85,6 +85,37 @@ class SupportSubgraphExtractorTest(unittest.TestCase):
 
         self.assertEqual(["rank1", "rank2", "expanded"], list(support.nodes))
 
+    def test_adds_explicit_anchor_expansion_even_without_top_rank(self) -> None:
+        graph = EvidenceGraph()
+        selected = EvidenceNode(
+            node_id="selected_chunk",
+            node_type="text",
+            content="selected table fragment",
+            source_doc="report.md",
+            scores={"misleading_risk": 0.0, "contradiction_risk": 0.0},
+            metadata={"retrieval_rank": 1},
+        )
+        expanded = EvidenceNode(
+            node_id="expanded_chunk",
+            node_type="text",
+            content="adjacent continuation row",
+            source_doc="report.md",
+            scores={"misleading_risk": 0.0, "contradiction_risk": 0.0},
+            metadata={
+                "retrieval_rank": 999,
+                "neighbor_context": True,
+                "expanded_from": "selected_chunk",
+            },
+        )
+        graph.add_node(selected)
+        graph.add_node(expanded)
+        graph.add_edge("selected_chunk", "expanded_chunk", "source", 0.5)
+
+        support = SupportSubgraphExtractor().extract("what ratio?", graph, [selected])
+
+        self.assertIn("selected_chunk", support.nodes)
+        self.assertIn("expanded_chunk", support.nodes)
+
     def test_does_not_add_risky_retrieval_neighbor(self) -> None:
         graph = EvidenceGraph()
         selected = EvidenceNode(

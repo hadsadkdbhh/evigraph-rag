@@ -126,10 +126,14 @@ class NumericReasoner:
             if answer:
                 return answer
 
-        if "ratio" in query_lower and len(re.findall(r"\b(20\d{2})\b", query_lower)) >= 2:
-            answer = self._ratio_between_years(query_lower, contexts)
+        if "ratio" in query_lower:
+            answer = self._same_year_row_ratio(query_lower, contexts)
             if answer:
                 return answer
+            if len(re.findall(r"\b(20\d{2})\b", query_lower)) >= 2:
+                answer = self._ratio_between_years(query_lower, contexts)
+                if answer:
+                    return answer
 
         if "post closing adjustments" in query_lower or "post-closing adjustments" in query_lower:
             answer = self._difference_between_nearby_amounts(contexts)
@@ -931,6 +935,177 @@ class NumericReasoner:
                 cited_node_ids=[node_id],
             )
         return None
+
+    def _same_year_row_ratio(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
+        parsed = self._same_year_row_ratio_query(query_lower)
+        if parsed is None:
+            return None
+        query_year, numerator_terms, denominator_terms = parsed
+        groups: dict[str, list[tuple[str, str]]] = {}
+        for node_id, text in contexts:
+            groups.setdefault(self._context_source_key(node_id), []).append((node_id, text))
+
+        for grouped_contexts in groups.values():
+            ordered_contexts = sorted(grouped_contexts, key=lambda item: self._context_chunk_order(item[0]))
+            node_ids = [node_id for node_id, _text in ordered_contexts]
+            combined_text = "\n".join(text for _node_id, text in ordered_contexts)
+            answer = self._same_year_row_ratio_from_text(
+                node_ids[0],
+                query_lower,
+                combined_text,
+                numerator_terms,
+                denominator_terms,
+                query_year,
+            )
+            if answer is not None:
+                cited_node_ids = self._same_year_row_ratio_citations(
+                    ordered_contexts,
+                    numerator_terms,
+                    denominator_terms,
+                )
+                return NumericAnswer(answer.text, answer.calculation, cited_node_ids or node_ids)
+
+        for node_id, text in contexts:
+            answer = self._same_year_row_ratio_from_text(
+                node_id,
+                query_lower,
+                text,
+                numerator_terms,
+                denominator_terms,
+                query_year,
+            )
+            if answer is not None:
+                return answer
+        return None
+
+    def _same_year_row_ratio_query(self, query_lower: str) -> tuple[str, list[str], list[str]] | None:
+        year_match = re.search(r"\bin\s+(20\d{2})\b", query_lower)
+        if not year_match:
+            return None
+        match = re.search(
+            r"\bratio\s+of\s+(?P<numerator>.+?)\s+(?:compared\s+to|compared\s+with|to)\s+(?P<denominator>.+?)(?:\?|$)",
+            query_lower,
+        )
+        if not match:
+            return None
+        numerator_terms = self._same_year_row_ratio_terms(match.group("numerator"))
+        denominator_terms = self._same_year_row_ratio_terms(match.group("denominator"))
+        if not numerator_terms or not denominator_terms:
+            return None
+        return year_match.group(1), numerator_terms, denominator_terms
+
+    def _same_year_row_ratio_terms(self, text: str) -> list[str]:
+        return [
+            term
+            for term in self._keywords(text)
+            if not re.fullmatch(r"(?:19|20)\d{2}[a-z]*", term)
+        ]
+
+    def _same_year_row_ratio_from_text(
+        self,
+        node_id: str,
+        query_lower: str,
+        text: str,
+        numerator_terms: list[str],
+        denominator_terms: list[str],
+        query_year: str,
+    ) -> NumericAnswer | None:
+        numerator, numerator_label = self._value_for_row_terms_year(text, numerator_terms, query_year, query_lower)
+        denominator, denominator_label = self._value_for_row_terms_year(text, denominator_terms, query_year, query_lower)
+        if numerator is None or denominator in {None, 0}:
+            return None
+        if numerator_label and numerator_label == denominator_label:
+            return None
+        operation = self.executor.ratio(numerator, denominator)
+        if operation is None:
+            return None
+        return NumericAnswer(
+            text=self._format_number(operation.value),
+            calculation=(
+                f"same_year_row_ratio row={numerator_label} denominator_row={denominator_label} "
+                f"column={query_year}: {operation.expression}"
+            ),
+            cited_node_ids=[node_id],
+        )
+
+    def _value_for_row_terms_year(
+        self,
+        text: str,
+        terms: list[str],
+        query_year: str,
+        query_lower: str,
+    ) -> tuple[float | None, str]:
+        value, meta = self._table_value_for_terms_year_with_label(text, terms, query_year, allow_partial=False)
+        if value is not None:
+            return value, str(meta.get("row_label", ""))
+        return self._inline_row_value_for_terms_year(text, terms, query_year, query_lower)
+
+    def _inline_row_value_for_terms_year(
+        self,
+        text: str,
+        terms: list[str],
+        query_year: str,
+        query_lower: str,
+    ) -> tuple[float | None, str]:
+        years = self._inline_year_headers(text, query_year)
+        if not years or query_year not in years:
+            return None, ""
+        year_index = years.index(query_year)
+        number = r"[-+]?\$?\s*\(?\d[\d,]*(?:\.\d+)?\)?"
+        row_pattern = re.compile(
+            rf"(?P<label>[a-z][a-z0-9\s()./\-]{{3,140}}?)\s+"
+            rf"(?P<values>{number}(?:\s+{number}){{{len(years) - 1}}})",
+            flags=re.IGNORECASE,
+        )
+        best: tuple[int, int, int, str, float, list[float | None]] | None = None
+        for match in row_pattern.finditer(text):
+            label = self._clean_inline_row_label(match.group("label"))
+            label_lower = label.lower()
+            if not self._label_matches_terms(label_lower, terms):
+                continue
+            raw_values = re.findall(number, match.group("values"))
+            values = [self._first_number(value) for value in raw_values]
+            if len(values) < len(years) or values[year_index] is None:
+                continue
+            matched = [term for term in terms if term in label_lower]
+            intent_score = self._ratio_operand_intent_score(query_lower, label_lower, role="numerator")
+            compactness = -len(label_lower)
+            target_value = values[year_index]
+            candidate = (len(matched), intent_score, compactness, label_lower, float(target_value), values[: len(years)])
+            if best is None or candidate > best:
+                best = candidate
+        if best is None:
+            return None, ""
+        _matched, _intent, _compactness, label, _target_value, values = best
+        return values[year_index], label
+
+    def _inline_year_headers(self, text: str, query_year: str) -> list[str]:
+        for match in re.finditer(r"\b(20\d{2})\b(?:\s+\b(20\d{2})\b){1,5}", text):
+            years = re.findall(r"\b(20\d{2})\b", match.group(0))
+            if query_year in years:
+                return years
+        return []
+
+    def _clean_inline_row_label(self, label: str) -> str:
+        label = re.split(r"[|\n]", label)[-1]
+        label = re.sub(r"\s+", " ", label)
+        return label.strip(" .:-").lower()
+
+    def _same_year_row_ratio_citations(
+        self,
+        contexts: list[tuple[str, str]],
+        numerator_terms: list[str],
+        denominator_terms: list[str],
+    ) -> list[str]:
+        cited_node_ids: list[str] = []
+        for node_id, text in contexts:
+            lower_text = text.lower()
+            if self._label_matches_terms(lower_text, numerator_terms) or self._label_matches_terms(
+                lower_text,
+                denominator_terms,
+            ):
+                cited_node_ids.append(node_id)
+        return cited_node_ids
 
     def _ratio_after_year_to_year(
         self,
@@ -2416,6 +2591,14 @@ class NumericReasoner:
         key = re.sub(r"_full$", "", key)
         key = re.sub(r"_\d+_\d+$", "", key)
         return key
+
+    def _context_chunk_order(self, node_id: str) -> tuple[int, int, str]:
+        key = re.sub(r"^parsed_", "", node_id)
+        key = re.sub(r"^(retrieved|neighbor)_\d+_", "", key)
+        match = re.search(r"_(\d+)_(\d+)$", key)
+        if match:
+            return int(match.group(1)), int(match.group(2)), node_id
+        return 999, 999, node_id
 
     def _denominator_terms(self, query_lower: str) -> list[str]:
         if " as a percentage of " in query_lower:

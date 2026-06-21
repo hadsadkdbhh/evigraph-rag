@@ -304,12 +304,19 @@ class CorpusRetriever:
         for node in reranked:
             if Path(str(node.source_doc)).name == source_name:
                 node.metadata["rerank_boost"] = "source_doc_match"
-        return reranked[:top_k]
+        return self._with_adjacent_context(
+            reranked[:top_k],
+            chunks,
+            promote_existing=True,
+            neighbor_rank_from_anchor=False,
+        )
 
     def _with_adjacent_context(
         self,
         nodes: list[EvidenceNode],
         chunks: list[DocumentChunk],
+        promote_existing: bool = False,
+        neighbor_rank_from_anchor: bool = True,
     ) -> list[EvidenceNode]:
         if not nodes:
             return nodes
@@ -323,7 +330,8 @@ class CorpusRetriever:
                 positions[chunk.chunk_id] = (source_doc, index)
 
         expanded = list(nodes)
-        seen_chunk_ids = {str(node.metadata.get("chunk_id", "")) for node in expanded}
+        nodes_by_chunk_id = {str(node.metadata.get("chunk_id", "")): node for node in expanded}
+        seen_chunk_ids = set(nodes_by_chunk_id)
         for anchor in nodes:
             chunk_id = str(anchor.metadata.get("chunk_id", ""))
             if chunk_id not in positions:
@@ -335,9 +343,13 @@ class CorpusRetriever:
                     continue
                 neighbor = source_chunks[neighbor_index]
                 if neighbor.chunk_id in seen_chunk_ids:
+                    if promote_existing:
+                        self._mark_existing_neighbor(nodes_by_chunk_id[neighbor.chunk_id], anchor)
                     continue
-                expanded.append(self._neighbor_node(neighbor, anchor))
+                neighbor_node = self._neighbor_node(neighbor, anchor, rank_from_anchor=neighbor_rank_from_anchor)
+                expanded.append(neighbor_node)
                 seen_chunk_ids.add(neighbor.chunk_id)
+                nodes_by_chunk_id[neighbor.chunk_id] = neighbor_node
         return expanded
 
     def _chunk_order(self, chunk: DocumentChunk) -> tuple[int, int, str]:
@@ -347,12 +359,18 @@ class CorpusRetriever:
             char_start = 0
         return chunk.page_number or 0, char_start, chunk.chunk_id
 
-    def _neighbor_node(self, chunk: DocumentChunk, anchor: EvidenceNode) -> EvidenceNode:
+    def _neighbor_node(
+        self,
+        chunk: DocumentChunk,
+        anchor: EvidenceNode,
+        rank_from_anchor: bool = True,
+    ) -> EvidenceNode:
         node_type, modality, content = _infer_node_content(chunk.text)
         try:
             anchor_score = float(anchor.metadata.get("retrieval_score", 0.0))
         except (TypeError, ValueError):
             anchor_score = 0.0
+        retrieval_rank = anchor.metadata.get("retrieval_rank", 999) if rank_from_anchor else 999
         return EvidenceNode(
             node_id=f"neighbor_{anchor.metadata.get('retrieval_rank', 'x')}_{chunk.chunk_id}",
             node_type=node_type,
@@ -368,13 +386,29 @@ class CorpusRetriever:
             },
             metadata={
                 "retrieval_score": round(max(0.0, anchor_score - 0.0001), 4),
-                "retrieval_rank": anchor.metadata.get("retrieval_rank", 999),
+                "retrieval_rank": retrieval_rank,
                 "chunk_id": chunk.chunk_id,
                 "neighbor_context": True,
                 "expanded_from": anchor.node_id,
+                "expanded_from_chunk_id": anchor.metadata.get("chunk_id"),
                 **(chunk.metadata or {}),
             },
         )
+
+    def _mark_existing_neighbor(self, node: EvidenceNode, anchor: EvidenceNode) -> None:
+        try:
+            anchor_rank = int(anchor.metadata.get("retrieval_rank", 999))
+        except (TypeError, ValueError):
+            anchor_rank = 999
+        try:
+            anchor_score = float(anchor.metadata.get("retrieval_score", 0.0))
+        except (TypeError, ValueError):
+            anchor_score = 0.0
+        if anchor_rank < 999:
+            node.metadata["retrieval_score"] = round(max(0.0, anchor_score - 0.0001), 4)
+            node.metadata["neighbor_context"] = True
+            node.metadata["expanded_from"] = anchor.node_id
+            node.metadata["expanded_from_chunk_id"] = anchor.metadata.get("chunk_id")
 
 
 def _tokens(text: str) -> list[str]:

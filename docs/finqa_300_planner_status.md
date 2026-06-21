@@ -168,3 +168,17 @@ falls from 71 to 66, and wrong-operation-type labels fall from 35 to 30. The
 remaining largest failure class is still wrong operation type, but it is now a
 smaller and more specific set centered on operand semantics and chunk-truncated
 ratio evidence.
+
+The chunk-truncated ratio-evidence pass adds context-only adjacent chunks for
+source-rerank without promoting them to ordinary high-rank candidates, and it
+records the anchor chunk id so duplicated retrieved nodes can still recover the
+right continuation chunk. The numeric reasoner now handles same-year row ratios
+phrased as `in YEAR ... ratio of NUM compared to DEN`, filters OCR year noise
+such as `2013end` from row operands, and can recover inline rows split across
+adjacent chunks. This fixes `JPM/2018/page_110.pdf-3`: HTM investment securities
+period-end over investment securities portfolio period-end in 2017 is recovered
+as `47733 / 247980 = 0.192487`, yielding `0.19`. On FinQA-300, exact match rises
+to 0.323 oracle-doc, 0.247 open BM25, and 0.303 source-rerank. Source-rerank
+wrong-operation-or-row remains 66, but the previously targeted chunk-truncated
+ratio case is now covered by a regression test and the open-retrieval setting
+also improves.

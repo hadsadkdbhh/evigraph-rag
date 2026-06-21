@@ -1658,6 +1658,66 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "4")
         self.assertIn("ratio_between_years", answer.calculations[0])
 
+    def test_same_year_ratio_compared_to_uses_two_table_rows(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| metric | 2018 | 2017 | 2016 |\n"
+                    "| --- | ---: | ---: | ---: |\n"
+                    "| htm investment securities period-end | 31434 | 47733 | 50168 |\n"
+                    "| investment securities portfolio period-end | 260115 | 247980 | 286838 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "in 2017 what was the ratio of the htm investment securities period-end compared to "
+            "investment securities portfolio period 2013end",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "0.19")
+        self.assertIn("same_year_row_ratio", answer.calculations[0])
+
+    def test_same_year_ratio_recovers_inline_rows_across_chunks(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="retrieved_1_case_0_0",
+                node_type="text",
+                content=(
+                    "selected balance sheet data as of december 31 , ( in millions ) "
+                    "2018 2017 2016 investment securities gains losses 395 78 132 "
+                    "htm investment securities period-end 31434 47733 50168"
+                ),
+                source_doc="case.md",
+                metadata={"retrieval_rank": 1},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="neighbor_1_case_0_1",
+                node_type="text",
+                content="investment securities portfolio period-end 260115 247980 286838",
+                source_doc="case.md",
+                metadata={"retrieval_rank": 1, "neighbor_context": True},
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "in 2017 what was the ratio of the htm investment securities period-end compared to "
+            "investment securities portfolio period 2013end",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "0.19")
+        self.assertIn("same_year_row_ratio", answer.calculations[0])
+        self.assertEqual(answer.citations, ["retrieved_1_case_0_0", "neighbor_1_case_0_1"])
+
     def test_ratio_after_year_to_year_uses_future_range_row(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

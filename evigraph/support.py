@@ -17,8 +17,9 @@ class SupportSubgraphExtractor:
             for edge in graph.outgoing(node.node_id):
                 if edge.edge_type in {"computed_from", "derived_from"}:
                     self._add_required(edge.target, required_ids, seen_ids)
-                if edge.edge_type in {"source", "support"} and self._is_top_retrieval_neighbor(
-                    graph.nodes.get(edge.target)
+                if edge.edge_type in {"source", "support"} and self._is_support_neighbor(
+                    graph.nodes.get(edge.target),
+                    graph.nodes.get(edge.source),
                 ):
                     self._add_required(edge.target, required_ids, seen_ids)
 
@@ -42,9 +43,24 @@ class SupportSubgraphExtractor:
         required_ids.append(node_id)
         seen_ids.add(node_id)
 
-    def _is_top_retrieval_neighbor(self, node: EvidenceNode | None) -> bool:
+    def _is_support_neighbor(self, node: EvidenceNode | None, source_node: EvidenceNode | None) -> bool:
         if node is None:
             return False
+        source_node_id = source_node.node_id if source_node else ""
+        source_chunk_id = str(source_node.metadata.get("chunk_id", "")) if source_node else ""
+        if (
+            node.metadata.get("neighbor_context")
+            and (
+                node.metadata.get("expanded_from") == source_node_id
+                or (
+                    source_chunk_id
+                    and node.metadata.get("expanded_from_chunk_id") == source_chunk_id
+                )
+            )
+            and node.scores.get("misleading_risk", 0.0) < 0.65
+            and node.scores.get("contradiction_risk", 0.0) < 0.65
+        ):
+            return True
         try:
             rank = int(node.metadata.get("retrieval_rank", 999))
         except (TypeError, ValueError):
