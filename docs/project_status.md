@@ -105,3 +105,21 @@ prevents the system from answering with a current-value ratio when the question
 asks for contribution to a period-over-period increase. This is the intended
 path for future failure-driven fixes because it separates operation planning
 from locally auditable arithmetic.
+
+The table-cell resolver now also accepts period selectors such as `three months
+ended`, `six months ended`, `nine months ended`, and `twelve months ended`.
+Period selectors are used in column matching and row matching, so planner
+programs can avoid confusing a quarterly column with a year-to-date or annual
+column when the same fiscal year appears multiple times.
+
+The 300-example LLM-planner manifest is available at
+`configs/experiments.finqa_300.planner.json`. To run it from PowerShell, first
+set the LLM environment variables, then run:
+
+```powershell
+python .\scripts\check_llm_planner_ready.py
+python .\scripts\run_manifest.py --manifest .\configs\experiments.finqa_300.planner.json
+```
+
+The manifest writes to `outputs/eval/finqa_300_planner` and should be compared
+against the non-planner 300-example run in `outputs/eval/finqa_300`.

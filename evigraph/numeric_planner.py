@@ -46,13 +46,13 @@ class LLMNumericPlanClient:
                     "{"
                     "\"operation\": \"difference|ratio|percent_change|percent_of_increase|average|sum|product\", "
                     "\"node_id\": \"context id\", "
-                    "\"target\": {\"label\": \"row label or phrase\", \"year\": \"optional column/year\", \"value\": number}, "
-                    "\"base\": {\"label\": \"row label or phrase\", \"year\": \"optional column/year\", \"value\": number}, "
-                    "\"numerator_target\": {\"label\": \"row label\", \"year\": \"target year\", \"value\": number}, "
-                    "\"numerator_base\": {\"label\": \"row label\", \"year\": \"base year\", \"value\": number}, "
-                    "\"denominator_target\": {\"label\": \"row label\", \"year\": \"target year\", \"value\": number}, "
-                    "\"denominator_base\": {\"label\": \"row label\", \"year\": \"base year\", \"value\": number}, "
-                    "\"values\": [{\"label\": \"row label or phrase\", \"year\": \"optional column/year\", \"value\": number}], "
+                    "\"target\": {\"label\": \"row label or phrase\", \"year\": \"optional column/year\", \"period\": \"optional duration\", \"value\": number}, "
+                    "\"base\": {\"label\": \"row label or phrase\", \"year\": \"optional column/year\", \"period\": \"optional duration\", \"value\": number}, "
+                    "\"numerator_target\": {\"label\": \"row label\", \"year\": \"target year\", \"period\": \"optional duration\", \"value\": number}, "
+                    "\"numerator_base\": {\"label\": \"row label\", \"year\": \"base year\", \"period\": \"optional duration\", \"value\": number}, "
+                    "\"denominator_target\": {\"label\": \"row label\", \"year\": \"target year\", \"period\": \"optional duration\", \"value\": number}, "
+                    "\"denominator_base\": {\"label\": \"row label\", \"year\": \"base year\", \"period\": \"optional duration\", \"value\": number}, "
+                    "\"values\": [{\"label\": \"row label or phrase\", \"year\": \"optional column/year\", \"period\": \"optional duration\", \"value\": number}], "
                     "\"scale\": \"number|percent\", "
                     "\"rationale\": \"short\""
                     "}\n"
@@ -60,7 +60,8 @@ class LLMNumericPlanClient:
                     "Use numerator_target/base and denominator_target/base for percent_of_increase. "
                     "Use values for sum, average, and product. Values must appear in the context or question. "
                     "If the context is a table, you may omit value when label plus year/column identifies a cell; "
-                    "the executor will read that cell locally."
+                    "the executor will read that cell locally. When multiple columns share a year, set period to "
+                    "phrases such as three months ended, six months ended, nine months ended, or twelve months ended."
                 ),
             },
         ]
@@ -199,6 +200,9 @@ class NumericPlanExecutor:
     def _value_ref(self, value: Any) -> str:
         row = getattr(value, "row_label", "") or "value"
         column = getattr(value, "column_label", "")
+        period = getattr(value, "period_label", "")
+        if column and period:
+            return f"{row}/{period}/{column}"
         if column:
             return f"{row}/{column}"
         return str(row)

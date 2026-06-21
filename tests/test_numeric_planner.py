@@ -163,6 +163,39 @@ class NumericPlannerFallbackTest(unittest.TestCase):
         self.assertIn("planned_percent_of_increase", answer.calculations[0])
         self.assertIn("product revenue/2023-product revenue/2022", answer.calculations[0])
 
+    def test_executes_period_disambiguated_percent_change_plan(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="table",
+                content=(
+                    "| metric | three months ended 2023 | three months ended 2022 | twelve months ended 2023 | twelve months ended 2022 |\n"
+                    "| --- | ---: | ---: | ---: | ---: |\n"
+                    "| revenue | 30 | 20 | 120 | 80 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+        planner = NumericPlannerFallback(
+            FakePlanClient(
+                {
+                    "operation": "percent_change",
+                    "node_id": "table",
+                    "target": {"label": "revenue", "year": "2023", "period": "three months ended"},
+                    "base": {"label": "revenue", "year": "2022", "period": "three months ended"},
+                }
+            )
+        )
+
+        answer = SupportOnlyGenerator(planner_fallback=planner).generate(
+            "compute the planned revenue movement for the three months ended 2023 compared with 2022",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "50.0%")
+        self.assertIn("three months ended", answer.calculations[0])
+
     def test_rejects_plan_values_not_present_in_context(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

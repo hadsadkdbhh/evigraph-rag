@@ -17,6 +17,7 @@ class TableValue:
     value: float
     row_label: str
     column_label: str
+    period_label: str = ""
 
 
 class TableOperationExecutor:
@@ -98,8 +99,13 @@ class TableOperationExecutor:
             return []
         return [row[column_index] for row in rows if column_index < len(row)]
 
-    def column_index(self, headers: list[str], terms: list[str]) -> int | None:
+    def column_index(self, headers: list[str], terms: list[str], period_terms: list[str] | None = None) -> int | None:
         normalized_terms = self._terms(terms)
+        normalized_period_terms = self._terms(period_terms or [])
+        if normalized_period_terms:
+            best = self._period_aware_column_index(headers, normalized_terms, normalized_period_terms)
+            if best is not None:
+                return best
         for index, header in enumerate(headers):
             lower = header.lower()
             if all(term in lower for term in normalized_terms):
@@ -118,22 +124,30 @@ class TableOperationExecutor:
             return explicit
 
         row_terms = self._selector_terms(spec, "row_terms", "label", "row", "metric")
-        column_terms = self._selector_terms(spec, "column_terms", "column", "year", "period")
+        period_terms = self._period_terms(spec)
+        column_terms = self._selector_terms(spec, "column_terms", "column", "year")
         if not row_terms or not column_terms:
             return None
 
         for headers, rows in self.markdown_tables(context_text):
-            column_index = self.column_index(headers, column_terms)
+            column_index = self.column_index(headers, column_terms, period_terms=period_terms)
             if column_index is None:
                 continue
-            row = self.select_best_row(headers, rows, row_terms)
+            row = self.select_best_row(headers, rows, [*row_terms, *period_terms])
+            if row is None and period_terms:
+                row = self.select_best_row(headers, rows, row_terms)
             if row is None or column_index >= len(row):
                 continue
             value = self.first_number(row[column_index])
             if value is None:
                 continue
             row_label = row[0] if row else ""
-            return TableValue(value=value, row_label=row_label, column_label=headers[column_index])
+            return TableValue(
+                value=value,
+                row_label=row_label,
+                column_label=headers[column_index],
+                period_label=self._period_label(spec),
+            )
         return None
 
     def sum(self, values: list[float]) -> TableOperationResult | None:
@@ -228,8 +242,8 @@ class TableOperationExecutor:
         if not self._value_supported(value, support):
             return None
         row_label = str(spec.get("label") or spec.get("row") or "")
-        column_label = str(spec.get("year") or spec.get("column") or spec.get("period") or "")
-        return TableValue(value=value, row_label=row_label, column_label=column_label)
+        column_label = str(spec.get("year") or spec.get("column") or "")
+        return TableValue(value=value, row_label=row_label, column_label=column_label, period_label=self._period_label(spec))
 
     def _value_supported(self, value: float, context_text: str) -> bool:
         for number in re.findall(r"[-+]?\(?\d[\d,]*(?:\.\d+)?\)?", context_text):
@@ -247,6 +261,58 @@ class TableOperationExecutor:
             elif value is not None and str(value).strip():
                 terms.append(str(value))
         return self._terms(terms)
+
+    def _period_terms(self, spec: dict[str, Any]) -> list[str]:
+        return self._selector_terms(spec, "period", "duration")
+
+    def _period_label(self, spec: dict[str, Any]) -> str:
+        return str(spec.get("period") or spec.get("duration") or "")
+
+    def _period_aware_column_index(
+        self,
+        headers: list[str],
+        column_terms: list[str],
+        period_terms: list[str],
+    ) -> int | None:
+        expected_months = self._period_month_count(" ".join(period_terms))
+        best: tuple[int, int, int] | None = None
+        for index, header in enumerate(headers):
+            lower = header.lower()
+            header_terms = set(self._terms([header]))
+            if column_terms and not all(term in header_terms or term in lower for term in column_terms):
+                continue
+            period_score = sum(1 for term in period_terms if term in header_terms or term in lower)
+            header_months = self._period_month_count(header)
+            month_score = 2 if expected_months is not None and header_months == expected_months else 0
+            mismatch_penalty = 0
+            if expected_months is not None and header_months is not None and header_months != expected_months:
+                mismatch_penalty = -4
+            total = period_score + month_score + mismatch_penalty
+            if total <= 0:
+                continue
+            candidate = (total, period_score, -index)
+            if best is None or candidate > best:
+                best = candidate
+        return -best[2] if best else None
+
+    def _period_month_count(self, text: str) -> int | None:
+        lowered = text.lower()
+        numeric_match = re.search(r"\b(3|6|9|12)\s*(?:months?|mos?\.?)\b", lowered)
+        if numeric_match:
+            return int(numeric_match.group(1))
+        word_numbers = {
+            "three": 3,
+            "quarter": 3,
+            "six": 6,
+            "nine": 9,
+            "twelve": 12,
+            "year": 12,
+            "annual": 12,
+        }
+        for word, months in word_numbers.items():
+            if re.search(rf"\b{word}\b", lowered):
+                return months
+        return None
 
     def _terms(self, terms: list[str]) -> list[str]:
         normalized: list[str] = []

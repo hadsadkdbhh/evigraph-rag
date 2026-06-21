@@ -77,6 +77,40 @@ class TableOperationExecutorTest(unittest.TestCase):
         self.assertIsNotNone(value)
         self.assertEqual(value.value, 365.0)
 
+    def test_resolve_value_disambiguates_period_in_column_header(self) -> None:
+        context = """
+| metric | three months ended 2023 | twelve months ended 2023 |
+| --- | ---: | ---: |
+| revenue | 30 | 120 |
+"""
+
+        value = self.executor.resolve_value(
+            {"label": "revenue", "year": "2023", "period": "three months ended"},
+            context,
+        )
+
+        self.assertIsNotNone(value)
+        self.assertEqual(value.value, 30.0)
+        self.assertEqual(value.column_label, "three months ended 2023")
+        self.assertEqual(value.period_label, "three months ended")
+
+    def test_resolve_value_disambiguates_period_in_row_label(self) -> None:
+        context = """
+| metric | amount |
+| --- | ---: |
+| revenue three months ended | 30 |
+| revenue twelve months ended | 120 |
+"""
+
+        value = self.executor.resolve_value(
+            {"label": "revenue", "column": "amount", "period": "twelve months ended"},
+            context,
+        )
+
+        self.assertIsNotNone(value)
+        self.assertEqual(value.value, 120.0)
+        self.assertEqual(value.row_label, "revenue twelve months ended")
+
     def test_difference(self) -> None:
         result = self.executor.difference(173.2, 171.5)
         self.assertAlmostEqual(result.value, 1.7)
