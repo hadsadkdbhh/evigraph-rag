@@ -1197,6 +1197,13 @@ class NumericReasoner:
                     query_lower,
                     role="denominator",
                 )
+            if denominator is None and self._table_context_matches_terms(text, denominator_terms):
+                denominator, denominator_meta = self._matching_ratio_value_with_label(
+                    rows,
+                    ["total"],
+                    query_lower,
+                    role="denominator",
+                )
             if (
                 denominator is not None
                 and not self._denominator_label_allowed(
@@ -2368,6 +2375,7 @@ class NumericReasoner:
         patterns = [
             r"what\s+(?:are|is|was|were)\s+(.+?)\s+as\s+a\s+percentage\s+of",
             r"(.+?)\s+where\s+what\s+percentage\s+of",
+            r"made\s+up\s+of\s+(.+?)\??$",
             r"what\s+(?:percentage|percent)\s+of\s+.+?\s+(?:is|are|was|were)\s+(.+?)\??$",
             r"payments?\s+for\s+(.+?)\s+as\s+a\s+percentage\s+of",
             r"\b(?:that|which)\s+(?:was|were|is|are)\s+(.+?)(?:\s+in\s+20\d{2})?\??$",
@@ -2418,6 +2426,8 @@ class NumericReasoner:
             "due",
             "after",
             "represented",
+            "made",
+            "up",
             "total",
             "is",
             "if",

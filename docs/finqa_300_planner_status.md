@@ -106,17 +106,17 @@ can resolve a table row when the table has only one numeric value column.
 
 | setting | full EviGraph EM | answer supported | calculation supported |
 | --- | ---: | ---: | ---: |
-| Oracle-doc local planner | 0.313 | 0.707 | 0.497 |
-| Open BM25 local planner | 0.217 | 0.723 | 0.463 |
-| BM25 + source-rerank local planner | 0.293 | 0.730 | 0.500 |
+| Oracle-doc local planner | 0.317 | 0.710 | 0.497 |
+| Open BM25 local planner | 0.220 | 0.727 | 0.463 |
+| BM25 + source-rerank local planner | 0.297 | 0.733 | 0.500 |
 
 Compared with the non-planner 300-example run:
 
 | setting | EM delta | calculation-support delta |
 | --- | ---: | ---: |
-| Oracle-doc | +0.016 | +0.124 |
-| Open BM25 | +0.014 | +0.093 |
-| BM25 + source-rerank | +0.020 | +0.117 |
+| Oracle-doc | +0.020 | +0.124 |
+| Open BM25 | +0.017 | +0.093 |
+| BM25 + source-rerank | +0.024 | +0.117 |
 
 Compared with the previous planner-fallback run, the stronger local planner
 turns the planner path from a pure infrastructure check into a measurable
@@ -138,3 +138,11 @@ total purchase price net of cash acquired. On FinQA-300, exact match rises to
 0.313 oracle-doc, 0.217 open BM25, and 0.293 source-rerank. The source-rerank
 wrong-operation-or-row bucket falls further from 78 to 76, and wrong-numerator
 labels fall from 9 to 7.
+
+A further ratio-context pass handles "made up of" as a numerator cue and allows
+context-level denominator phrases, such as a table titled "average common equity
+attribution", to map to the table's `total` row. This fixes the Morgan Stanley
+institutional-securities share case. The current FinQA-300 local-planner
+baseline is 0.317 oracle-doc, 0.220 open BM25, and 0.297 source-rerank. The
+source-rerank wrong-operation-or-row bucket is now 75, and ambiguous supported
+wrong-number cases fall from 21 to 20.

@@ -974,6 +974,33 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertIn("north american consumer packaging net sales", answer.calculations[0])
         self.assertIn("denominator_row=consumer packaging sales", answer.calculations[0])
 
+    def test_ratio_percent_made_up_of_uses_total_row_from_table_context(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "average common equity attribution $ in billions 2017 2016 2015.\n"
+                    "| $ in billions | 2017 | 2016 | 2015 |\n"
+                    "| --- | ---: | ---: | ---: |\n"
+                    "| institutional securities | 40.2 | 43.2 | 34.6 |\n"
+                    "| wealth management | 17.2 | 15.3 | 11.2 |\n"
+                    "| total | 69.8 | 68.9 | 66.9 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what percentage of average common equity attribution in 2017 is made up of institutional securities?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "57.6%")
+        self.assertIn("row=institutional securities", answer.calculations[0])
+        self.assertIn("denominator_row=total", answer.calculations[0])
+
     def test_ratio_percent_selects_query_measure_column(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
