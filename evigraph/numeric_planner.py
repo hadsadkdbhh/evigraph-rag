@@ -232,11 +232,17 @@ class HeuristicNumericPlanClient:
         return best[2] if best else contexts[0][0]
 
     def _target_base_years(self, lowered: str, years: list[str]) -> tuple[str, str]:
-        compared = re.search(r"\b(20\d{2})\b.+?\b(?:compared with|compared to|from)\s+(20\d{2})\b", lowered)
+        from_to = re.search(r"\bfrom\s+(20\d{2})\s+(?:to|through|-)\s+(20\d{2})\b", lowered)
+        if from_to:
+            return from_to.group(2), from_to.group(1)
+        compared = re.search(r"\b(20\d{2})\b.+?\b(?:compared with|compared to)\s+(20\d{2})\b", lowered)
         if compared:
             return compared.group(1), compared.group(2)
+        compared_in = re.search(r"\bcompared\s+(?:with|to)\s+(20\d{2})\b.+?\bin\s+(20\d{2})\b", lowered)
+        if compared_in:
+            return compared_in.group(2), compared_in.group(1)
         if len(years) >= 2:
-            return years[0], years[1]
+            return years[-1], years[0]
         if len(years) == 1:
             return years[0], str(int(years[0]) - 1)
         return "", ""

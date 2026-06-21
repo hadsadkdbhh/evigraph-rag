@@ -579,6 +579,33 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "16.7%")
         self.assertIn("percent_change", answer.calculations[0])
 
+    def test_percent_change_respectively_prose_beats_distractor_table(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="mixed",
+                node_type="text",
+                content=(
+                    "| restricted stock units | number of rsus | weighted average grant date fair value |\n"
+                    "| --- | ---: | ---: |\n"
+                    "| rsus at december 31 2008 | 401375 | $ 29.03 |\n"
+                    "| rsus at december 31 2009 | 1683606 | $ 12.23 |\n"
+                    "Compensation cost recognized for RSUs totaled $7.3 million, "
+                    "$4.9 million and $3.0 million for the years ended December 31, "
+                    "2009, 2008 and 2007, respectively."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the percent of the increase in compensation cost recognized for rsus from 2008 to 2009",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "49.0%")
+        self.assertIn("compensation cost recognized rsus", answer.calculations[0])
+
     def test_percent_change_year_value_fallback_prefers_query_matching_context(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

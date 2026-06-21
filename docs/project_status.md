@@ -157,3 +157,14 @@ diagnostics from 75 to 71 on FinQA-300. The exact-match result is mixed:
 oracle-doc is 0.313, open BM25 is 0.223, and source-rerank is 0.297. The next
 highest-yield target remains wrong-operation-type and operand selection, not
 more ad hoc arithmetic rules.
+
+The newest operation-intent pass corrects local planner year direction for
+`from BASE to TARGET` percent-change questions and prioritizes semantically
+matched `respectively` prose evidence over weak table rows. This fixes examples
+where the system reversed 2007-to-2008 decline calculations or used RSU share
+counts instead of prose compensation-cost values. The current FinQA-300 local
+planner numbers are 0.320 oracle-doc, 0.233 open BM25, and 0.300 source-rerank.
+Source-rerank wrong-operation-or-row diagnostics are down to 66, with
+wrong-operation-type labels down to 30. The next target is now narrower:
+chunk-truncated ratio evidence and operand semantics for cases such as HTM
+investment securities versus the investment securities portfolio.

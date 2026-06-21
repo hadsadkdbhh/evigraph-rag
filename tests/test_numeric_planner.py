@@ -253,6 +253,42 @@ class NumericPlannerFallbackTest(unittest.TestCase):
         self.assertEqual(answer.text, "50.0%")
         self.assertTrue(planner.primary_disabled)
 
+    def test_heuristic_percent_change_from_to_uses_later_year_as_target(self) -> None:
+        context = (
+            "| metric | 2017 | 2016 |\n"
+            "| --- | ---: | ---: |\n"
+            "| revenue | 150 | 100 |\n"
+        )
+        planner = NumericPlannerFallback(HeuristicNumericPlanClient())
+
+        answer = planner.answer(
+            "what is the percentage change in revenue from 2016 to 2017?",
+            [("table", context)],
+        )
+
+        self.assertIsNotNone(answer)
+        self.assertEqual(answer.text, "50.0%")
+        self.assertIn("revenue/2017", answer.calculation)
+        self.assertIn("revenue/2016", answer.calculation)
+
+    def test_heuristic_percent_decline_from_to_keeps_decline_sign(self) -> None:
+        context = (
+            "| metric | 2008 | 2007 |\n"
+            "| --- | ---: | ---: |\n"
+            "| net income loss attributable to common shareholders | 50408 | 211942 |\n"
+        )
+        planner = NumericPlannerFallback(HeuristicNumericPlanClient())
+
+        answer = planner.answer(
+            "what was the percent of the decline in net income loss attributable to common shareholders from 2007 to 2008",
+            [("table", context)],
+        )
+
+        self.assertIsNotNone(answer)
+        self.assertEqual(answer.text, "-76.2%")
+        self.assertIn("2008", answer.calculation)
+        self.assertIn("2007", answer.calculation)
+
     def test_heuristic_plans_ratio_percent_with_numerator_and_denominator_rows(self) -> None:
         context = (
             "| asset class | 2011 |\n"

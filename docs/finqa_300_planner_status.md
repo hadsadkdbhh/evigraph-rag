@@ -157,3 +157,14 @@ source-rerank wrong-operation-or-row bucket falls from 75 to 71, with primary
 wrong-year-or-period cases falling from 8 to 7. This is a mixed result: the guard
 reduces bad supported numeric behavior and slightly improves open retrieval, but
 it is not a broad exact-match jump.
+
+The latest operation-intent pass fixes local planner year direction for
+`from BASE to TARGET` percent-change questions and lets high-confidence
+`respectively` prose sentences override weak table rows for percent-change
+queries. This fixes Duke Realty net-income decline and RSU compensation-cost
+increase cases. On FinQA-300, exact match rises to 0.320 oracle-doc, 0.233 open
+BM25, and 0.300 source-rerank. The source-rerank wrong-operation-or-row bucket
+falls from 71 to 66, and wrong-operation-type labels fall from 35 to 30. The
+remaining largest failure class is still wrong operation type, but it is now a
+smaller and more specific set centered on operand semantics and chunk-truncated
+ratio evidence.

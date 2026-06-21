@@ -410,6 +410,9 @@ class NumericReasoner:
                     return answer
             return self._percent_change_latest_table_years(query_lower, contexts)
         base_year, target_year = self._percent_change_years(query_lower, years)
+        prose_answer = self._percent_change_from_prose(query_lower, contexts, base_year, target_year)
+        if prose_answer is not None:
+            return prose_answer
         year_label_answer = self._percent_change_year_label_candidates(query_lower, contexts, base_year, target_year)
         if year_label_answer is not None:
             return year_label_answer
@@ -464,6 +467,33 @@ class NumericReasoner:
                 return None
             result = abs(operation.value) if "total debt" in query_lower else operation.value
             row_label = str(values.get("__row_label__", "year_values"))
+            return NumericAnswer(
+                text=f"{result:.1f}%",
+                calculation=f"percent_change row={row_label}: {operation.expression}",
+                cited_node_ids=[node_id],
+            )
+        return None
+
+    def _percent_change_from_prose(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+        base_year: str,
+        target_year: str,
+    ) -> NumericAnswer | None:
+        for node_id, text in contexts:
+            if "respectively" not in text.lower():
+                continue
+            values = self._prose_year_values_for_query(query_lower, text, base_year, target_year)
+            if not values:
+                continue
+            if base_year not in values or target_year not in values or values[base_year] == 0:
+                continue
+            operation = self.executor.percent_change(values[target_year], values[base_year])
+            if operation is None:
+                continue
+            result = abs(operation.value) if "total debt" in query_lower else operation.value
+            row_label = str(values.get("__row_label__", "prose_year_values"))
             return NumericAnswer(
                 text=f"{result:.1f}%",
                 calculation=f"percent_change row={row_label}: {operation.expression}",
