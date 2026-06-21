@@ -204,3 +204,12 @@ can resolve year-qualified row labels in single-value waterfall tables. The ETR
 FinQA-300, oracle-doc rises to 0.333 and open BM25 rises to 0.257; source-rerank
 stays at 0.310. This is a quota-conscious semantic repair, not a broad
 breakthrough.
+
+The latest operand-selection pass adds two bounded fixes inside
+ambiguous-supported-wrong-number. Compact average ranges such as `2011-2013`
+now expand to all included years, and `paid in cash` acquisition questions bind
+to local `cash paid of $X` prose instead of nearby purchase-price components.
+The HOLX R2 cash-paid ratio now returns `3.1%`, and the APD 2011-2013 GAAP
+capital-expenditure average now uses all three years. FinQA-300 moves to 0.340
+oracle-doc, 0.260 open BM25, and 0.317 source-rerank; source-rerank
+ambiguous-supported-wrong-number is down to 37.

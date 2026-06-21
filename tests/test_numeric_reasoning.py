@@ -978,6 +978,33 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "21.7%")
         self.assertIn("ratio_percent", answer.calculations[0])
 
+    def test_ratio_percent_paid_in_cash_uses_cash_row_as_numerator(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="mixed",
+                node_type="text",
+                content=(
+                    "The aggregate purchase price for R2 of approximately $220600 consisted of "
+                    "cash paid of $6900.\n"
+                    "| item | amount |\n"
+                    "| --- | ---: |\n"
+                    "| cash paid | $ 6900 |\n"
+                    "| estimated purchase price | $ 220600 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what portion of the estimated purchase price of r2 is paid in cash?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "3.1%")
+        self.assertIn("row=cash paid", answer.calculations[0])
+        self.assertIn("6900 / 220600", answer.calculations[0])
+
     def test_ratio_percent_rejects_same_row_numerator_and_denominator(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

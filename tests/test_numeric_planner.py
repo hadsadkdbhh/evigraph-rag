@@ -388,6 +388,23 @@ class NumericPlannerFallbackTest(unittest.TestCase):
         self.assertEqual(answer.text, "218")
         self.assertIn("planned_average", answer.calculation)
 
+    def test_heuristic_plans_average_over_compact_hyphen_year_range(self) -> None:
+        context = (
+            "| metric | 2016 | 2017 | 2018 |\n"
+            "| --- | ---: | ---: | ---: |\n"
+            "| afs investment securities | 226892 | 235257 | 203449 |\n"
+        )
+        planner = NumericPlannerFallback(HeuristicNumericPlanClient())
+
+        answer = planner.answer(
+            "what is the average of the afs investment securities during the years 2016-2018?",
+            [("table", context)],
+        )
+
+        self.assertIsNotNone(answer)
+        self.assertEqual(answer.text, "221866")
+        self.assertIn("afs investment securities/2017", answer.calculation)
+
     def test_heuristic_plans_sum_over_listed_years(self) -> None:
         context = (
             "| metric | 2004 | 2005 | 2006 |\n"

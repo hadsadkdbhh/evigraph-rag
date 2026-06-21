@@ -1505,8 +1505,8 @@ class NumericReasoner:
             if operation is None:
                 continue
             result = operation.value * 100.0
-            numerator_label = str(numerator_meta.get("row_label", ""))
-            denominator_label = str(denominator_meta.get("row_label", ""))
+            numerator_label = self._display_ratio_label(str(numerator_meta.get("row_label", "")))
+            denominator_label = self._display_ratio_label(str(denominator_meta.get("row_label", "")))
             return NumericAnswer(
                 text=self._format_percent(result),
                 calculation=(
@@ -1583,8 +1583,8 @@ class NumericReasoner:
             if operation is None:
                 continue
             result = operation.value * 100.0
-            numerator_label = str(numerator_meta.get("row_label", ""))
-            denominator_label = str(denominator_meta.get("row_label", ""))
+            numerator_label = self._display_ratio_label(str(numerator_meta.get("row_label", "")))
+            denominator_label = self._display_ratio_label(str(denominator_meta.get("row_label", "")))
             return NumericAnswer(
                 text=self._format_percent(result),
                 calculation=(
@@ -1633,7 +1633,8 @@ class NumericReasoner:
                 return NumericAnswer(
                     text=self._format_percent(result),
                     calculation=(
-                        f"ratio_percent row={numerator_label} denominator_row={denominator_label}: "
+                        f"ratio_percent row={self._display_ratio_label(numerator_label)} "
+                        f"denominator_row={self._display_ratio_label(denominator_label)}: "
                         f"{numerator:g} / {denominator:g} * 100 = {result:.1f}%"
                     ),
                     cited_node_ids=citations,
@@ -2229,8 +2230,8 @@ class NumericReasoner:
         if operation is None:
             return None
         result = operation.value * 100.0
-        numerator_label = str(numerator_meta.get("row_label", " ".join(numerator_terms)))
-        denominator_label = str(denominator_meta.get("row_label", " ".join(denominator_terms)))
+        numerator_label = self._display_ratio_label(str(numerator_meta.get("row_label", " ".join(numerator_terms))))
+        denominator_label = self._display_ratio_label(str(denominator_meta.get("row_label", " ".join(denominator_terms))))
         return NumericAnswer(
             text=self._format_percent(result),
             calculation=(
@@ -2263,11 +2264,19 @@ class NumericReasoner:
     ) -> tuple[float, float]:
         if not self._table_is_in_thousands(text):
             return numerator, denominator
+        if self._uses_local_unscaled_prose(numerator_meta) or self._uses_local_unscaled_prose(denominator_meta):
+            return numerator, denominator
         if numerator_meta.get("source") == "table" and denominator_meta.get("source") == "prose":
             return numerator / 1000.0, denominator
         if denominator_meta.get("source") == "table" and numerator_meta.get("source") == "prose":
             return numerator, denominator / 1000.0
         return numerator, denominator
+
+    def _uses_local_unscaled_prose(self, meta: dict[str, str]) -> bool:
+        return "__local_unscaled__" in str(meta.get("row_label", ""))
+
+    def _display_ratio_label(self, label: str) -> str:
+        return label.replace("__local_unscaled__", "").strip()
 
     def _table_is_in_thousands(self, text: str) -> bool:
         return bool(re.search(r"\(\s*in\s+thousands\s*\)|\bin\s+thousands\b", text, flags=re.IGNORECASE))
@@ -2275,6 +2284,9 @@ class NumericReasoner:
     def _prose_amount_for_terms(self, text: str, terms: list[str]) -> tuple[float | None, str]:
         if not terms:
             return None, ""
+        local_value = self._local_prose_amount_for_terms(text, terms)
+        if local_value[0] is not None:
+            return local_value
         if "total" in terms:
             terminal_value, terminal_label = self._terminal_prose_amount_for_terms(text, terms)
             if terminal_value is not None:
@@ -2309,6 +2321,23 @@ class NumericReasoner:
             return None, ""
         _score, value, label = best
         return value, label
+
+    def _local_prose_amount_for_terms(self, text: str, terms: list[str]) -> tuple[float | None, str]:
+        normalized_terms = [term for term in terms if term]
+        if not normalized_terms:
+            return None, ""
+        phrase = r"\s+".join(re.escape(term) for term in normalized_terms)
+        pattern = (
+            rf"\b{phrase}\b\s+(?:of|was|were|totaled|amounted\s+to)\s+"
+            r"\(?\s*(\$)?\s*([-+]?\d+(?:\.\d+)?)\s*(billion|million|thousand)?\s*\)?"
+        )
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        if not match:
+            return None, ""
+        scale = match.group(3).lower() if match.group(3) else None
+        value = self._scaled_number(match.group(2), scale)
+        marker = "" if scale else " __local_unscaled__"
+        return value, " ".join(normalized_terms) + marker
 
     def _terminal_prose_amount_for_terms(self, text: str, terms: list[str]) -> tuple[float | None, str]:
         content_terms = [term for term in terms if term != "total"]
@@ -2654,6 +2683,8 @@ class NumericReasoner:
         return terms
 
     def _ratio_numerator_terms(self, query_lower: str) -> list[str]:
+        if re.search(r"\bpaid\s+in\s+cash\b", query_lower):
+            return ["cash", "paid"]
         patterns = [
             r"what\s+(?:are|is|was|were)\s+(.+?)\s+as\s+a\s+percentage\s+of",
             r"(.+?)\s+where\s+what\s+percentage\s+of",

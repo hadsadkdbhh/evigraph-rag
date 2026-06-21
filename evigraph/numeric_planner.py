@@ -441,7 +441,7 @@ class HeuristicNumericPlanClient:
         return []
 
     def _year_series(self, lowered: str, years: list[str]) -> list[str]:
-        range_match = re.search(r"\b(20\d{2})\b\s+(?:through|to|-)\s+\b(20\d{2})\b", lowered)
+        range_match = re.search(r"\b(20\d{2})\b\s*(?:through|to|-)\s*\b(20\d{2})\b", lowered)
         if range_match:
             start = int(range_match.group(1))
             end = int(range_match.group(2))

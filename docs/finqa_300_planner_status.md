@@ -211,3 +211,15 @@ On FinQA-300, exact match moves to 0.333 oracle-doc and 0.257 open BM25, while
 source-rerank remains 0.310. This is a narrow semantic fix, not a broad quality
 jump; the next useful target remains operand selection inside the larger
 ambiguous-supported-wrong-number bucket.
+
+The next operand-selection pass keeps the same failure-driven scope and fixes
+two narrow cases. First, compact year ranges such as `2016-2018` and
+`2011-2013` now expand to the full inclusive year series for average programs,
+instead of using only the endpoints. Second, acquisition questions phrased as
+`paid in cash` now bind the numerator to the local `cash paid of $X` phrase and
+avoid rescaling same-unit prose amounts against tables marked `in thousands`.
+This fixes the APD 2011-2013 GAAP capital-expenditure average and the HOLX R2
+cash-paid purchase-price ratio. On FinQA-300, exact match rises to 0.340
+oracle-doc, 0.260 open BM25, and 0.317 source-rerank. Source-rerank
+wrong-operation-or-row falls to 70, and ambiguous-supported-wrong-number falls
+to 37.
