@@ -223,3 +223,15 @@ cash-paid purchase-price ratio. On FinQA-300, exact match rises to 0.340
 oracle-doc, 0.260 open BM25, and 0.317 source-rerank. Source-rerank
 wrong-operation-or-row falls to 70, and ambiguous-supported-wrong-number falls
 to 37.
+
+The following percent-change operand pass fixes a repeated IPG interest-income
+failure. The percent-change reasoner now reuses the existing `respectively`
+prose parser when values appear after the years, as in `During 2015 and 2014,
+we had interest income of $22.8 and $27.4, respectively`, so the query no
+longer falls through to a nearby fair-market-value sensitivity table. For
+questions phrased as `what percent decrease`, the answer reports the positive
+decrease magnitude while preserving an auditable `abs(...)` calculation. This
+fixes both IPG 2015 interest-income variants. On FinQA-300, exact match rises
+to 0.350 oracle-doc, 0.270 open BM25, and 0.327 source-rerank. Source-rerank
+wrong-operation-or-row falls to 67, and ambiguous-supported-wrong-number falls
+to 35.

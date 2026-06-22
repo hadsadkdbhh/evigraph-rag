@@ -213,3 +213,10 @@ The HOLX R2 cash-paid ratio now returns `3.1%`, and the APD 2011-2013 GAAP
 capital-expenditure average now uses all three years. FinQA-300 moves to 0.340
 oracle-doc, 0.260 open BM25, and 0.317 source-rerank; source-rerank
 ambiguous-supported-wrong-number is down to 37.
+
+The newest percent-change operand pass fixes the repeated IPG 2015
+interest-income failures by reading `respectively` prose where values follow
+the years. It also reports positive magnitude only for the narrow `what percent
+decrease` phrasing, with an explicit `abs(...)` calculation for verifier
+support. FinQA-300 is now 0.350 oracle-doc, 0.270 open BM25, and 0.327
+source-rerank. Source-rerank ambiguous-supported-wrong-number is down to 35.

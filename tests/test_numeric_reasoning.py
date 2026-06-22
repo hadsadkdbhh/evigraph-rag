@@ -380,6 +380,50 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "1.7%")
         self.assertIn("percent_change", answer.calculations[0])
 
+    def test_percent_change_prefers_respectively_prose_when_values_follow_years(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="mixed",
+                node_type="text",
+                content=(
+                    "| as of december 31, | increase in fair market value |\n"
+                    "| --- | ---: |\n"
+                    "| 2015 | -33.7 |\n"
+                    "| 2014 | -35.5 |\n"
+                    "During 2015 and 2014, we had interest income of $ 22.8 and $ 27.4, respectively."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the percentage change in interest income from 2014 to 2015?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "-16.8%")
+        self.assertIn("row=interest income", answer.calculations[0])
+
+    def test_what_percent_decrease_reports_positive_magnitude_from_respectively_prose(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="mixed",
+                node_type="text",
+                content="During 2015 and 2014, we had interest income of $ 22.8 and $ 27.4, respectively.",
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what percent decrease for interest income occurred between 2014 and 2015?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "16.8%")
+        self.assertIn("row=interest income", answer.calculations[0])
+
     def test_percent_of_change_due_to_contribution_uses_planner(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

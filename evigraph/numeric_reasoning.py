@@ -520,11 +520,15 @@ class NumericReasoner:
             operation = self.executor.percent_change(values[target_year], values[base_year])
             if operation is None:
                 continue
-            result = abs(operation.value) if "total debt" in query_lower else operation.value
+            report_magnitude = self._reports_decrease_magnitude(query_lower) or "total debt" in query_lower
+            result = abs(operation.value) if report_magnitude else operation.value
             row_label = str(values.get("__row_label__", "prose_year_values"))
+            calculation = f"percent_change row={row_label}: {operation.expression}"
+            if report_magnitude:
+                calculation = f"percent_change row={row_label} decrease_magnitude: abs({operation.expression.rsplit('=', 1)[0].strip()}) = {result:.1f}%"
             return NumericAnswer(
                 text=f"{result:.1f}%",
-                calculation=f"percent_change row={row_label}: {operation.expression}",
+                calculation=calculation,
                 cited_node_ids=[node_id],
             )
         return None
@@ -917,6 +921,9 @@ class NumericReasoner:
             if dollar or scale
         ]
         if len(numeric_values) < len(years):
+            ordered_values = self._respectively_ordered_values(sentence, [base_year, target_year])
+            if ordered_values and base_year in ordered_values and target_year in ordered_values:
+                return {base_year: ordered_values[base_year], target_year: ordered_values[target_year]}
             return None
         aligned = dict(zip(years, numeric_values[-len(years) :]))
         if base_year in aligned and target_year in aligned:
@@ -2971,6 +2978,9 @@ class NumericReasoner:
             return None
         entity = match.group(1).strip()
         return re.sub(r"[^a-z0-9 ]+", "", entity)
+
+    def _reports_decrease_magnitude(self, query_lower: str) -> bool:
+        return bool(re.search(r"\bwhat\s+percent(?:age)?\s+decrease\b", query_lower))
 
     def _normalize_query(self, query: str) -> str:
         normalized = query.lower()
