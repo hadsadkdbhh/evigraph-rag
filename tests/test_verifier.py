@@ -288,6 +288,33 @@ class ClaimVerifierTest(unittest.TestCase):
 
         self.assertTrue(verification["operation_semantics_checked"])
 
+    def test_operation_semantics_accepts_planned_absolute_difference(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                "table",
+                "text",
+                "entergy arkansas payments 2 entergy louisiana payments 6 difference 4",
+                source_doc="report.md",
+            )
+        )
+        answer = Answer(
+            text="4",
+            citations=["table"],
+            calculations=[
+                "planned_absolute_difference target=entergy arkansas/payments base=entergy louisiana/payments: abs(2 - 6) = 4"
+            ],
+        )
+
+        verification = ClaimVerifier().verify(
+            "what is the difference in payments between entergy arkansas and entergy louisiana?",
+            answer,
+            graph,
+        )
+
+        self.assertTrue(verification["operation_semantics_checked"])
+        self.assertTrue(verification["answer_supported"])
+
 
 if __name__ == "__main__":
     unittest.main()

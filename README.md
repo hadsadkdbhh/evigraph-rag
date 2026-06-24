@@ -182,6 +182,22 @@ python scripts/build_paper_assets.py --eval-dir outputs/eval/finqa --output-dir 
 The generated LaTeX table file is included from `paper/main.tex`, and the
 matching Markdown summary is written to `paper/generated/finqa_results_summary.md`.
 
+Run the current FinQA-300 local-planner pipeline from existing outputs:
+
+```powershell
+python scripts/run_pipeline.py
+```
+
+Refresh the FinQA-300 local-planner experiment outputs and then rebuild paper
+assets:
+
+```powershell
+python scripts/run_pipeline.py --refresh-results
+```
+
+The pipeline writes a reproducibility report to `outputs/pipeline/` and FinQA-300
+paper snippets to `paper/generated/finqa_300_local_planner/`.
+
 ## Local Retrieval MVP-1
 
 Build a local JSON index from files under `data/corpus`:

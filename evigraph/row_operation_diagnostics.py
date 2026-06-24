@@ -257,7 +257,7 @@ class RowOperationDiagnosticAnalyzer:
             "percent_change": {"percent_change", "planned_percent_change", "roi"},
             "percent_of_increase": {"planned_percent_of_increase"},
             "ratio_percent": {"ratio_percent"},
-            "difference": {"difference", "planned_difference", "row_year_difference"},
+            "difference": {"difference", "planned_difference", "planned_absolute_difference", "row_year_difference"},
             "sum_or_lookup": {"sum", "planned_sum", "lookup", "planned_lookup", "row_lookup"},
         }
         return actual in compatible.get(expected, {expected})

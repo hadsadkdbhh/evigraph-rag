@@ -524,6 +524,26 @@ class NumericPlannerFallbackTest(unittest.TestCase):
         self.assertEqual(answer.text, "172")
         self.assertIn("matching buy sell volumes/2006", answer.calculation)
 
+    def test_heuristic_difference_between_entities_uses_absolute_difference(self) -> None:
+        context = (
+            "| | payments ( receipts ) ( in millions ) |\n"
+            "| --- | ---: |\n"
+            "| entergy arkansas | 2 |\n"
+            "| entergy louisiana | 6 |\n"
+        )
+        planner = NumericPlannerFallback(HeuristicNumericPlanClient())
+
+        answer = planner.answer(
+            "what is the difference in payments between entergy arkansas and entergy louisiana , in millions?",
+            [("table", context)],
+        )
+
+        self.assertIsNotNone(answer)
+        self.assertEqual(answer.text, "4")
+        self.assertIn("planned_absolute_difference", answer.calculation)
+        self.assertIn("entergy arkansas/payments", answer.calculation)
+        self.assertIn("entergy louisiana/payments", answer.calculation)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -85,6 +85,29 @@ class PaperAssetBuilderTest(unittest.TestCase):
         self.assertIn("\\caption{FinQA diagnostic results.", latex)
         self.assertIn("Oracle-doc & Full EviGraph", latex)
 
+    def test_builds_tables_from_finqa_300_local_planner_preset(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            eval_dir = root / "eval"
+            output_dir = root / "paper"
+            eval_dir.mkdir()
+            for suffix in [
+                "oracle_doc_full_local_planner",
+                "open_bm25_full_local_planner",
+                "source_rerank_full_local_planner",
+            ]:
+                self._write_eval_csv(
+                    eval_dir / f"finqa_300_subset_{suffix}.csv",
+                    [("full_evigraph", "0.55", "9")],
+                )
+
+            paths = PaperAssetBuilder().build(eval_dir, output_dir, preset="finqa_300_local")
+            markdown = Path(paths["markdown"]).read_text(encoding="utf-8")
+
+        self.assertIn("Oracle-doc", markdown)
+        self.assertIn("Open BM25", markdown)
+        self.assertIn("BM25 + source rerank", markdown)
+
     def _write_eval_csv(self, path: Path, rows: list[tuple[str, str, str]]) -> None:
         fieldnames = [
             "dataset",

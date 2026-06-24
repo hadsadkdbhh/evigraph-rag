@@ -311,6 +311,7 @@ def _calculation_operation(calculation: str) -> str | None:
         "planned_average": "average",
         "row_year_difference": "row_year_difference",
         "planned_difference": "difference",
+        "planned_absolute_difference": "difference",
         "percentage_point_row_difference": "percentage_point_row_difference",
         "relative_difference_between_rows": "relative_difference_between_rows",
         "pretax_aftertax_difference": "pretax_aftertax_difference",

@@ -5,4 +5,5 @@ venv/
 outputs/runs/
 outputs/index/
 outputs/eval/
+outputs/pipeline/
 .env

@@ -1658,6 +1658,32 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "6.4%")
         self.assertIn("ratio_percent", answer.calculations[0])
 
+    def test_prose_ratio_prefers_exact_year_table_denominator_over_prose_subitem(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="mixed",
+                node_type="text",
+                content=(
+                    "Other restructuring charges were $30.0 million. "
+                    "The restructuring program included a smaller operating-income item of $100.0 million.\n"
+                    "| metric | 2008 | 2009 |\n"
+                    "| --- | ---: | ---: |\n"
+                    "| total operating income | $ 846.0 | $ 900.0 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "in 2009 what percentage of total operating income was represented by other restructuring charges?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "3.3%")
+        self.assertIn("30 / 900", answer.calculations[0])
+        self.assertIn("denominator_row=total operating income", answer.calculations[0])
+
     def test_ratio_percent_prefers_adjusted_period_component(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
@@ -2077,6 +2103,87 @@ class NumericReasoningTest(unittest.TestCase):
 
         self.assertEqual(answer.text, "11.3")
         self.assertIn("row=settlements", answer.calculations[0])
+
+    def test_average_row_prefers_year_anchored_label(self) -> None:
+        # Regression for IPG/2008: query anchors 2008, but two liability rows
+        # differ only by year in the label. The 2006 row must not win.
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "|  | 2007 program | 2003 program | 2001 program | total |\n"
+                    "| --- | --- | --- | --- | --- |\n"
+                    "| liability at december 31 2006 | $ 2014 | $ 12.6 | $ 19.2 | $ 31.8 |\n"
+                    "| liability at december 31 2008 | $ 1.2 | $ 5.7 | $ 5.9 | $ 12.8 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the average liability for all three programs , as of december 31 , 2008 , in millions?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "4.3")
+        self.assertIn("row_values_average", answer.calculations[0])
+        self.assertIn("december 31 2008", answer.calculations[0])
+
+    def test_average_row_excludes_total_column(self) -> None:
+        # The "total" column is a summary of the three program columns and must
+        # not be averaged in alongside them.
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "|  | 2007 program | 2003 program | 2001 program | total |\n"
+                    "| --- | --- | --- | --- | --- |\n"
+                    "| liability at december 31 2008 | $ 1.2 | $ 5.7 | $ 5.9 | $ 12.8 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the average liability for all three programs , as of december 31 , 2008 , in millions?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "4.3")
+        self.assertIn("row_values_average", answer.calculations[0])
+
+    def test_percent_change_prefers_period_end_row_over_beginning(self) -> None:
+        # Regression for JPM/2007: a change query over a table that carries both
+        # "X at beginning of period" and "X at december 31" must use the
+        # period-end row. The two rows tie on lexical score, so the change intent
+        # must prefer period-end over period-beginning rather than row order.
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| year ended december 31 ( in millions ) | 2007 | 2006 |\n"
+                    "| --- | --- | --- |\n"
+                    "| fair value at beginning of period | $ 7546 | $ 6682 |\n"
+                    "| originations of msrs | 2335 | 1512 |\n"
+                    "| fair value at december 31 | $ 8632 | $ 7546 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the percentage change in the fair value of msrs in 2007?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "14.4%")
+        self.assertIn("row=fair value at december 31", answer.calculations[0])
 
     def test_repeated_increase_projection(self) -> None:
         graph = EvidenceGraph()

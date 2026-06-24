@@ -127,6 +127,39 @@ class TableOperationExecutorTest(unittest.TestCase):
         self.assertEqual(value.row_label, "2008 net revenue")
         self.assertEqual(value.column_label, "amount")
 
+    def test_resolve_value_does_not_match_tangible_inside_intangible(self) -> None:
+        context = """
+| cash | $ 45826 |
+| --- | --- |
+| customer-related intangible assets | 42721 |
+| acquired technology | 27954 |
+| total identifiable net assets | 62154 |
+| total purchase consideration | $ 265982 |
+"""
+
+        value = self.executor.resolve_value(
+            {"label": "net tangible assets obtained through the acquisition"},
+            context,
+        )
+
+        self.assertIsNotNone(value)
+        self.assertEqual(value.value, 62154.0)
+        self.assertEqual(value.row_label, "total identifiable net assets")
+
+    def test_resolve_value_keeps_basic_plural_row_matching(self) -> None:
+        context = """
+| metric | amount |
+| --- | ---: |
+| accrued trade liabilities | 484 |
+| accrued wages | 367 |
+"""
+
+        value = self.executor.resolve_value({"label": "accrued trade liability"}, context)
+
+        self.assertIsNotNone(value)
+        self.assertEqual(value.value, 484.0)
+        self.assertEqual(value.row_label, "accrued trade liabilities")
+
     def test_difference(self) -> None:
         result = self.executor.difference(173.2, 171.5)
         self.assertAlmostEqual(result.value, 1.7)

@@ -273,6 +273,7 @@ class NumericReasoner:
     def _row_values_average(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
         if re.search(r"\b20\d{2}\D+20\d{2}\b", query_lower):
             return None
+        query_years = re.findall(r"\b(20\d{2})\b", query_lower)
         for node_id, text in contexts:
             table = self._markdown_table(text)
             if not table:
@@ -281,7 +282,18 @@ class NumericReasoner:
             row = self._best_query_row(query_lower, headers, rows)
             if not row:
                 continue
-            values = [value for value in (self._first_number(cell) for cell in row[1:]) if value is not None]
+            row = self._year_anchored_row(query_lower, query_years, headers, rows) or row
+            total_columns = {
+                index
+                for index, header in enumerate(headers)
+                if index > 0 and re.fullmatch(r"\s*total\s*", header.strip(), re.IGNORECASE)
+            }
+            value_cells = [
+                (index, cell)
+                for index, cell in enumerate(row)
+                if index > 0 and index not in total_columns
+            ]
+            values = [value for value in (self._first_number(cell) for _, cell in value_cells) if value is not None]
             if len(values) < 2:
                 continue
             if "amount" in query_lower:
@@ -294,6 +306,34 @@ class NumericReasoner:
                 calculation=f"row_values_average row={row[0]}: {operation.expression}",
                 cited_node_ids=[node_id],
             )
+        return None
+
+    def _year_anchored_row(
+        self,
+        query_lower: str,
+        query_years: list[str],
+        headers: list[str],
+        rows: list[list[str]],
+    ) -> list[str] | None:
+        """Prefer a semantically matched row whose label carries a query year.
+
+        ``_best_query_row`` strips 20XX tokens from query terms, so two rows that
+        differ only by year (for example ``liability at december 31 2006`` and
+        ``... 2008``) tie and the earlier row wins. When the query itself pins a
+        year, the row carrying that year is the right operand.
+        """
+        if not query_years:
+            return None
+        query_terms = set(self._keywords(query_lower))
+        for row in rows:
+            if not row:
+                continue
+            label = row[0].lower()
+            label_terms = set(re.findall(r"[a-z0-9]+", label))
+            if query_terms and not (query_terms & label_terms):
+                continue
+            if any(year in label for year in query_years):
+                return row
         return None
 
     def _row_year_difference(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
@@ -1404,7 +1444,13 @@ class NumericReasoner:
 
         if self._allow_prose_ratio(query_lower, query_year):
             for node_id, text in contexts:
-                prose_answer = self._prose_ratio_percent(node_id, text, numerator_terms, denominator_terms)
+                prose_answer = self._prose_ratio_percent(
+                    node_id,
+                    text,
+                    numerator_terms,
+                    denominator_terms,
+                    query_year=query_year,
+                )
                 if prose_answer is not None:
                     return prose_answer
 
@@ -1556,6 +1602,7 @@ class NumericReasoner:
                     combined_text,
                     numerator_terms,
                     denominator_terms,
+                    query_year=query_year,
                 )
                 if mixed_answer is not None:
                     return NumericAnswer(mixed_answer.text, mixed_answer.calculation, node_ids)
@@ -2186,6 +2233,7 @@ class NumericReasoner:
         text: str,
         numerator_terms: list[str],
         denominator_terms: list[str],
+        query_year: str | None = None,
     ) -> NumericAnswer | None:
         rows = self._label_value_rows(text)
         query_proxy = " ".join([*numerator_terms, *denominator_terms])
@@ -2201,6 +2249,23 @@ class NumericReasoner:
             query_proxy,
             role="denominator",
         )
+        if query_year:
+            year_denominator, year_denominator_meta = self._table_value_for_terms_year_with_label(
+                text,
+                denominator_terms,
+                query_year,
+                allow_partial=False,
+            )
+            if (
+                year_denominator is not None
+                and self._denominator_label_allowed(
+                    str(year_denominator_meta.get("row_label", "")),
+                    denominator_terms,
+                    query_proxy,
+                )
+            ):
+                denominator = year_denominator
+                denominator_meta = year_denominator_meta
         if denominator is not None and not self._denominator_label_allowed(
             str(denominator_meta.get("row_label", "")),
             denominator_terms,
@@ -2893,6 +2958,11 @@ class NumericReasoner:
             intent_score = self._row_intent_score(query_lower, label)
             if coverage == 0 and intent_score == 0:
                 continue
+            # The change period-end/beginning preference is a tiebreaker between
+            # rows that already lexically match the query; it must not promote an
+            # unrelated row that has zero coverage.
+            if coverage > 0:
+                intent_score += self._change_period_preference(query_lower, label)
             lexical_score = sum(len(term) for term in query_terms if term in label)
             total_score = coverage * 10 + lexical_score + intent_score
             if "average" in query_lower and coverage > 0:
@@ -2958,6 +3028,18 @@ class NumericReasoner:
         if "balance" in query_lower and "balance" in label:
             score += 4
         return score
+
+    def _change_period_preference(self, query_lower: str, label: str) -> int:
+        """Tiebreaker for change queries between period-beginning and period-end
+        rows of the same metric. Only meaningful as a tiebreaker, so callers gate
+        it on non-zero lexical coverage so it cannot promote an unrelated row."""
+        if not any(term in query_lower for term in ["change", "increased", "decreased", "growth"]):
+            return 0
+        if any(term in label for term in ["at december 31", "at end of period", "period end", "ending balance"]):
+            return 45
+        if any(term in label for term in ["at beginning", "beginning of period", "beginning balance", "balance at beginning"]):
+            return -45
+        return 0
 
     def _column_index(self, headers: list[str], terms: list[str]) -> int | None:
         for index, header in enumerate(headers):

@@ -235,3 +235,68 @@ fixes both IPG 2015 interest-income variants. On FinQA-300, exact match rises
 to 0.350 oracle-doc, 0.270 open BM25, and 0.327 source-rerank. Source-rerank
 wrong-operation-or-row falls to 67, and ambiguous-supported-wrong-number falls
 to 35.
+
+The current operand-selection pass fixes a row-label substring bug rather than
+adding another arithmetic rule. In the GPN acquisition example, `tangible` was
+matching the row `customer-related intangible assets`, so the lookup selected
+42721 instead of the net-assets row. Row selection now uses token-level matches
+with a small plural normalizer, which blocks `tangible`/`intangible` confusion
+while keeping common financial singular/plural variants. On FinQA-300, exact
+match rises to 0.360 oracle-doc, 0.270 open BM25, and 0.333 source-rerank.
+Source-rerank wrong-operation-or-row falls to 64, and
+ambiguous-supported-wrong-number falls to 32.
+
+The next small pass handles entity-to-entity difference questions. For queries
+such as `difference in payments between entergy arkansas and entergy
+louisiana`, the local planner now selects both entity rows under the shared
+metric column and executes an absolute difference. This fixes the ETR 2017
+payments example with `abs(2 - 6) = 4`; previously both operands resolved to
+Entergy Arkansas and produced zero. On FinQA-300, exact match remains 0.360
+oracle-doc and 0.333 source-rerank, while open BM25 increases to 0.273.
+
+The latest year-anchored average pass fixes a `_row_values_average` row
+selection bug exposed by the IPG 2008 restructuring-liability question.
+`NumericReasoner._keywords` strips every 20XX token, so two rows differing
+only by year in the label (`liability at december 31 2006` vs `... 2008`)
+tied in `_best_query_row` and the earlier row always won. The IPG question
+therefore averaged the 2006 row together with its `total` summary column,
+returning `519.4` instead of `(1.2 + 5.7 + 5.9) / 3 = 4.3`.
+`_row_values_average` now prefers a semantically matched row whose label
+carries the query year, and it excludes a `total` summary column from the
+average. On FinQA-300, exact match rises to 0.363 oracle-doc, 0.277 open BM25,
+and 0.337 source-rerank. Source-rerank wrong-operation-or-row falls to 63,
+with wrong-year-or-period falling to 8 and wrong-row-label falling to 10.
+
+The latest pass adds a period-end row preference for change queries. A change
+query (`change`/`increased`/`decreased`/`growth`) over a table carrying both a
+period-beginning and a period-end row for the same metric used to tie on
+`_best_query_row` score, so the earlier (beginning) row won. The JPM 2007 MSR
+fair-value question therefore compared `fair value at beginning of period`
+(`(7546 - 6682) / 6682 = 12.9%`) instead of `fair value at december 31`
+(`(8632 - 7546) / 7546 = 14.4%`). The new `_change_period_preference` helper
+rewards the period-end row and penalizes the period-beginning row, but only as
+a tiebreaker between rows that already lexically match the query. Gating on
+lexical coverage is what keeps this safe: an ungated version promoted an
+unrelated `net mw in operation at december 31` row for an earnings query whose
+true value lives in prose, regressing ETR 2002 from `57.0%` to `14.8%`; the
+coverage gate restores the prose fallback and removes the regression. This
+fixes the JPM 2007 and APD 2018 change questions. On FinQA-300, exact match
+rises to 0.367 oracle-doc, 0.280 open BM25, and 0.340 source-rerank.
+Source-rerank wrong-operation-or-row falls to 62 and
+ambiguous_supported_wrong_number falls to 31.
+
+## Current Pipeline Gate
+
+The FinQA-300 local-planner run is now wired into the one-command project
+pipeline:
+
+```powershell
+python .\scripts\run_pipeline.py --refresh-results
+```
+
+The 2026-06-24 refresh passed unit tests (`175 tests OK`), reran the
+FinQA-300 local-planner manifest, regenerated row/operation diagnostics, and
+rebuilt paper-ready Markdown and LaTeX tables under
+`paper/generated/finqa_300_local_planner/`. Use
+`outputs/pipeline/pipeline_report.md` as the first artifact to check after each
+full refresh.

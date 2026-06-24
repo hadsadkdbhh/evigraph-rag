@@ -40,25 +40,54 @@ DEFAULT_RESULT_SPECS = (
     ),
 )
 
+FINQA_300_LOCAL_RESULT_SPECS = (
+    ResultSpec(
+        "Oracle-doc",
+        "finqa_300_subset_oracle_doc_full_local_planner.csv",
+        ("full_evigraph",),
+    ),
+    ResultSpec(
+        "Open BM25",
+        "finqa_300_subset_open_bm25_full_local_planner.csv",
+        ("full_evigraph",),
+    ),
+    ResultSpec(
+        "BM25 + source rerank",
+        "finqa_300_subset_source_rerank_full_local_planner.csv",
+        ("full_evigraph",),
+    ),
+)
+
+RESULT_SPEC_PRESETS = {
+    "finqa": DEFAULT_RESULT_SPECS,
+    "finqa_300_local": FINQA_300_LOCAL_RESULT_SPECS,
+}
+
 
 class PaperAssetBuilder:
     """Build paper-ready result snippets from manifest CSV outputs."""
 
-    def build(self, eval_dir: str | Path, output_dir: str | Path) -> dict[str, str]:
+    def build(
+        self,
+        eval_dir: str | Path,
+        output_dir: str | Path,
+        preset: str = "finqa",
+    ) -> dict[str, str]:
         eval_path = Path(eval_dir)
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
+        specs = self._result_specs(preset)
 
-        result_rows = self._result_rows(eval_path)
-        failure_rows = self._failure_rows(eval_path)
-        diagnostic_rows = self._diagnostic_rows(eval_path)
+        result_rows = self._result_rows(eval_path, specs)
+        failure_rows = self._failure_rows(eval_path, specs)
+        diagnostic_rows = self._diagnostic_rows(eval_path, specs)
         paths = {
             "latex": str(output_path / "finqa_results_tables.tex"),
             "markdown": str(output_path / "finqa_results_summary.md"),
         }
         Path(paths["latex"]).write_text(self.render_latex(result_rows, failure_rows, diagnostic_rows), encoding="utf-8")
         Path(paths["markdown"]).write_text(
-            self.render_markdown(result_rows, failure_rows, diagnostic_rows, source_label=str(eval_path)),
+            self.render_markdown(result_rows, failure_rows, diagnostic_rows, source_label=self._display_path(eval_path)),
             encoding="utf-8",
         )
         return paths
@@ -132,7 +161,7 @@ class PaperAssetBuilder:
             [
                 "\\bottomrule",
                 "\\end{tabular}",
-                "\\caption{Failure categories for full EviGraph on the FinQA 100-example diagnostic subset. The categories are generated directly from the manifest CSVs and should be used to drive the next engineering iteration.}",
+                "\\caption{Failure categories for full EviGraph on the FinQA diagnostic subset. The categories are generated directly from the manifest CSVs and should be used to drive the next engineering iteration.}",
                 "\\label{tab:finqa-failure-categories}",
                 "\\end{table}",
                 "",
@@ -262,16 +291,23 @@ class PaperAssetBuilder:
                 "## Paper-Safe Claims",
                 "",
                 "- Treat these as diagnostic smoke-subset results, not final benchmark claims.",
-                "- Report open BM25 and open hybrid separately from oracle-doc and source-rerank settings.",
+                "- Report open retrieval settings separately from oracle-doc and source-rerank settings.",
                 "- Use the failure-category table to justify the next row/operation-selection iteration.",
                 "",
             ]
         )
         return "\n".join(lines)
 
-    def _result_rows(self, eval_dir: Path) -> list[dict[str, Any]]:
+    def _result_specs(self, preset: str) -> tuple[ResultSpec, ...]:
+        try:
+            return RESULT_SPEC_PRESETS[preset]
+        except KeyError as exc:
+            allowed = ", ".join(sorted(RESULT_SPEC_PRESETS))
+            raise ValueError(f"Unknown paper asset preset {preset!r}. Expected one of: {allowed}") from exc
+
+    def _result_rows(self, eval_dir: Path, specs: tuple[ResultSpec, ...]) -> list[dict[str, Any]]:
         rows = []
-        for spec in DEFAULT_RESULT_SPECS:
+        for spec in specs:
             csv_path = self._spec_csv_path(eval_dir, spec)
             grouped = self._group_by_method(self._read_csv(csv_path))
             for method in spec.methods:
@@ -292,10 +328,10 @@ class PaperAssetBuilder:
                 )
         return rows
 
-    def _failure_rows(self, eval_dir: Path) -> list[dict[str, Any]]:
+    def _failure_rows(self, eval_dir: Path, specs: tuple[ResultSpec, ...]) -> list[dict[str, Any]]:
         rows = []
         analyzer = FailureAnalyzer()
-        for spec in DEFAULT_RESULT_SPECS:
+        for spec in specs:
             analysis = analyzer.analyze(self._spec_csv_path(eval_dir, spec), method="full_evigraph")
             categories = analysis["categories"]
             rows.append(
@@ -311,10 +347,10 @@ class PaperAssetBuilder:
             )
         return rows
 
-    def _diagnostic_rows(self, eval_dir: Path) -> list[dict[str, Any]]:
+    def _diagnostic_rows(self, eval_dir: Path, specs: tuple[ResultSpec, ...]) -> list[dict[str, Any]]:
         rows = []
         analyzer = RowOperationDiagnosticAnalyzer()
-        for spec in DEFAULT_RESULT_SPECS:
+        for spec in specs:
             analysis = analyzer.analyze(self._spec_csv_path(eval_dir, spec), method="full_evigraph")
             label_counts = analysis["label_counts"]
             row = {"setting": spec.label}
@@ -370,3 +406,9 @@ class PaperAssetBuilder:
 
     def _latex_escape(self, text: str) -> str:
         return text.replace("&", "\\&").replace("_", "\\_")
+
+    def _display_path(self, path: Path) -> str:
+        try:
+            return str(path.resolve().relative_to(Path.cwd().resolve()))
+        except ValueError:
+            return str(path)

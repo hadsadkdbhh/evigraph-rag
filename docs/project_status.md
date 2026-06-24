@@ -7,9 +7,37 @@ Last updated from the checked-in FinQA MVP0 run.
 - Engineering pipeline: complete for MVP0 reproducibility.
 - MVP0 experiment loop: complete for toy, stress, 100-example FinQA smoke, and a
   300-example FinQA validation-scale diagnostic run.
+- FinQA-300 local-planner pipeline: closed as a one-command reproducibility
+  path for tests, optional result refresh, diagnostics, and paper tables.
 - AAAI readiness: early research prototype; the system is not yet at submission-quality benchmark performance.
 
 ## Reproducibility Gates
+
+Run the current FinQA-300 local-planner pipeline without refreshing results:
+
+```powershell
+python scripts/run_pipeline.py
+```
+
+Run the full FinQA-300 refresh gate:
+
+```powershell
+python scripts/run_pipeline.py --refresh-results
+```
+
+The pipeline writes:
+
+- `outputs/pipeline/pipeline_report.json`
+- `outputs/pipeline/pipeline_report.md`
+- `outputs/pipeline/pipeline_report_quick.md`
+- `outputs/pipeline/pipeline_report_full_refresh.md`
+- `paper/generated/finqa_300_local_planner/finqa_results_summary.md`
+- `paper/generated/finqa_300_local_planner/finqa_results_tables.tex`
+
+The 2026-06-24 full refresh passed all three stages: unit tests
+(`175 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
+FinQA-300 local-planner exact-match results are 0.367 oracle-doc, 0.280 open
+BM25, and 0.340 BM25 plus source rerank.
 
 Run the quick MVP0 acceptance suite:
 
@@ -220,3 +248,63 @@ the years. It also reports positive magnitude only for the narrow `what percent
 decrease` phrasing, with an explicit `abs(...)` calculation for verifier
 support. FinQA-300 is now 0.350 oracle-doc, 0.270 open BM25, and 0.327
 source-rerank. Source-rerank ambiguous-supported-wrong-number is down to 35.
+
+The current row-token operand-selection pass fixes a concrete substring
+matching error inside `ambiguous_supported_wrong_number`: `tangible` was
+previously allowed to match inside `intangible`, causing the GPN acquisition
+case to select `customer-related intangible assets` instead of `total
+identifiable net assets`. `TableOperationExecutor.select_best_row` now matches
+row labels by normalized tokens with a light plural stemmer, preserving common
+financial variants such as `liability`/`liabilities` without accepting
+misleading substrings. FinQA-300 moves to 0.360 oracle-doc, 0.270 open BM25,
+and 0.333 source-rerank. Source-rerank wrong-operation-or-row falls to 64, and
+ambiguous-supported-wrong-number falls to 32.
+
+The current entity-difference pass adds a narrow local-planner path for
+questions of the form `difference in METRIC between ENTITY_A and ENTITY_B`.
+These questions ask for an absolute entity-to-entity difference rather than a
+year-over-year signed change. The ETR 2017 payments case now resolves the
+shared `payments (receipts)` column for `entergy arkansas` and `entergy
+louisiana`, returning `abs(2 - 6) = 4` instead of subtracting Arkansas from
+itself. FinQA-300 stays at 0.360 oracle-doc and 0.333 source-rerank, while open
+BM25 rises from 0.270 to 0.273. The source-rerank row/operation bucket remains
+64, so the next target is still operand selection in
+`ambiguous_supported_wrong_number`.
+
+The current year-anchored average pass fixes a concrete `_row_values_average`
+regression rather than adding a new arithmetic rule. `NumericReasoner._keywords`
+strips every 20XX token, so two rows that differ only by year in the label
+(for example `liability at december 31 2006` and `... 2008`) tied in
+`_best_query_row` and the earlier row always won. The IPG 2008 restructuring
+question therefore averaged the 2006 row plus its `total` column, returning
+`519.4` instead of `(1.2 + 5.7 + 5.9) / 3 = 4.3`. `_row_values_average` now
+prefers a semantically matched row whose label carries the query year, and it
+excludes a `total` summary column from the average. This fixes the IPG 2008
+example across oracle-doc, open BM25, and source-rerank. On FinQA-300, exact
+match rises to 0.363 oracle-doc, 0.277 open BM25, and 0.337 source-rerank.
+Source-rerank wrong-operation-or-row falls to 63, with wrong-year-or-period
+falling to 8 and wrong-row-label falling to 10. The next target remains operand
+selection inside the larger `ambiguous_supported_wrong_number` bucket, and the
+broader lesson is that average-row selection should respect the year anchor the
+query provides before falling back to lexical row matching.
+
+The latest pass adds a period-end row preference for change queries. A change
+query (`change`/`increased`/`decreased`/`growth`) over a table carrying both a
+period-beginning and a period-end row for the same metric used to tie on
+`_best_query_row` score, and the earlier (beginning) row won. The JPM 2007 MSR
+fair-value question therefore compared `fair value at beginning of period`
+(`(7546 - 6682) / 6682 = 12.9%`) instead of `fair value at december 31`
+(`(8632 - 7546) / 7546 = 14.4%`). The new `_change_period_preference` helper
+rewards the period-end row (`at december 31`, `ending balance`) and penalizes
+the period-beginning row, but only as a tiebreaker between rows that already
+lexically match the query. The lexical coverage gate is essential: an earlier
+ungated version promoted an unrelated `net mw in operation at december 31` row
+for an earnings query whose true value lives in prose, regressing ETR 2002 from
+`57.0%` to `14.8%`. Gating on coverage preserves the prose fallback and removes
+the regression. This fixed the JPM 2007 and APD 2018 change questions with no
+real regressions (oracle-doc gains six cases, loses none on the change path).
+On FinQA-300, exact match rises to 0.367 oracle-doc, 0.280 open BM25, and 0.340
+source-rerank. Source-rerank wrong-operation-or-row falls to 62 and
+ambiguous_supported_wrong_number falls to 31. The lesson reinforced here is that
+intent-based row preferences must not bypass lexical coverage, or they promote
+unrelated rows and suppress the correct planner fallback.

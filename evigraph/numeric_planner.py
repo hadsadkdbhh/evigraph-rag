@@ -169,6 +169,17 @@ class HeuristicNumericPlanClient:
                 "rationale": "heuristic period-aware percent-change program",
             }
 
+        entity_difference = self._entity_difference_terms(lowered)
+        if entity_difference is not None:
+            metric_terms, target_terms, base_terms = entity_difference
+            return {
+                "operation": "absolute_difference",
+                "node_id": self._node_id(contexts, [*metric_terms, *target_terms, *base_terms]),
+                "target": {"row_terms": target_terms, "column_terms": metric_terms, "period": period},
+                "base": {"row_terms": base_terms, "column_terms": metric_terms, "period": period},
+                "rationale": "heuristic entity-to-entity difference program",
+            }
+
         if self._is_difference(lowered):
             target_year, base_year = self._target_base_years(lowered, years)
             row_terms = self._difference_terms(lowered) or operation_terms
@@ -401,6 +412,20 @@ class HeuristicNumericPlanClient:
     def _difference_terms(self, lowered: str) -> list[str]:
         return self._terms_after(lowered, ["difference in", "change in", "increase in", "decrease in", "decline in"])
 
+    def _entity_difference_terms(self, lowered: str) -> tuple[list[str], list[str], list[str]] | None:
+        match = re.search(
+            r"\bdifference\s+in\s+(?P<metric>.+?)\s+between\s+(?P<target>.+?)\s+and\s+(?P<base>.+?)(?:\?|$)",
+            lowered,
+        )
+        if not match:
+            return None
+        metric_terms = self._content_terms(match.group("metric"))
+        target_terms = self._content_terms(match.group("target"))
+        base_terms = self._content_terms(re.split(r"\s*,\s*in\s+", match.group("base"), maxsplit=1)[0])
+        if not metric_terms or not target_terms or not base_terms:
+            return None
+        return metric_terms, target_terms, base_terms
+
     def _aggregate_terms(self, lowered: str) -> list[str]:
         terms = self._terms_after(lowered, ["average", "sum of", "total of", "total amount of", "combined"])
         if terms:
@@ -524,7 +549,7 @@ class NumericPlanExecutor:
                 calculation=f"planned_lookup target={self._value_ref(target)}: {target.value:g}",
             )
 
-        if operation in {"difference", "ratio", "percent_change"}:
+        if operation in {"difference", "absolute_difference", "ratio", "percent_change"}:
             target = self.executor.resolve_value(plan.get("target"), context_text, support_text=query)
             base = self.executor.resolve_value(plan.get("base"), context_text, support_text=query)
             if target is None or base is None:
@@ -536,6 +561,18 @@ class NumericPlanExecutor:
                     calculation=self._calculation(
                         "planned_difference",
                         result.expression,
+                        target,
+                        base,
+                    ),
+                )
+            if operation == "absolute_difference":
+                result = self.executor.difference(target.value, base.value)
+                value = abs(result.value)
+                return PlannedNumericAnswer(
+                    text=f"{value:g}",
+                    calculation=self._calculation(
+                        "planned_absolute_difference",
+                        f"abs({target.value:g} - {base.value:g}) = {value:g}",
                         target,
                         base,
                     ),

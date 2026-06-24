@@ -80,7 +80,8 @@ class TableOperationExecutor:
             if label_column >= len(row):
                 continue
             label = row[label_column].lower()
-            matched = sum(1 for term in normalized_terms if term in label)
+            label_terms = self._terms([label])
+            matched = sum(1 for term in normalized_terms if self._term_matches_label(term, label_terms))
             if matched == 0:
                 continue
             all_matched = 1 if matched == len(normalized_terms) else 0
@@ -344,6 +345,24 @@ class TableOperationExecutor:
         for term in terms:
             normalized.extend(re.findall(r"[a-z0-9&]+", term.lower()))
         return [term for term in normalized if term]
+
+    def _term_matches_label(self, term: str, label_terms: list[str]) -> bool:
+        for label_term in label_terms:
+            if label_term == term:
+                return True
+            if self._same_plural_stem(label_term, term):
+                return True
+        return False
+
+    def _same_plural_stem(self, left: str, right: str) -> bool:
+        return self._singularize(left) == self._singularize(right)
+
+    def _singularize(self, token: str) -> str:
+        if len(token) > 4 and token.endswith("ies"):
+            return f"{token[:-3]}y"
+        if len(token) > 3 and token.endswith("s") and not token.endswith("ss"):
+            return token[:-1]
+        return token
 
     def _is_separator_line(self, line: str) -> bool:
         return bool(re.fullmatch(r"\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*", line))
