@@ -285,6 +285,28 @@ rises to 0.367 oracle-doc, 0.280 open BM25, and 0.340 source-rerank.
 Source-rerank wrong-operation-or-row falls to 62 and
 ambiguous_supported_wrong_number falls to 31.
 
+The latest ambiguous-supported-wrong-number pass adds inline row recovery for
+year-range averages when chunking truncates the Markdown table but leaves the
+serialized row text intact. The JPM 2018 AFS investment-securities question now
+uses `afs investment securities (period-end)` and computes `(236670 + 200247 +
+228681) / 3 = 221866` instead of averaging the neighboring
+`investment securities gains/(losses)` row. On FinQA-300, exact match rises to
+0.373 oracle-doc, 0.283 open BM25, and 0.343 source-rerank. Source-rerank
+wrong-operation-or-row falls to 61, and ambiguous_supported_wrong_number falls
+to 30.
+
+The latest operand-selection pass targets split table/prose sales-denominator
+ratios rather than adding a broad rule. Same-source chunks are now grouped
+before the single-chunk prose fallback for year-specific `sales` denominator
+questions, and truncated year-only Markdown headers are realigned so the row
+label column does not shift query-year values. This fixes the IP 2006
+foodservice-over-consumer-packaging case (`437 / 2245 = 19.5%`), the IP 2007
+European-industrial-packaging case (`1100 / 5245 = 21.0%`), and keeps the IP
+2009 North-American-consumer-packaging ratio at `2500 / 3195 = 78.2%`.
+On FinQA-300, exact match rises to 0.383 oracle-doc, 0.300 open BM25, and
+0.353 source-rerank. Source-rerank wrong-operation-or-row falls to 58, and
+ambiguous_supported_wrong_number falls to 29.
+
 ## Current Pipeline Gate
 
 The FinQA-300 local-planner run is now wired into the one-command project
@@ -294,7 +316,7 @@ pipeline:
 python .\scripts\run_pipeline.py --refresh-results
 ```
 
-The 2026-06-24 refresh passed unit tests (`175 tests OK`), reran the
+The 2026-06-24 refresh passed unit tests (`183 tests OK`), reran the
 FinQA-300 local-planner manifest, regenerated row/operation diagnostics, and
 rebuilt paper-ready Markdown and LaTeX tables under
 `paper/generated/finqa_300_local_planner/`. Use

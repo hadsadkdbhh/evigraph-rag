@@ -31,17 +31,17 @@ Latest documented FinQA-300 local planner exact match:
 
 | Setting | Accuracy |
 | --- | ---: |
-| Oracle-doc full EviGraph | 0.367 |
-| Open BM25 full EviGraph | 0.280 |
-| BM25 + source-rerank full EviGraph | 0.340 |
+| Oracle-doc full EviGraph | 0.383 |
+| Open BM25 full EviGraph | 0.300 |
+| BM25 + source-rerank full EviGraph | 0.353 |
 
 Latest source-rerank diagnostic counts:
 
 | Failure class | Count |
 | --- | ---: |
-| wrong_numeric_operation_or_row | 62 |
+| wrong_numeric_operation_or_row | 58 |
 | no_numeric_answer_other | 38 |
-| no_numeric_answer_percent | 37 |
+| no_numeric_answer_percent | 38 |
 | no_numeric_answer_additive_or_lookup | 32 |
 | no_numeric_answer_ratio | 17 |
 | unsupported_textual_prediction | 11 |
@@ -50,12 +50,12 @@ Latest row/operation diagnostic split for source-rerank:
 
 | Label | Count |
 | --- | ---: |
-| ambiguous_supported_wrong_number | 31 |
+| ambiguous_supported_wrong_number | 29 |
 | wrong_operation_type | 14 |
-| wrong_row_label | 10 |
+| wrong_row_label | 8 |
 | wrong_year_or_period | 8 |
-| wrong_denominator | 6 |
-| wrong_numerator | 5 |
+| wrong_denominator | 3 |
+| wrong_numerator | 6 |
 
 ## Pipeline Closure
 
@@ -74,7 +74,7 @@ python .\scripts\run_pipeline.py --refresh-results
 
 The latest full refresh passed:
 
-- Unit tests: `175 tests OK`
+- Unit tests: `183 tests OK`
 - Manifest: `configs/experiments.finqa_300.local_planner.json`
 - Result directory: `outputs/eval/finqa_300_local_planner`
 - Pipeline report: `outputs/pipeline/pipeline_report.md`
@@ -130,6 +130,27 @@ gate before reporting new FinQA-300 numbers.
   (`(8632 - 7546) / 7546 = 14.4%` instead of `12.9%`) and the APD 2018
   operating-expenses change, moving FinQA-300 to 0.367 oracle-doc, 0.280 open
   BM25, and 0.340 source-rerank.
+- Inline row recovery for year-range averages when chunking truncates the
+  Markdown table but preserves serialized row text. The JPM 2018 AFS
+  investment securities example previously selected `investment securities
+  gains/(losses)` from the truncated table and returned `-113.667`; the
+  reasoner now recovers the inline row `afs investment securities (period-end)`
+  and computes `(236670 + 200247 + 228681) / 3 = 221866`. This moves FinQA-300
+  to 0.373 oracle-doc, 0.283 open BM25, and 0.343 source-rerank, and reduces
+  source-rerank `ambiguous_supported_wrong_number` to 30.
+- Split table/prose operand selection for sales-denominator ratio questions.
+  When a chunk boundary truncates a Markdown table header into a year-only
+  header, the scoped sales-denominator resolver now realigns the row-label
+  column before selecting the query-year value. For year-specific `sales`
+  denominator ratios, same-source chunks are grouped before the single-chunk
+  prose fallback, so numerator prose such as `foodservice net sales` or
+  `european industrial packaging net sales` can combine with the scoped segment
+  sales row. This fixes the IP 2006 foodservice-over-consumer-packaging case
+  (`437 / 2245 = 19.5%`), the IP 2007 European-industrial-packaging case
+  (`1100 / 5245 = 21.0%`), and preserves the IP 2009 North-American-consumer
+  packaging case (`2500 / 3195 = 78.2%`). FinQA-300 moves to 0.383 oracle-doc,
+  0.300 open BM25, and 0.353 source-rerank; source-rerank
+  `wrong_numeric_operation_or_row` falls to 58.
 
 Do not repeat these as broad rewrites. Build only from failure reports and add
 small verified fixes.

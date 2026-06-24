@@ -201,6 +201,21 @@ class NumericReasoner:
                         cited_node_ids=[node_id],
                     )
         for node_id, text in contexts:
+            values = self._inline_multi_year_row_values_for_query(query_lower, text, years)
+            if not values:
+                continue
+            ordered = [values[year] for year in years if year in values]
+            if len(ordered) != len(years):
+                continue
+            operation = self.executor.average(ordered)
+            if operation is None:
+                continue
+            return NumericAnswer(
+                text=f"{operation.value:.1f}",
+                calculation=f"year_range_average row={values.get('__row_label__', '')}: {operation.expression}",
+                cited_node_ids=[node_id],
+            )
+        for node_id, text in contexts:
             values = self._prose_multi_year_values_for_query(query_lower, text, years)
             if not values:
                 continue
@@ -216,6 +231,28 @@ class NumericReasoner:
                 cited_node_ids=[node_id],
             )
         return None
+
+    def _inline_multi_year_row_values_for_query(
+        self,
+        query_lower: str,
+        text: str,
+        years: list[str],
+    ) -> dict[str, float] | None:
+        terms = [term for term in self._keywords(query_lower) if term not in {"during", "years", "year"}]
+        if not terms:
+            return None
+        values: dict[str, float] = {}
+        row_label = ""
+        for year in years:
+            value, label = self._inline_row_value_for_terms_year(text, terms, year, query_lower)
+            if value is None or not label:
+                return None
+            if row_label and label != row_label:
+                return None
+            row_label = label
+            values[year] = value
+        values["__row_label__"] = row_label
+        return values
 
     def _year_range_average(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
         range_match = re.search(r"\b(20\d{2})\s*[-–]\s*(20\d{2})\b", query_lower)
@@ -1442,6 +1479,19 @@ class NumericReasoner:
             if table_answer is not None:
                 return table_answer
 
+        tried_grouped_contexts = False
+        if query_year and "sales" in denominator_terms:
+            tried_grouped_contexts = True
+            grouped_table_answer = self._ratio_percent_from_grouped_contexts(
+                query_lower,
+                contexts,
+                numerator_terms,
+                denominator_terms,
+                query_year,
+            )
+            if grouped_table_answer is not None:
+                return grouped_table_answer
+
         if self._allow_prose_ratio(query_lower, query_year):
             for node_id, text in contexts:
                 prose_answer = self._prose_ratio_percent(
@@ -1454,15 +1504,16 @@ class NumericReasoner:
                 if prose_answer is not None:
                     return prose_answer
 
-        grouped_table_answer = self._ratio_percent_from_grouped_contexts(
-            query_lower,
-            contexts,
-            numerator_terms,
-            denominator_terms,
-            query_year,
-        )
-        if grouped_table_answer is not None:
-            return grouped_table_answer
+        if not tried_grouped_contexts:
+            grouped_table_answer = self._ratio_percent_from_grouped_contexts(
+                query_lower,
+                contexts,
+                numerator_terms,
+                denominator_terms,
+                query_year,
+            )
+            if grouped_table_answer is not None:
+                return grouped_table_answer
 
         cross_context_answer = self._ratio_percent_across_contexts(
             contexts,
@@ -1481,6 +1532,14 @@ class NumericReasoner:
             denominator_meta = {}
             if query_year:
                 denominator, denominator_meta = self._table_value_for_terms_year_with_label(text, denominator_terms, query_year)
+                scoped_denominator, scoped_denominator_meta = self._scoped_sales_table_value_for_year(
+                    text,
+                    denominator_terms,
+                    query_year,
+                )
+                if scoped_denominator is not None:
+                    denominator = scoped_denominator
+                    denominator_meta = scoped_denominator_meta
             if denominator is None:
                 denominator, denominator_meta = self._matching_ratio_value_with_label(
                     rows,
@@ -1516,8 +1575,12 @@ class NumericReasoner:
                     allow_partial=False,
                 )
             if numerator is None and query_year:
-                numerator = self._prose_value_for_terms_year(text, numerator_terms, query_year)
-                numerator_meta = {}
+                numerator, numerator_label = self._prose_amount_for_terms_year(text, numerator_terms, query_year)
+                if numerator is None:
+                    numerator = self._prose_value_for_terms_year(text, numerator_terms, query_year)
+                    numerator_meta = {}
+                else:
+                    numerator_meta = {"row_label": numerator_label, "source": "prose"}
             if numerator is None:
                 numerator, numerator_meta = self._matching_ratio_value_with_label(
                     rows,
@@ -1596,7 +1659,7 @@ class NumericReasoner:
             )
             if answer is not None:
                 return NumericAnswer(answer.text, answer.calculation, node_ids)
-            if "total" in denominator_terms or "total" in query_lower:
+            if "total" in denominator_terms or "total" in query_lower or (query_year and "sales" in denominator_terms):
                 mixed_answer = self._prose_ratio_percent(
                     node_ids[0],
                     combined_text,
@@ -2266,6 +2329,22 @@ class NumericReasoner:
             ):
                 denominator = year_denominator
                 denominator_meta = year_denominator_meta
+            scoped_denominator, scoped_denominator_meta = self._scoped_sales_table_value_for_year(
+                text,
+                denominator_terms,
+                query_year,
+            )
+            if scoped_denominator is not None:
+                denominator = scoped_denominator
+                denominator_meta = scoped_denominator_meta
+            year_numerator, year_numerator_label = self._prose_amount_for_terms_year(
+                text,
+                numerator_terms,
+                query_year,
+            )
+            if year_numerator is not None:
+                numerator = year_numerator
+                numerator_meta = {"row_label": year_numerator_label, "source": "prose"}
         if denominator is not None and not self._denominator_label_allowed(
             str(denominator_meta.get("row_label", "")),
             denominator_terms,
@@ -2296,6 +2375,13 @@ class NumericReasoner:
             numerator_meta,
             denominator_meta,
         )
+        if query_year and self._sales_denominator_requires_grouped_scope(
+            text,
+            denominator_terms,
+            numerator_terms,
+            denominator_meta,
+        ):
+            return None
         if numerator_meta.get("row_label") and numerator_meta.get("row_label") == denominator_meta.get("row_label"):
             return None
         operation = self.executor.ratio(numerator, denominator)
@@ -2325,6 +2411,121 @@ class NumericReasoner:
         if direct_prose_ratio:
             return True
         return query_year is None and " as a percentage of " in query_lower
+
+    def _prose_amount_for_terms_year(self, text: str, terms: list[str], year: str) -> tuple[float | None, str]:
+        if not terms or not year:
+            return None, ""
+        best: tuple[int, float, str] | None = None
+        min_matches = self._minimum_term_matches(terms)
+        amount_pattern = re.compile(
+            r"\(?\s*(\$)?\s*([-+]?\d+(?:\.\d+)?)\s*(billion|million|thousand)?\s*\)?",
+            flags=re.IGNORECASE,
+        )
+        for sentence in self._prose_sentences(text):
+            lower_sentence = sentence.lower()
+            if year not in lower_sentence:
+                continue
+            sentence_years = re.findall(r"\b(20\d{2})\b", sentence)
+            if len(set(sentence_years)) < 2:
+                continue
+            matched_terms = [term for term in terms if term in lower_sentence]
+            if len(matched_terms) < min_matches:
+                continue
+            year_matches = list(re.finditer(rf"\b{re.escape(year)}\b", sentence))
+            year_positions = [match.start() for match in year_matches]
+            if not year_positions:
+                continue
+            amount_matches = [
+                amount
+                for amount in amount_pattern.finditer(sentence)
+                if amount.group(1) or amount.group(3)
+            ]
+            for year_match in year_matches:
+                before = [amount for amount in amount_matches if amount.end() <= year_match.start()]
+                if before:
+                    amount = before[-1]
+                    distance = year_match.start() - amount.end()
+                    if distance <= 60:
+                        value = self._scaled_number(amount.group(2), amount.group(3).lower() if amount.group(3) else None)
+                        if value is not None:
+                            score = len(matched_terms) * 1000 - distance + 20
+                            candidate = (score, value, " ".join(matched_terms))
+                            if best is None or candidate > best:
+                                best = candidate
+                            continue
+                after = [amount for amount in amount_matches if amount.start() >= year_match.end()]
+                if after:
+                    amount = after[0]
+                    distance = amount.start() - year_match.end()
+                    if distance <= 60:
+                        value = self._scaled_number(amount.group(2), amount.group(3).lower() if amount.group(3) else None)
+                        if value is not None:
+                            score = len(matched_terms) * 1000 - distance
+                            candidate = (score, value, " ".join(matched_terms))
+                            if best is None or candidate > best:
+                                best = candidate
+        if best is None:
+            return None, ""
+        _score, value, label = best
+        return value, label
+
+    def _scoped_sales_table_value_for_year(
+        self,
+        text: str,
+        denominator_terms: list[str],
+        year: str,
+    ) -> tuple[float | None, dict[str, str]]:
+        if "sales" not in denominator_terms:
+            return None, {}
+        scope_terms = [term for term in denominator_terms if term not in {"sales", "net", "total"}]
+        if len(scope_terms) < 2 or not self._table_context_matches_terms(text, scope_terms):
+            return None, {}
+        for headers, rows in self._markdown_tables(text):
+            year_index = self._header_year_index(headers, year)
+            if year_index is None:
+                continue
+            value_index = year_index
+            if (
+                year_index == 0
+                or (
+                    len(rows) > 0
+                    and len(rows[0]) == len(headers) + 1
+                    and all(re.search(r"\b(?:19|20)\d{2}\b", header) for header in headers)
+                )
+            ):
+                value_index = year_index + 1
+            for row in rows:
+                if value_index >= len(row) or not row:
+                    continue
+                label = row[0].strip().lower()
+                if label not in {"sales", "net sales"}:
+                    continue
+                value = self._first_number(row[value_index])
+                if value is not None:
+                    return value, {"row_label": label, "source": "table"}
+        return None, {}
+
+    def _sales_denominator_requires_grouped_scope(
+        self,
+        text: str,
+        denominator_terms: list[str],
+        numerator_terms: list[str],
+        denominator_meta: dict[str, str],
+    ) -> bool:
+        if "sales" not in denominator_terms:
+            return False
+        scope_terms = [term for term in denominator_terms if term not in {"sales", "net", "total"}]
+        if len(scope_terms) < 2:
+            return False
+        denominator_label = str(denominator_meta.get("row_label", "")).lower()
+        if denominator_label in {"sales", "net sales"}:
+            return not self._table_context_matches_terms(text, scope_terms)
+        if denominator_meta.get("source") == "prose":
+            denominator_set = set(denominator_terms)
+            numerator_set = set(numerator_terms)
+            if denominator_set and denominator_set.issubset(numerator_set | {"net"}):
+                return True
+        return False
 
     def _normalize_mixed_table_prose_scale(
         self,

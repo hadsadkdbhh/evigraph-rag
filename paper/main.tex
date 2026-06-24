@@ -28,7 +28,7 @@ Anonymous Authors
 \begin{abstract}
 Retrieval-augmented generation systems often treat retrieved passages as usable evidence, even when the retrieved context is incomplete, noisy, or numerically under-specified.
 We study evidence-state control: a pipeline that converts retrieved candidates into an explicit evidence graph, scores their utility and risk, selects a compact support subgraph, executes table-oriented numerical operations, and verifies generated claims against cited support.
-This draft establishes the experimental scaffold for EviGraph-RAG on controlled stress tests and a deterministic 100-example FinQA validation subset.
+This draft establishes the experimental scaffold for EviGraph-RAG on controlled stress tests and a deterministic 300-example FinQA validation subset.
 Current results should be read as diagnostic baselines rather than final benchmark claims.
 \end{abstract}
 
@@ -43,7 +43,7 @@ Each retrieved item becomes a node with utility, risk, cost, and provenance sign
 The system then selects a support subgraph, expands source context when running oracle-document analysis, executes table operations, and verifies claims against citations.
 
 This skeleton is intentionally conservative.
-The current FinQA experiments use a deterministic 100-example validation subset and report four retrieval settings: oracle-document, open BM25, deterministic open hybrid, and BM25 with source reranking.
+The current FinQA experiments use a deterministic 300-example validation subset and report three local-planner retrieval settings: oracle-document, open BM25, and BM25 with source reranking.
 
 \section{Related Work}
 
@@ -136,6 +136,8 @@ In EviGraph-RAG, this justifies greedy node pruning as a budgeted approximation 
 For numerical QA, the system executes table operations including row/column selection, sum, difference, ratio, percent change, and average.
 Each executed operation returns both a numeric value and a human-readable expression used in the final answer trace.
 When deterministic rules fail, an optional LLM numeric planner can propose a structured operation plan; EviGraph-RAG then validates that planned numeric inputs occur in the cited context and executes the operation locally rather than accepting a free-form model answer.
+The current local planner also recovers year-range averages from inline table rows when chunking truncates the Markdown table but preserves the serialized row text.
+This targets failures where a selected chunk contains the right row and years in prose form, but the parsed table fragment exposes only a distracting neighboring row.
 
 \subsection{Claim Verification}
 
@@ -169,7 +171,7 @@ edges: support, derivation, temporal alignment, conflict \\
 
 \subsection{Datasets}
 
-\textbf{FinQA.} We use a deterministic 100-example validation subset from \texttt{dreamerdeo/finqa}, sampled from the first 100 validation rows with seed 13.
+\textbf{FinQA.} We use a deterministic 300-example validation subset from \texttt{dreamerdeo/finqa}, preserving source-document metadata for oracle-document and source-rerank analysis.
 The corpus serializes source pre-text, tables, and post-text to Markdown and excludes gold answers and gold evidence annotations from retrieval.
 
 \textbf{Stress Suite.} We also maintain a synthetic stress suite with official reports and distracting forecast/draft/press evidence.
@@ -179,23 +181,24 @@ This suite is used for mechanism debugging, not public benchmark claims.
 
 \textbf{Oracle-doc} constrains retrieval to the gold \texttt{source\_doc} and expands full source context for numerical evidence.
 \textbf{Open BM25} retrieves from the full corpus without source metadata.
-\textbf{Open hybrid} reranks open BM25 candidates with deterministic table, year, number, and operation-overlap features; it uses no gold source metadata.
 \textbf{BM25 + source rerank} retrieves broadly and softly promotes candidates whose source matches the known \texttt{source\_doc}; this is an analysis setting, not a deployable open-retrieval claim.
 
 \subsection{Baselines and Ablations}
 
-We compare top-k, utility-only, EviGraph without risk, EviGraph without verifier, EviGraph without support extraction, and full EviGraph.
-The current draft reports lexical and deterministic hybrid retrieval baselines; a dense retrieve-then-read baseline is still required before making final benchmark-level claims.
+The current table reports full EviGraph with the local program planner under oracle-document, open BM25, and source-rerank settings.
+Earlier top-k, utility-only, and open-hybrid ablations remain engineering diagnostics; stronger dense retrieval and retrieve-then-read baselines are still required before making final benchmark-level claims.
 
-\input{generated/finqa_results_tables}
+\input{generated/finqa_300_local_planner/finqa_results_tables}
 
 \section{Failure Analysis}
 
 The manifest runner emits a failure report that groups unresolved examples by error category.
 Current categories include missing numeric answer, wrong row/operation, additive lookup failures, ratio failures, and percent-operation failures.
-Table~\ref{tab:finqa-failure-categories} reports the current full EviGraph failure profile for the 100-example FinQA diagnostic subset.
+Table~\ref{tab:finqa-failure-categories} reports the current full EviGraph failure profile for the 300-example FinQA diagnostic subset.
 Table~\ref{tab:finqa-row-operation-diagnostics} further decomposes wrong numeric answers into operand, year/period, row-label, operation-type, and ambiguous supported wrong-number signals.
-The largest remaining actionable categories are operand selection and unresolved numeric-answer extraction, which are the next engineering targets before scaling to larger benchmark runs.
+The latest failure-driven repairs recover inline rows hidden by truncated Markdown table fragments and combine same-source table/prose chunks for year-specific sales-denominator ratios.
+These repairs move exact match to 0.383 under oracle-document retrieval, 0.300 under open BM25, and 0.353 under BM25 plus source reranking.
+The largest remaining actionable categories are still operand selection and unresolved numeric-answer extraction, especially denominator, year/period, and row-label ambiguity inside supported calculations.
 
 \section{Conclusion}
 

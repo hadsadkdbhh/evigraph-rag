@@ -75,7 +75,7 @@ class TableOperationExecutor:
         if label_column < 0 or not terms:
             return None
         normalized_terms = self._terms(terms)
-        best: tuple[int, int, int, list[str]] | None = None
+        best: tuple[int, int, int, int, list[str]] | None = None
         for index, row in enumerate(rows):
             if label_column >= len(row):
                 continue
@@ -85,11 +85,12 @@ class TableOperationExecutor:
             if matched == 0:
                 continue
             all_matched = 1 if matched == len(normalized_terms) else 0
+            extra_terms = sum(1 for term in label_terms if not self._term_matches_label(term, normalized_terms))
             value_count = sum(1 for cell in row[1:] if self.first_number(cell) is not None)
-            candidate = (all_matched, matched, value_count, row)
-            if best is None or candidate[:3] > best[:3]:
-                best = (all_matched, matched, value_count, row)
-        return best[3] if best else None
+            candidate = (all_matched, matched, -extra_terms, value_count, row)
+            if best is None or candidate[:4] > best[:4]:
+                best = (all_matched, matched, -extra_terms, value_count, row)
+        return best[4] if best else None
 
     def select_column(self, headers: list[str], rows: list[list[str]], terms: list[str]) -> list[str]:
         if not terms:

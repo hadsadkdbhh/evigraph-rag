@@ -35,9 +35,9 @@ The pipeline writes:
 - `paper/generated/finqa_300_local_planner/finqa_results_tables.tex`
 
 The 2026-06-24 full refresh passed all three stages: unit tests
-(`175 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
-FinQA-300 local-planner exact-match results are 0.367 oracle-doc, 0.280 open
-BM25, and 0.340 BM25 plus source rerank.
+(`183 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
+FinQA-300 local-planner exact-match results are 0.383 oracle-doc, 0.300 open
+BM25, and 0.353 BM25 plus source rerank.
 
 Run the quick MVP0 acceptance suite:
 
@@ -308,3 +308,30 @@ source-rerank. Source-rerank wrong-operation-or-row falls to 62 and
 ambiguous_supported_wrong_number falls to 31. The lesson reinforced here is that
 intent-based row preferences must not bypass lexical coverage, or they promote
 unrelated rows and suppress the correct planner fallback.
+
+The newest ambiguous-supported-wrong-number pass handles one chunk-truncated
+year-range average pattern. In the JPM 2018 AFS investment-securities case, the
+selected chunk preserved the serialized row text
+`afs investment securities (period-end) 228681 200247 236670`, but the Markdown
+table fragment was truncated before that row and exposed only distracting rows
+such as `investment securities gains/(losses)`. The numeric reasoner now
+recovers multi-year averages from an inline row when all requested years resolve
+to the same row label. The target example moves from `-113.667` to `221866.0`
+across oracle-doc, open BM25, and source-rerank. On FinQA-300, exact match rises
+to 0.373 oracle-doc, 0.283 open BM25, and 0.343 source-rerank. Source-rerank
+wrong-operation-or-row falls to 61 and ambiguous_supported_wrong_number falls to
+30. The next target remains denominator/year/row-label operand selection inside
+the remaining ambiguous supported calculations.
+
+The latest denominator/year/row-label pass attacks a concrete IP sales-ratio
+cluster. Same-source chunks are grouped before the single-chunk prose fallback
+for year-specific `sales` denominator questions, so a prose numerator can be
+combined with the scoped segment `sales` table row. The scoped table resolver
+also handles chunk-truncated year-only headers where the table label column has
+been shifted out of the header. This fixes IP 2006 foodservice over consumer
+packaging (`437 / 2245 = 19.5%`), IP 2007 European industrial packaging over
+industrial packaging (`1100 / 5245 = 21.0%`), and preserves IP 2009 North
+American consumer packaging over consumer packaging (`2500 / 3195 = 78.2%`).
+On FinQA-300, exact match rises to 0.383 oracle-doc, 0.300 open BM25, and
+0.353 source-rerank. Source-rerank wrong-operation-or-row falls to 58 and
+ambiguous_supported_wrong_number falls to 29.

@@ -1146,6 +1146,200 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertIn("north american consumer packaging net sales", answer.calculations[0])
         self.assertIn("denominator_row=consumer packaging sales", answer.calculations[0])
 
+    def test_ratio_percent_uses_query_year_for_prose_numerator_and_scoped_sales_denominator(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="mixed",
+                node_type="text",
+                content=(
+                    "consumer packaging in millions 2009 2008 2007 .\n"
+                    "| in millions | 2009 | 2008 | 2007 |\n"
+                    "| --- | ---: | ---: | ---: |\n"
+                    "| sales | $ 3060 | $ 3195 | $ 3015 |\n"
+                    "| operating profit | 433 | 17 | 112 |\n"
+                    "north american consumer packaging net sales were $ 2.2 billion compared "
+                    "with $ 2.5 billion in 2008 and $ 2.4 billion in 2007 ."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "north american consumer packaging net sales where what percentage of consumer packaging sales in 2008?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "78.2%")
+        self.assertIn("2500", answer.calculations[0])
+        self.assertIn("3195", answer.calculations[0])
+
+    def test_ratio_percent_uses_scoped_sales_denominator_for_foodservice_prose(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="mixed",
+                node_type="text",
+                content=(
+                    "consumer packaging in millions 2006 2005 2004 .\n"
+                    "| in millions | 2006 | 2005 | 2004 |\n"
+                    "| --- | ---: | ---: | ---: |\n"
+                    "| sales | $ 2455 | $ 2245 | $ 2295 |\n"
+                    "| operating profit | $ 131 | $ 121 | $ 155 |\n"
+                    "foodservice net sales declined to $ 396 million in 2006 , compared "
+                    "with $ 437 million in 2005 and $ 480 million in 2004 ."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "in 2005 what percentage of consumer packaging sales were represented by foodservice net sales?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "19.5%")
+        self.assertIn("437", answer.calculations[0])
+        self.assertIn("2245", answer.calculations[0])
+
+    def test_ratio_percent_prefers_segment_sales_table_denominator_over_prose_subsegment(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="mixed",
+                node_type="text",
+                content=(
+                    "industrial packaging in millions 2007 2006 2005 .\n"
+                    "| in millions | 2007 | 2006 | 2005 |\n"
+                    "| --- | ---: | ---: | ---: |\n"
+                    "| sales | $ 5245 | $ 4925 | $ 4625 |\n"
+                    "| operating profit | $ 501 | $ 399 | $ 219 |\n"
+                    "north american industrial packaging net sales for 2007 were $ 3.9 billion . "
+                    "european industrial packaging net sales for 2007 were $ 1.1 billion , "
+                    "up from $ 1.0 billion in 2006 and $ 880 million in 2005 ."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what percentage of industrial packaging sales where represented by european industrial packaging net sales in 2007?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "21%")
+        self.assertIn("1100", answer.calculations[0])
+        self.assertIn("5245", answer.calculations[0])
+
+    def test_ratio_percent_combines_split_sales_table_and_foodservice_prose(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="retrieved_1_finqa_046_ip_2006_page_32_pdf_1_0_1",
+                node_type="text",
+                content=(
+                    "consumer packaging in millions 2006 2005 2004 .\n"
+                    "| in millions | 2006 | 2005 | 2004 |\n"
+                    "| --- | ---: | ---: | ---: |\n"
+                    "| sales | $ 2455 | $ 2245 | $ 2295 |\n"
+                    "| operating profit | $ 131 | $ 121 | $ 155 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="retrieved_7_finqa_046_ip_2006_page_32_pdf_1_0_2",
+                node_type="text",
+                content=(
+                    "| in millions | 2006 | 2005 | 2004 |\n"
+                    "| --- | ---: | ---: | ---: |\n"
+                    "| sales | $ 2455 | $ 2245 | $ 2295 |\n"
+                    "foodservice net sales declined to $ 396 million in 2006 , compared "
+                    "with $ 437 million in 2005 and $ 480 million in 2004 ."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "in 2005 what percentage of consumer packaging sales were represented by foodservice net sales?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "19.5%")
+        self.assertIn("437", answer.calculations[0])
+        self.assertIn("2245", answer.calculations[0])
+        self.assertGreater(len(answer.citations), 1)
+
+    def test_ratio_percent_combines_split_sales_table_and_region_prose(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="retrieved_1_finqa_298_ip_2007_page_31_pdf_1_0_0",
+                node_type="text",
+                content=(
+                    "industrial packaging in millions 2007 2006 2005 .\n"
+                    "| in millions | 2007 | 2006 | 2005 |\n"
+                    "| --- | ---: | ---: | ---: |\n"
+                    "| sales | $ 5245 | $ 4925 | $ 4625 |\n"
+                    "| operating profit | $ 501 | $ 399 | $ 219 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="retrieved_3_finqa_298_ip_2007_page_31_pdf_1_0_2",
+                node_type="text",
+                content=(
+                    "north american industrial packaging net sales for 2007 were $ 3.9 billion , "
+                    "compared with $ 3.7 billion in 2006 and $ 3.6 billion in 2005 . "
+                    "european industrial packaging net sales for 2007 were $ 1.1 billion , "
+                    "up from $ 1.0 billion in 2006 and $ 880 million in 2005 ."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what percentage of industrial packaging sales where represented by european industrial packaging net sales in 2007?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "21%")
+        self.assertIn("1100", answer.calculations[0])
+        self.assertIn("5245", answer.calculations[0])
+        self.assertGreater(len(answer.citations), 1)
+
+    def test_ratio_percent_handles_truncated_year_only_sales_header(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="truncated",
+                node_type="text",
+                content=(
+                    "consumer packaging in millions 2006 2005 2004 .\n"
+                    "| 2006 | 2005 | 2004 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| sales | $ 2455 | $ 2245 | $ 2295 |\n"
+                    "| operating profit | $ 131 | $ 121 | $ 155 |\n"
+                    "foodservice net sales declined to $ 396 million in 2006 , compared "
+                    "with $ 437 million in 2005 and $ 480 million in 2004 ."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "in 2005 what percentage of consumer packaging sales were represented by foodservice net sales?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "19.5%")
+        self.assertIn("437", answer.calculations[0])
+        self.assertIn("2245", answer.calculations[0])
+
     def test_ratio_percent_made_up_of_uses_total_row_from_table_context(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
@@ -1782,6 +1976,39 @@ class NumericReasoningTest(unittest.TestCase):
 
         self.assertEqual(answer.text, "708716.7")
         self.assertIn("year_range_average", answer.calculations[0])
+
+    def test_year_range_average_prefers_inline_exact_row_over_truncated_table_row(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "selected income statement and balance sheet data as of or for the year ended "
+                    "december 31 , ( in millions ) 2018 2017 2016 investment securities gains/ "
+                    "( losses ) $ ( 395 ) $ ( 78 ) $ 132 available-for-sale ( afs ) investment "
+                    "securities ( average ) 203449 219345 226892 held-to-maturity investment "
+                    "securities ( average ) 31747 47927 51358 investment securities portfolio "
+                    "( average ) 235197 267272 278250 afs investment securities ( period-end ) "
+                    "228681 200247 236670 htm investment securities ( period-end ) 31434 47733 50168 .\n"
+                    "## Table\n"
+                    "| as of or for the year ended december 31 ( in millions ) | 2018 | 2017 | 2016 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| investment securities gains/ ( losses ) | $ -395 | $ -78 | $ 132 |\n"
+                    "| available-for-sale ( afs ) investment securities ( average ) | 203449 | 219345 | 226892 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the average of the afs investment securities during the years 2016-2018?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "221866.0")
+        self.assertIn("afs investment securities ( period-end )", answer.calculations[0])
+        self.assertNotIn("gains", answer.calculations[0])
 
     def test_ratio_between_years_from_respectively_sentence(self) -> None:
         graph = EvidenceGraph()

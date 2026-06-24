@@ -405,6 +405,26 @@ class NumericPlannerFallbackTest(unittest.TestCase):
         self.assertEqual(answer.text, "221866")
         self.assertIn("afs investment securities/2017", answer.calculation)
 
+    def test_average_prefers_afs_row_over_investment_gains_row(self) -> None:
+        context = (
+            "| metric | 2018 | 2017 | 2016 |\n"
+            "| --- | ---: | ---: | ---: |\n"
+            "| investment securities gains/ ( losses ) | -395 | -78 | 132 |\n"
+            "| available-for-sale ( afs ) investment securities ( average ) | 203449 | 219345 | 226892 |\n"
+            "| afs investment securities ( period-end ) | 228681 | 200247 | 236670 |\n"
+        )
+        planner = NumericPlannerFallback(HeuristicNumericPlanClient())
+
+        answer = planner.answer(
+            "what is the average of the afs investment securities during the years 2016-2018?",
+            [("table", context)],
+        )
+
+        self.assertIsNotNone(answer)
+        self.assertEqual(answer.text, "221866")
+        self.assertIn("afs investment securities ( period-end )/2016", answer.calculation)
+        self.assertNotIn("gains", answer.calculation)
+
     def test_heuristic_plans_sum_over_listed_years(self) -> None:
         context = (
             "| metric | 2004 | 2005 | 2006 |\n"
