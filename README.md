@@ -7,6 +7,58 @@ outputs as candidate evidence states, scores their utility and risks, selects a
 minimal reliable support subgraph, and generates grounded answers from that
 subgraph only.
 
+## Reproducible FinQA-300 Pipeline
+
+The current primary experiment is the 300-example FinQA local-planner diagnostic
+run. It uses only the Python standard library and the checked-in FinQA subset,
+so no API key or GPU is required.
+
+From a clean checkout, run:
+
+```powershell
+python -m pip install -r requirements.txt
+python scripts/run_pipeline.py --refresh-results
+```
+
+The full refresh performs the reproducibility gate end to end:
+
+1. Runs the unit test suite.
+2. Converts the checked-in FinQA-300 raw subset.
+3. Builds the local BM25 index.
+4. Runs oracle-doc, open BM25, and source-rerank full EviGraph evaluations.
+5. Regenerates failure reports and row/operation diagnostics.
+6. Rebuilds paper-ready Markdown and LaTeX tables.
+7. Writes pipeline reports under `outputs/pipeline/`.
+
+After one successful full refresh, the faster local check is:
+
+```powershell
+python scripts/run_pipeline.py
+```
+
+The quick path reuses the generated evaluation CSVs under `outputs/eval/` and
+only reruns tests plus paper-table generation. Because `outputs/` is ignored by
+Git, a fresh clone should use `--refresh-results` first.
+
+Expected current FinQA-300 exact-match results:
+
+| setting | full EviGraph EM |
+| --- | ---: |
+| Oracle-doc | 0.383 |
+| Open BM25 | 0.300 |
+| BM25 + source rerank | 0.353 |
+
+Main reproducibility artifacts:
+
+- `outputs/pipeline/pipeline_report.md`
+- `outputs/eval/finqa_300_local_planner/summary.md`
+- `outputs/eval/finqa_300_local_planner/*_failures.md`
+- `outputs/eval/finqa_300_local_planner/*_row_operation_diagnostics.md`
+- `paper/generated/finqa_300_local_planner/finqa_results_summary.md`
+- `paper/generated/finqa_300_local_planner/finqa_results_tables.tex`
+
+These are diagnostic subset results, not final benchmark claims.
+
 ## MVP-0
 
 Run a toy end-to-end pipeline with mock retrieved candidates:
@@ -189,7 +241,8 @@ python scripts/run_pipeline.py
 ```
 
 Refresh the FinQA-300 local-planner experiment outputs and then rebuild paper
-assets:
+assets. Use this command first on a clean checkout because `outputs/` is not
+tracked by Git:
 
 ```powershell
 python scripts/run_pipeline.py --refresh-results

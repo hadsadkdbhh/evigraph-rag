@@ -1,3 +1,7 @@
-# MVP-0 uses only the Python standard library.
-# Later MVPs can add pymupdf, pdfplumber, faiss-cpu, sentence-transformers,
-# pytesseract/easyocr, and provider SDKs behind evigraph/clients.py.
+# The current FinQA-300 local-planner pipeline uses only the Python standard
+# library. Keep this file so clean-checkout instructions can always run:
+#   python -m pip install -r requirements.txt
+#
+# Future GPU/dense-retrieval experiments can add optional dependencies in a
+# separate requirements-gpu.txt instead of making the core reproducibility gate
+# depend on CUDA or provider SDKs.

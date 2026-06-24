@@ -4,6 +4,7 @@ import argparse
 import json
 import subprocess
 import sys
+from argparse import Namespace
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -56,6 +57,10 @@ def main() -> int:
     report_dir.mkdir(parents=True, exist_ok=True)
     steps: list[StepResult] = []
 
+    steps.append(run_preflight(args))
+    if not steps[-1].ok:
+        return write_report(args, report_dir, steps)
+
     if not args.skip_tests:
         steps.append(run_step("unit_tests", [sys.executable, "-m", "unittest", "discover", "-s", "tests"]))
 
@@ -79,6 +84,10 @@ def main() -> int:
             )
         )
 
+    return write_report(args, report_dir, steps)
+
+
+def write_report(args: Namespace, report_dir: Path, steps: list[StepResult]) -> int:
     report = {
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "root": str(ROOT),
@@ -102,6 +111,55 @@ def main() -> int:
 
     print(json.dumps(report, ensure_ascii=False, indent=2))
     return 0 if report["ok"] else 1
+
+
+def run_preflight(args: Namespace) -> StepResult:
+    errors: list[str] = []
+    notes: list[str] = []
+    manifest_path = resolve_path(args.manifest)
+    eval_dir = resolve_path(args.eval_dir)
+
+    if not manifest_path.exists():
+        errors.append(f"manifest not found: {display_path(str(manifest_path))}")
+    else:
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            errors.append(f"manifest is not valid JSON: {display_path(str(manifest_path))}: {exc}")
+        else:
+            config_path = manifest.get("config")
+            if config_path and not resolve_path(str(config_path)).exists():
+                errors.append(f"config not found: {config_path}")
+            for dataset in manifest.get("datasets", []):
+                raw_questions = dataset.get("raw_questions")
+                corpus = dataset.get("corpus")
+                if raw_questions and not resolve_path(str(raw_questions)).exists():
+                    errors.append(f"raw questions not found: {raw_questions}")
+                if corpus and not resolve_path(str(corpus)).exists():
+                    errors.append(f"corpus not found: {corpus}")
+
+    if not args.refresh_results and not args.skip_paper_assets:
+        csvs = list(eval_dir.glob("*.csv")) if eval_dir.exists() else []
+        if not csvs:
+            errors.append(
+                "evaluation CSVs are missing; run `python scripts/run_pipeline.py --refresh-results` "
+                "once on a clean checkout before using the quick pipeline"
+            )
+        else:
+            notes.append(f"found {len(csvs)} evaluation CSV files in {display_path(str(eval_dir))}")
+
+    if args.refresh_results:
+        notes.append("refresh mode will rebuild index, evaluation CSVs, diagnostics, and paper assets")
+
+    stdout = "\n".join(notes) if notes else "preflight checks passed"
+    stderr = "\n".join(errors)
+    return StepResult(
+        name="preflight",
+        command=["internal", "preflight"],
+        returncode=1 if errors else 0,
+        stdout_tail=stdout,
+        stderr_tail=stderr,
+    )
 
 
 def run_step(name: str, command: list[str]) -> StepResult:
@@ -133,6 +191,11 @@ def display_path(value: str) -> str:
         return str(path.relative_to(ROOT))
     except ValueError:
         return str(path)
+
+
+def resolve_path(value: str) -> Path:
+    path = Path(value)
+    return path if path.is_absolute() else ROOT / path
 
 
 def display_command(command: list[str]) -> str:
