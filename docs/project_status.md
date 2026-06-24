@@ -44,9 +44,9 @@ the presence of generated evaluation CSVs. If a clean checkout tries the quick
 path first, it fails with an explicit instruction to run `--refresh-results`.
 
 The 2026-06-24 full refresh passed all three stages: unit tests
-(`183 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
-FinQA-300 local-planner exact-match results are 0.383 oracle-doc, 0.300 open
-BM25, and 0.353 BM25 plus source rerank.
+(`187 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
+FinQA-300 local-planner exact-match results are 0.390 oracle-doc, 0.307 open
+BM25, and 0.360 BM25 plus source rerank.
 
 Run the quick MVP0 acceptance suite:
 
@@ -344,3 +344,14 @@ American consumer packaging over consumer packaging (`2500 / 3195 = 78.2%`).
 On FinQA-300, exact match rises to 0.383 oracle-doc, 0.300 open BM25, and
 0.353 source-rerank. Source-rerank wrong-operation-or-row falls to 58 and
 ambiguous_supported_wrong_number falls to 29.
+
+The latest wrong-operation-type pass fixes a total-denominator ratio planner
+failure. For VRTX 2003, the query asks what percent of total common stock plans
+are related to the Vertex purchase plan. The local planner previously stripped
+`total` from the denominator selector, and the executor selected the same
+purchase-plan row for numerator and denominator, producing `100%`. The planner
+now preserves `total` for ratio denominators, and the table executor prefers a
+total row when total is an explicit selector term. The target case now computes
+`249 / 22203 = 1.1%`. On FinQA-300, exact match rises to 0.390 oracle-doc,
+0.307 open BM25, and 0.360 source-rerank. Source-rerank
+wrong-operation-or-row falls to 56 and wrong-operation-type falls to 12.

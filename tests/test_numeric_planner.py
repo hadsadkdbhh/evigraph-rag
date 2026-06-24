@@ -347,6 +347,25 @@ class NumericPlannerFallbackTest(unittest.TestCase):
         self.assertIn("planned_ratio", answer.calculation)
         self.assertIn("accrued wages and vacation/dec . 31 2008", answer.calculation)
 
+    def test_heuristic_ratio_preserves_total_denominator_intent(self) -> None:
+        context = (
+            "| common stock under stock and option plans | 21829 |\n"
+            "| --- | ---: |\n"
+            "| common stock under the vertex purchase plan | 249 |\n"
+            "| common stock under the vertex 401 ( k ) plan | 125 |\n"
+            "| total | 22203 |\n"
+        )
+        planner = NumericPlannerFallback(HeuristicNumericPlanClient())
+
+        answer = planner.answer(
+            "what percent of the total common stock plans are related to the vertex purchase plan?",
+            [("table", context)],
+        )
+
+        self.assertIsNotNone(answer)
+        self.assertEqual(answer.text, "1.1%")
+        self.assertIn("249 / 22203", answer.calculation)
+
     def test_percent_question_rejects_sum_plan(self) -> None:
         context = (
             "| millions of dollars | dec . 31 2008 | dec . 31 2007 |\n"

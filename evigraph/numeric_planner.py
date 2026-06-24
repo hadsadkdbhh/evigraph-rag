@@ -384,10 +384,14 @@ class HeuristicNumericPlanClient:
         for pattern in patterns:
             match = re.search(pattern, lowered)
             if match:
-                return self._content_terms(match.group("target")), self._content_terms(match.group("base"))
+                return self._content_terms(match.group("target")), self._content_terms(match.group("base"), keep_total=True)
 
         target = self._terms_after(lowered, ["represented by", "allocated to", "attributable to", "related to"])
-        base = self._terms_after(lowered, ["percentage of", "percent of", "portion of", "share of", "relative to"])
+        base = self._terms_after(
+            lowered,
+            ["percentage of", "percent of", "portion of", "share of", "relative to"],
+            keep_total=True,
+        )
         return target or self._content_terms(lowered), base or self._content_terms(lowered)
 
     def _percent_of_change_contribution_terms(self, lowered: str) -> tuple[list[str], list[str]]:
@@ -453,14 +457,14 @@ class HeuristicNumericPlanClient:
                 return [preferred]
         return cleaned
 
-    def _terms_after(self, lowered: str, markers: list[str]) -> list[str]:
+    def _terms_after(self, lowered: str, markers: list[str], keep_total: bool = False) -> list[str]:
         for marker in markers:
             index = lowered.find(marker)
             if index == -1:
                 continue
             fragment = lowered[index + len(marker) :]
             fragment = re.split(r"\b(?:in|for|during|from|to|compared|was|were|came|represented|allocated)\b", fragment, maxsplit=1)[0]
-            terms = self._content_terms(fragment)
+            terms = self._content_terms(fragment, keep_total=keep_total)
             if terms:
                 return terms
         return []
@@ -486,7 +490,7 @@ class HeuristicNumericPlanClient:
                 groups.append(self._content_terms(phrase))
         return groups
 
-    def _content_terms(self, text: str) -> list[str]:
+    def _content_terms(self, text: str, keep_total: bool = False) -> list[str]:
         stopwords = {
             "what",
             "was",
@@ -509,7 +513,6 @@ class HeuristicNumericPlanClient:
             "increase",
             "decrease",
             "growth",
-            "total",
             "compared",
             "months",
             "month",
@@ -519,6 +522,8 @@ class HeuristicNumericPlanClient:
             "nine",
             "twelve",
         }
+        if not keep_total:
+            stopwords.add("total")
         return [
             token
             for token in re.findall(r"[a-z&]+", text.lower())

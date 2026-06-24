@@ -31,15 +31,15 @@ Latest documented FinQA-300 local planner exact match:
 
 | Setting | Accuracy |
 | --- | ---: |
-| Oracle-doc full EviGraph | 0.383 |
-| Open BM25 full EviGraph | 0.300 |
-| BM25 + source-rerank full EviGraph | 0.353 |
+| Oracle-doc full EviGraph | 0.390 |
+| Open BM25 full EviGraph | 0.307 |
+| BM25 + source-rerank full EviGraph | 0.360 |
 
 Latest source-rerank diagnostic counts:
 
 | Failure class | Count |
 | --- | ---: |
-| wrong_numeric_operation_or_row | 58 |
+| wrong_numeric_operation_or_row | 56 |
 | no_numeric_answer_other | 38 |
 | no_numeric_answer_percent | 38 |
 | no_numeric_answer_additive_or_lookup | 32 |
@@ -51,9 +51,9 @@ Latest row/operation diagnostic split for source-rerank:
 | Label | Count |
 | --- | ---: |
 | ambiguous_supported_wrong_number | 29 |
-| wrong_operation_type | 14 |
+| wrong_operation_type | 12 |
 | wrong_row_label | 8 |
-| wrong_year_or_period | 8 |
+| wrong_year_or_period | 7 |
 | wrong_denominator | 3 |
 | wrong_numerator | 6 |
 
@@ -79,7 +79,7 @@ failing later during paper-asset generation.
 
 The latest full refresh passed:
 
-- Unit tests: `183 tests OK`
+- Unit tests: `187 tests OK`
 - Manifest: `configs/experiments.finqa_300.local_planner.json`
 - Result directory: `outputs/eval/finqa_300_local_planner`
 - Pipeline report: `outputs/pipeline/pipeline_report.md`
@@ -156,6 +156,14 @@ gate before reporting new FinQA-300 numbers.
   packaging case (`2500 / 3195 = 78.2%`). FinQA-300 moves to 0.383 oracle-doc,
   0.300 open BM25, and 0.353 source-rerank; source-rerank
   `wrong_numeric_operation_or_row` falls to 58.
+- Total-denominator intent preservation for local ratio plans. The heuristic
+  planner now keeps `total` in denominator row terms for ratio-percent
+  questions, and the table executor gives an explicit total-row preference when
+  the selector includes `total`. This fixes the VRTX 2003 common-stock-plans
+  case, changing `249 / 249 = 100%` to `249 / 22203 = 1.1%` without adding a
+  broad arithmetic rule. FinQA-300 moves to 0.390 oracle-doc, 0.307 open BM25,
+  and 0.360 source-rerank; source-rerank `wrong_numeric_operation_or_row` falls
+  to 56 and `wrong_operation_type` falls to 12.
 
 Do not repeat these as broad rewrites. Build only from failure reports and add
 small verified fixes.

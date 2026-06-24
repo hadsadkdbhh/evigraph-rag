@@ -307,6 +307,17 @@ On FinQA-300, exact match rises to 0.383 oracle-doc, 0.300 open BM25, and
 0.353 source-rerank. Source-rerank wrong-operation-or-row falls to 58, and
 ambiguous_supported_wrong_number falls to 29.
 
+The next wrong-operation-type pass preserves explicit total-denominator intent
+inside local ratio plans. Previously the heuristic planner stripped `total`
+from denominator terms, so `what percent of the total common stock plans are
+related to the vertex purchase plan?` resolved both numerator and denominator
+to the Vertex purchase-plan row and returned `249 / 249 = 100%`. The planner
+now keeps `total` for denominator row terms, and the table executor prefers an
+explicit total row when the selector asks for one. The VRTX 2003 case now
+returns `249 / 22203 = 1.1%`. On FinQA-300, exact match rises to 0.390
+oracle-doc, 0.307 open BM25, and 0.360 source-rerank. Source-rerank
+wrong-operation-or-row falls to 56, and wrong-operation-type falls to 12.
+
 ## Current Pipeline Gate
 
 The FinQA-300 local-planner run is now wired into the one-command project
@@ -316,7 +327,7 @@ pipeline:
 python .\scripts\run_pipeline.py --refresh-results
 ```
 
-The 2026-06-24 refresh passed unit tests (`183 tests OK`), reran the
+The 2026-06-24 refresh passed unit tests (`187 tests OK`), reran the
 FinQA-300 local-planner manifest, regenerated row/operation diagnostics, and
 rebuilt paper-ready Markdown and LaTeX tables under
 `paper/generated/finqa_300_local_planner/`. Use
