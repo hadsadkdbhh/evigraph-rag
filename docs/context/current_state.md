@@ -31,15 +31,15 @@ Latest documented FinQA-300 local planner exact match:
 
 | Setting | Accuracy |
 | --- | ---: |
-| Oracle-doc full EviGraph | 0.390 |
-| Open BM25 full EviGraph | 0.307 |
-| BM25 + source-rerank full EviGraph | 0.360 |
+| Oracle-doc full EviGraph | 0.393 |
+| Open BM25 full EviGraph | 0.310 |
+| BM25 + source-rerank full EviGraph | 0.363 |
 
 Latest source-rerank diagnostic counts:
 
 | Failure class | Count |
 | --- | ---: |
-| wrong_numeric_operation_or_row | 56 |
+| wrong_numeric_operation_or_row | 55 |
 | no_numeric_answer_other | 38 |
 | no_numeric_answer_percent | 38 |
 | no_numeric_answer_additive_or_lookup | 32 |
@@ -51,9 +51,9 @@ Latest row/operation diagnostic split for source-rerank:
 | Label | Count |
 | --- | ---: |
 | ambiguous_supported_wrong_number | 29 |
-| wrong_operation_type | 12 |
+| wrong_operation_type | 11 |
 | wrong_row_label | 8 |
-| wrong_year_or_period | 7 |
+| wrong_year_or_period | 6 |
 | wrong_denominator | 3 |
 | wrong_numerator | 6 |
 
@@ -79,7 +79,7 @@ failing later during paper-asset generation.
 
 The latest full refresh passed:
 
-- Unit tests: `187 tests OK`
+- Unit tests: `190 tests OK`
 - Manifest: `configs/experiments.finqa_300.local_planner.json`
 - Result directory: `outputs/eval/finqa_300_local_planner`
 - Pipeline report: `outputs/pipeline/pipeline_report.md`
@@ -164,6 +164,16 @@ gate before reporting new FinQA-300 numbers.
   broad arithmetic rule. FinQA-300 moves to 0.390 oracle-doc, 0.307 open BM25,
   and 0.360 source-rerank; source-rerank `wrong_numeric_operation_or_row` falls
   to 56 and `wrong_operation_type` falls to 12.
+- Year-row-to-thereafter ratio planning for debt maturity schedules. The local
+  planner now maps questions shaped like `ratio of X for 2011 to amounts after
+  2012` to a plain ratio over the target-year row and `thereafter` row, and the
+  reasoner runs this planner path before the generic ratio-between-years
+  heuristic. The verifier also treats non-percent `planned_ratio` calculations
+  as ordinary ratios. This fixes the ETFC 2007 debt-maturity case
+  (`453815 / 2996337 = 0.2`). FinQA-300 moves to 0.393 oracle-doc, 0.310 open
+  BM25, and 0.363 source-rerank; source-rerank
+  `wrong_numeric_operation_or_row` falls to 55 and `wrong_operation_type` falls
+  to 11.
 
 Do not repeat these as broad rewrites. Build only from failure reports and add
 small verified fixes.

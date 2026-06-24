@@ -318,6 +318,16 @@ returns `249 / 22203 = 1.1%`. On FinQA-300, exact match rises to 0.390
 oracle-doc, 0.307 open BM25, and 0.360 source-rerank. Source-rerank
 wrong-operation-or-row falls to 56, and wrong-operation-type falls to 12.
 
+The next wrong-operation-type pass handles year-row-to-thereafter ratios in
+debt maturity schedules without broadening generic ratio rules. The ETFC 2007
+question asks for the ratio of future debt maturities for 2011 to amounts after
+2012; the planner now maps this to `2011 / thereafter`, and the reasoner tries
+that planner path before the older ratio-between-years heuristic. The verifier
+also accepts non-percent `planned_ratio` traces as plain ratios. The target case
+now returns `453815 / 2996337 = 0.2`. On FinQA-300, exact match rises to 0.393
+oracle-doc, 0.310 open BM25, and 0.363 source-rerank. Source-rerank
+wrong-operation-or-row falls to 55, and wrong-operation-type falls to 11.
+
 ## Current Pipeline Gate
 
 The FinQA-300 local-planner run is now wired into the one-command project
@@ -327,7 +337,7 @@ pipeline:
 python .\scripts\run_pipeline.py --refresh-results
 ```
 
-The 2026-06-24 refresh passed unit tests (`187 tests OK`), reran the
+The 2026-06-24 refresh passed unit tests (`190 tests OK`), reran the
 FinQA-300 local-planner manifest, regenerated row/operation diagnostics, and
 rebuilt paper-ready Markdown and LaTeX tables under
 `paper/generated/finqa_300_local_planner/`. Use

@@ -148,6 +148,10 @@ class NumericReasoner:
             answer = self._same_year_row_ratio(query_lower, contexts)
             if answer:
                 return answer
+            if self._is_after_year_row_ratio(query_lower):
+                planned = self._planner_answer(query, contexts)
+                if planned:
+                    return planned
             if len(re.findall(r"\b(20\d{2})\b", query_lower)) >= 2:
                 answer = self._ratio_between_years(query_lower, contexts)
                 if answer:
@@ -181,6 +185,12 @@ class NumericReasoner:
         return bool(
             re.search(r"\b(?:percent|percentage)\s+of\s+the\s+change\b", query_lower)
             and re.search(r"\b(?:due to|came from|attributable to)\b", query_lower)
+        )
+
+    def _is_after_year_row_ratio(self, query_lower: str) -> bool:
+        return bool(
+            "ratio" in query_lower
+            and re.search(r"\bfor\s+20\d{2}\b.+?\bto\s+(?:the\s+)?(?:amounts?\s+)?after\s+20\d{2}\b", query_lower)
         )
 
     def _year_range_average_v2(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:

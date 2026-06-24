@@ -252,6 +252,24 @@ class ClaimVerifierTest(unittest.TestCase):
         self.assertTrue(verification["operation_semantics_checked"])
         self.assertTrue(verification["answer_supported"])
 
+    def test_operation_semantics_accepts_planned_plain_ratio_for_ratio_query(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(EvidenceNode("table", "text", "2011 453815 thereafter 2996337 0.2", source_doc="report.md"))
+        answer = Answer(
+            text="0.2",
+            citations=["table"],
+            calculations=["planned_ratio target=2011/value base=thereafter/value: 453815 / 2.99634e+06 = 0.2"],
+        )
+
+        verification = ClaimVerifier().verify(
+            "as of december 2007 what was the ratio of the future debt maturities for 2011 to the amounts after 2012",
+            answer,
+            graph,
+        )
+
+        self.assertTrue(verification["operation_semantics_checked"])
+        self.assertTrue(verification["answer_supported"])
+
     def test_operation_semantics_accepts_percent_higher_between_rows(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(EvidenceNode("table", "text", "foreign exchange products 1.8 interest-rate products 1.25 44.0", source_doc="report.md"))

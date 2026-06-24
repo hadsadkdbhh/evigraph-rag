@@ -283,7 +283,7 @@ def _expected_operation(query: str) -> set[str] | None:
     ):
         return {"ratio_percent", "ratio_between_years"}
     if "ratio" in query_lower and len(re.findall(r"\b20\d{2}\b", query_lower)) >= 2:
-        return {"ratio_between_years"}
+        return {"ratio", "ratio_between_years"}
     if "average" in query_lower:
         return {"average", "row_average", "row_values_average", "year_range_average"}
     if any(phrase in query_lower for phrase in ["difference", "net change", "how much higher", "change in", "changed in"]):
@@ -296,6 +296,8 @@ def _calculation_operation(calculation: str) -> str | None:
     if prefix.startswith("calc_") or prefix == "derived_from_context":
         return "difference"
     operation = prefix.split(" ", 1)[0]
+    if operation == "planned_ratio":
+        return "ratio_percent" if "* 100" in calculation else "ratio"
     aliases = {
         "percent_change": "percent_change",
         "percent_change_from_to": "percent_change",
@@ -303,7 +305,6 @@ def _calculation_operation(calculation: str) -> str | None:
         "planned_percent_of_increase": "percent_of_increase",
         "percent_delta": "percent_delta",
         "ratio_percent": "ratio_percent",
-        "planned_ratio": "ratio_percent",
         "ratio_between_years": "ratio_between_years",
         "row_average": "row_average",
         "row_values_average": "row_values_average",

@@ -508,6 +508,30 @@ class NumericPlannerFallbackTest(unittest.TestCase):
         self.assertIn("planned_ratio", answer.calculation)
         self.assertIn("thereafter", answer.calculation)
 
+    def test_heuristic_ratio_for_year_to_amounts_after_uses_thereafter_row(self) -> None:
+        context = (
+            "| 2008 | $ 2014 |\n"
+            "| --- | ---: |\n"
+            "| 2009 | 2014 |\n"
+            "| 2010 | 2014 |\n"
+            "| 2011 | 453815 |\n"
+            "| 2012 | 2014 |\n"
+            "| thereafter | 2996337 |\n"
+            "| total future principal payments of corporate debt | 3450152 |\n"
+        )
+        planner = NumericPlannerFallback(HeuristicNumericPlanClient())
+
+        answer = planner.answer(
+            "as of december 2007 what was the ratio of the future debt maturities for 2011 to the amounts after 2012",
+            [("table", context)],
+        )
+
+        self.assertIsNotNone(answer)
+        self.assertEqual(answer.text, "0.2")
+        self.assertIn("2011", answer.calculation)
+        self.assertIn("thereafter", answer.calculation)
+        self.assertIn("453815 / 2.99634e+06", answer.calculation)
+
     def test_heuristic_ratio_compared_to_uses_distinct_operands(self) -> None:
         context = (
             "| metric | 2018 | 2017 | 2016 |\n"

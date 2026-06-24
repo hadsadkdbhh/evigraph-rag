@@ -133,6 +133,18 @@ class HeuristicNumericPlanClient:
                 "rationale": "heuristic due-after same-row ratio program",
             }
 
+        after_year_ratio = self._after_year_ratio_terms(lowered)
+        if after_year_ratio is not None:
+            target_year, cutoff_year, row_terms = after_year_ratio
+            return {
+                "operation": "ratio",
+                "node_id": self._node_id(contexts, [*row_terms, "thereafter", target_year, cutoff_year]),
+                "target": {"row_terms": [target_year], "period": period},
+                "base": {"row_terms": ["thereafter"], "period": period},
+                "scale": "number",
+                "rationale": "heuristic year-row-to-thereafter ratio program",
+            }
+
         if self._is_ratio_percent(lowered):
             numerator_terms, denominator_terms = self._ratio_terms(lowered)
             target_year, _ = self._target_base_years(lowered, years)
@@ -447,6 +459,22 @@ class HeuristicNumericPlanClient:
         if match:
             return self._content_terms(match.group("label"))
         return self._terms_after(lowered, ["percentage of", "percent of", "portion of"])
+
+    def _after_year_ratio_terms(self, lowered: str) -> tuple[str, str, list[str]] | None:
+        if "ratio" not in lowered or "after" not in lowered:
+            return None
+        match = re.search(
+            r"\bratio\s+of\s+(?P<label>.+?)\s+for\s+(?P<target>20\d{2})\s+"
+            r"to\s+(?:the\s+)?(?:amounts?\s+)?after\s+(?P<cutoff>20\d{2})\b",
+            lowered,
+        )
+        if not match:
+            return None
+        return (
+            match.group("target"),
+            match.group("cutoff"),
+            self._content_terms(match.group("label")),
+        )
 
     def _complement_terms(self, lowered: str) -> list[str]:
         terms = self._content_terms(lowered)

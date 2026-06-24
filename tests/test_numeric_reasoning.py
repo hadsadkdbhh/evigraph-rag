@@ -2143,6 +2143,55 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "6.4")
         self.assertIn("ratio_between_years", answer.calculations[0])
 
+    def test_ratio_for_year_to_amounts_after_uses_planner_before_year_ratio(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="correct",
+                node_type="text",
+                content=(
+                    "future maturities of corporate debt scheduled principal payments of corporate debt "
+                    "as of december 31 , 2007 are as follows ( dollars in thousands ).\n"
+                    "| 2008 | $ 2014 |\n"
+                    "| --- | ---: |\n"
+                    "| 2009 | 2014 |\n"
+                    "| 2010 | 2014 |\n"
+                    "| 2011 | 453815 |\n"
+                    "| 2012 | 2014 |\n"
+                    "| thereafter | 2996337 |\n"
+                    "| total future principal payments of corporate debt | 3450152 |\n"
+                ),
+                source_doc="correct.md",
+                metadata={"retrieval_rank": 1},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="distractor",
+                node_type="text",
+                content=(
+                    "| year | long-term debt obligations |\n"
+                    "| --- | ---: |\n"
+                    "| 2007 | 1340 |\n"
+                    "| 2011 | 607 |\n"
+                ),
+                source_doc="distractor.md",
+                metadata={"retrieval_rank": 2},
+            )
+        )
+
+        answer = SupportOnlyGenerator(
+            planner_fallback=NumericPlannerFallback(HeuristicNumericPlanClient())
+        ).generate(
+            "as of december 2007 what was the ratio of the future debt maturities for 2011 to the amounts after 2012",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "0.2")
+        self.assertIn("planned_ratio", answer.calculations[0])
+        self.assertIn("453815 / 2.99634e+06", answer.calculations[0])
+        self.assertEqual(answer.citations, ["correct"])
+
     def test_percent_of_total_due_after_uses_same_row_columns(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
