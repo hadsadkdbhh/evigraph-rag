@@ -56,9 +56,9 @@ three 300-row evaluation CSVs, failure reports, row/operation diagnostics,
 dataset inspection/gate artifacts, experiment card, and generated paper tables.
 
 The 2026-06-25 full refresh passed all three stages: unit tests
-(`201 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
-FinQA-300 local-planner exact-match results are 0.413 oracle-doc, 0.327 open
-BM25, and 0.380 BM25 plus source rerank.
+(`203 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
+FinQA-300 local-planner exact-match results are 0.420 oracle-doc, 0.333 open
+BM25, and 0.387 BM25 plus source rerank.
 
 Run the quick MVP0 acceptance suite:
 
@@ -436,3 +436,10 @@ leased facilities become the numerator and total facilities becomes the
 denominator. This fixes both INTC 2013 owned and leased facility-share examples
 across oracle-doc, open BM25, and source-rerank. FinQA-300 rises to 0.413
 oracle-doc, 0.327 open BM25, and 0.380 source-rerank.
+
+The prose/table ratio pass handles two shared failures without adding broad
+rules: ETFC 2013 not-leased Alpharetta square footage uses the prose exception
+as numerator and the exact Alpharetta table row as denominator, while ABMD 2006
+office-facility closing uses the prose lease-expense sequence for fiscal 2006
+instead of the future-minimum-lease-payments table. FinQA-300 rises to 0.420
+oracle-doc, 0.333 open BM25, and 0.387 source-rerank.

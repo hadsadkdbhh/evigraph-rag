@@ -33,9 +33,9 @@ Latest documented FinQA-300 local planner exact match:
 
 | Setting | Accuracy |
 | --- | ---: |
-| Oracle-doc full EviGraph | 0.413 |
-| Open BM25 full EviGraph | 0.327 |
-| BM25 + source-rerank full EviGraph | 0.380 |
+| Oracle-doc full EviGraph | 0.420 |
+| Open BM25 full EviGraph | 0.333 |
+| BM25 + source-rerank full EviGraph | 0.387 |
 
 Latest source-rerank diagnostic counts:
 
@@ -84,7 +84,7 @@ experiment card, generated paper Markdown, and generated LaTeX tables.
 
 The latest full refresh passed:
 
-- Unit tests: `201 tests OK`
+- Unit tests: `203 tests OK`
 - Manifest: `configs/experiments.finqa_300.local_planner.json`
 - Result directory: `outputs/eval/finqa_300_local_planner`
 - Pipeline report: `outputs/pipeline/pipeline_report.md`
@@ -113,9 +113,9 @@ story:
 
 | Setting | Current | Target |
 | --- | ---: | ---: |
-| Oracle-doc full EviGraph | 0.413 | 0.50+ |
-| BM25 + source-rerank full EviGraph | 0.380 | 0.45+ |
-| Open BM25 full EviGraph | 0.327 | 0.35+ |
+| Oracle-doc full EviGraph | 0.420 | 0.50+ |
+| BM25 + source-rerank full EviGraph | 0.387 | 0.45+ |
+| Open BM25 full EviGraph | 0.333 | 0.35+ |
 
 Required additions for the next paper-quality phase:
 
@@ -261,6 +261,12 @@ Required additions for the next paper-quality phase:
   targets `total facilities`. This fixes INTC 2013 owned and leased facility
   share questions across oracle-doc, open BM25, and source-rerank. FinQA-300
   moves to 0.413 oracle-doc, 0.327 open BM25, and 0.380 source-rerank.
+- Prose/table ratio closures. ETFC 2013 not-leased Alpharetta square footage
+  now uses the prose exception and exact row denominator (`165000 / 254000 =
+  65%`). ABMD 2006 office-facility closing now uses the prose charge and
+  fiscal-2006 lease-expense sequence (`58000 / 1262000 = 4.6%`) instead of
+  falling back to future minimum lease payments. FinQA-300 moves to 0.420
+  oracle-doc, 0.333 open BM25, and 0.387 source-rerank.
 
 Do not repeat these as broad rewrites. Build only from failure reports and add
 small verified fixes.

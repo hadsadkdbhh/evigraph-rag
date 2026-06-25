@@ -384,6 +384,14 @@ facilities`, fixing both INTC 2013 facility-share examples across all three
 retrieval settings. Exact match rises to 0.413 oracle-doc, 0.327 open BM25, and
 0.380 source-rerank.
 
+The prose/table ratio pass adds two narrow shared-failure closures. ETFC 2013
+now maps "not leased" Alpharetta square footage to the prose exception
+`165000` over the exact Alpharetta table row `254000`, yielding `65%`. ABMD
+2006 now maps office-facility closing charge to the prose charge `58000` over
+fiscal-2006 lease expense `1262000`, yielding `4.6%`, instead of falling back
+to future minimum lease payments. Exact match rises to 0.420 oracle-doc, 0.333
+open BM25, and 0.387 source-rerank.
+
 ## Current Pipeline Gate
 
 The FinQA-300 local-planner run is now wired into the one-command project
@@ -393,7 +401,7 @@ pipeline:
 python .\scripts\run_pipeline.py --refresh-results
 ```
 
-The 2026-06-25 pipeline gate passed unit tests (`201 tests OK`), reran or reused the
+The 2026-06-25 pipeline gate passed unit tests (`203 tests OK`), reran or reused the
 FinQA-300 local-planner manifest, regenerated row/operation diagnostics, and
 rebuilt paper-ready Markdown and LaTeX tables under
 `paper/generated/finqa_300_local_planner/`. Use

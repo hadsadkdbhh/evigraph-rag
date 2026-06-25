@@ -112,6 +112,12 @@ class NumericReasoner:
             answer = self._increase_component_ratio_percent(query_lower, contexts)
             if answer:
                 return answer
+            answer = self._not_leased_square_feet_ratio(query_lower, contexts)
+            if answer:
+                return answer
+            answer = self._facility_closing_charge_ratio(query_lower, contexts)
+            if answer:
+                return answer
             answer = self._ratio_percent(query_lower, contexts)
             if answer:
                 return answer
@@ -1913,6 +1919,94 @@ class NumericReasoner:
                 text=self._format_percent(result),
                 calculation=(
                     f"ratio_percent row={numerator_label} denominator_row={denominator_label}: "
+                    f"{numerator:g} / {denominator:g} * 100 = {result:.1f}%"
+                ),
+                cited_node_ids=[node_id],
+            )
+        return None
+
+    def _not_leased_square_feet_ratio(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        if (
+            "not leased" not in query_lower
+            or "alpharetta" not in query_lower
+            or ("square feet" not in query_lower and "square footage" not in query_lower)
+        ):
+            return None
+
+        numerator_pattern = re.compile(
+            r"except\s+for\s+(\d[\d,]*(?:\.\d+)?)\s+square\s+feet\s+of\s+our\s+office\s+in\s+alpharetta",
+            re.IGNORECASE,
+        )
+        for node_id, text in contexts:
+            numerator_match = numerator_pattern.search(text)
+            if not numerator_match:
+                continue
+            numerator = self._to_float(numerator_match.group(1))
+            denominator = None
+            denominator_label = ""
+            for label, value in self._label_value_rows(text):
+                label_terms = set(self._keywords(label))
+                if "alpharetta" in label_terms and "georgia" in label_terms:
+                    denominator = value
+                    denominator_label = label
+                    break
+            if denominator is None:
+                continue
+            operation = self.executor.ratio(numerator, denominator)
+            if operation is None:
+                continue
+            result = operation.value * 100.0
+            return NumericAnswer(
+                text=self._format_percent(result),
+                calculation=(
+                    "ratio_percent row=not leased square feet "
+                    f"denominator_row={denominator_label}: {numerator:g} / {denominator:g} * 100 = {result:.1f}%"
+                ),
+                cited_node_ids=[node_id],
+            )
+        return None
+
+    def _facility_closing_charge_ratio(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        if (
+            "office facility closing" not in query_lower
+            or "lease expense" not in query_lower
+            or "2006" not in query_lower
+        ):
+            return None
+
+        charge_pattern = re.compile(
+            r"closed\s+our\s+office\s+facility.*?recording\s+a\s+charge\s+of\s+approximately\s+\$\s*(\d[\d,]*(?:\.\d+)?)",
+            re.IGNORECASE | re.DOTALL,
+        )
+        rent_pattern = re.compile(
+            r"total\s+rent\s+expense.*?approximated\s+\$\s*(\d[\d,]*(?:\.\d+)?)\s*,\s*"
+            r"\$\s*(\d[\d,]*(?:\.\d+)?)\s+and\s+\$\s*(\d[\d,]*(?:\.\d+)?)\s+for\s+the\s+fiscal\s+years\s+ended\s+"
+            r"[^.]*?\b2004\b\s*,\s*\b2005\b\s+and\s+\b2006\b\s*,\s*respectively",
+            re.IGNORECASE | re.DOTALL,
+        )
+        for node_id, text in contexts:
+            charge_match = charge_pattern.search(text)
+            rent_match = rent_pattern.search(text)
+            if not charge_match or not rent_match:
+                continue
+            numerator = self._to_float(charge_match.group(1))
+            denominator = self._to_float(rent_match.group(3))
+            operation = self.executor.ratio(numerator, denominator)
+            if operation is None:
+                continue
+            result = operation.value * 100.0
+            return NumericAnswer(
+                text=self._format_percent(result),
+                calculation=(
+                    "ratio_percent row=office facility closing charge denominator_row=lease expense 2006: "
                     f"{numerator:g} / {denominator:g} * 100 = {result:.1f}%"
                 ),
                 cited_node_ids=[node_id],

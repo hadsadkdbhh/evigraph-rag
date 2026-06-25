@@ -1731,6 +1731,63 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertIn("row=leased facilities2", answer.calculations[0])
         self.assertIn("denominator_row=total facilities", answer.calculations[0])
 
+    def test_ratio_percent_not_leased_alpharetta_square_feet_uses_exception_and_table_row(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="etfc_facilities",
+                node_type="text",
+                content=(
+                    "all facilities are leased , except for 165000 square feet of our office in alpharetta , georgia .\n"
+                    "square footage amounts are net of space that has been sublet or part of a facility restructuring .\n"
+                    "| location | approximate square footage |\n"
+                    "| --- | --- |\n"
+                    "| alpharetta georgia | 254000 |\n"
+                    "| jersey city new jersey | 107000 |\n"
+                ),
+                source_doc="etfc.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "at december 31 , 2013 what was the percent of square feet of our office in alpharetta , georgia not leased",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "65%")
+        self.assertEqual(answer.citations, ["etfc_facilities"])
+        self.assertIn("165000 / 254000", answer.calculations[0])
+
+    def test_ratio_percent_office_facility_closing_uses_prose_lease_expense_year(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="abmd_leases",
+                node_type="text",
+                content=(
+                    "in december 2005 we closed our office facility in the netherlands , "
+                    "recording a charge of approximately $ 58000 for the remaining lease term .\n"
+                    "total rent expense under these leases approximated $ 821000 , $ 824000 and $ 1262000 "
+                    "for the fiscal years ended march 31 , 2004 , 2005 and 2006 , respectively .\n"
+                    "| fiscal year ending march 31, | operating leases |\n"
+                    "| --- | --- |\n"
+                    "| 2007 | 1703 |\n"
+                    "| 2008 | 1371 |\n"
+                    "| total future minimum lease payments | $ 4819 |\n"
+                ),
+                source_doc="abmd.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "the non-recurring charge for the office facility closing was what percent of lease expense in 2006?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "4.6%")
+        self.assertEqual(answer.citations, ["abmd_leases"])
+        self.assertIn("58000 / 1.262e+06", answer.calculations[0])
+
     def test_ratio_percent_due_after_total(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
