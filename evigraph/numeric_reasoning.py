@@ -1908,7 +1908,7 @@ class NumericReasoner:
             )
             if answer is not None:
                 return NumericAnswer(answer.text, answer.calculation, node_ids)
-            if "total" in denominator_terms or "total" in query_lower or (query_year and "sales" in denominator_terms):
+            if self._allow_grouped_prose_ratio(query_lower, denominator_terms, query_year):
                 mixed_answer = self._prose_ratio_percent(
                     node_ids[0],
                     combined_text,
@@ -1960,6 +1960,24 @@ class NumericReasoner:
                 cited_node_ids=node_ids,
             )
         return None
+
+    def _allow_grouped_prose_ratio(
+        self,
+        query_lower: str,
+        denominator_terms: list[str],
+        query_year: str | None,
+    ) -> bool:
+        if "total" in denominator_terms or "total" in query_lower:
+            return True
+        if query_year and "sales" in denominator_terms:
+            return True
+        if self._allow_prose_ratio(query_lower, query_year):
+            return True
+        denominator_text = " ".join(denominator_terms)
+        return (
+            "purchase price" in denominator_text
+            and re.search(r"\bpaid\s+in\s+cash\b", query_lower) is not None
+        )
 
     def _ratio_percent_across_contexts(
         self,

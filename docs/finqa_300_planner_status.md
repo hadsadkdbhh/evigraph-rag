@@ -364,6 +364,12 @@ ETR 2004 split-chunk case without reintroducing the source-rerank duplicate
 chunk regression. Open BM25 exact match rises to 0.313; oracle-doc remains
 0.403 and source-rerank remains 0.370.
 
+The next open-retrieval pass adds grouped prose-ratio support for explicit
+`paid in cash` over `purchase price` questions. It fixes HOLX 2007 by combining
+same-source chunks containing the `$6900` cash-paid prose and the `$220600`
+estimated-purchase-price table. Open BM25 exact match rises to 0.317; oracle-doc
+remains 0.403 and source-rerank remains 0.370.
+
 ## Current Pipeline Gate
 
 The FinQA-300 local-planner run is now wired into the one-command project
@@ -373,7 +379,7 @@ pipeline:
 python .\scripts\run_pipeline.py --refresh-results
 ```
 
-The 2026-06-25 pipeline gate passed unit tests (`196 tests OK`), reran or reused the
+The 2026-06-25 pipeline gate passed unit tests (`197 tests OK`), reran or reused the
 FinQA-300 local-planner manifest, regenerated row/operation diagnostics, and
 rebuilt paper-ready Markdown and LaTeX tables under
 `paper/generated/finqa_300_local_planner/`. Use

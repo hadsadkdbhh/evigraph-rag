@@ -56,8 +56,8 @@ three 300-row evaluation CSVs, failure reports, row/operation diagnostics,
 dataset inspection/gate artifacts, experiment card, and generated paper tables.
 
 The 2026-06-25 full refresh passed all three stages: unit tests
-(`196 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
-FinQA-300 local-planner exact-match results are 0.403 oracle-doc, 0.313 open
+(`197 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
+FinQA-300 local-planner exact-match results are 0.403 oracle-doc, 0.317 open
 BM25, and 0.370 BM25 plus source rerank.
 
 Run the quick MVP0 acceptance suite:
@@ -415,3 +415,10 @@ BM25 ETR 2004 case where the numerator prose and denominator table were
 retrieved as adjacent chunks rather than as a full source context. Open BM25
 rises to 0.313 without reducing oracle-doc or source-rerank, which remain 0.403
 and 0.370.
+
+The next open-retrieval split-chunk pass adds grouped prose-ratio support for
+explicit `paid in cash` over `purchase price` questions. It fixes the HOLX 2007
+case where the same-source evidence separately contained cash paid (`$6900`)
+and estimated purchase price (`$220600`), moving the open answer from `100%` to
+`3.1%`. Open BM25 rises to 0.317 without reducing oracle-doc or source-rerank,
+which remain 0.403 and 0.370.

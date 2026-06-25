@@ -47,7 +47,7 @@ Expected current FinQA-300 exact-match results:
 | setting | full EviGraph EM |
 | --- | ---: |
 | Oracle-doc | 0.403 |
-| Open BM25 | 0.313 |
+| Open BM25 | 0.317 |
 | BM25 + source rerank | 0.370 |
 
 Main reproducibility artifacts:

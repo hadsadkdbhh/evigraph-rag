@@ -34,7 +34,7 @@ Latest documented FinQA-300 local planner exact match:
 | Setting | Accuracy |
 | --- | ---: |
 | Oracle-doc full EviGraph | 0.403 |
-| Open BM25 full EviGraph | 0.313 |
+| Open BM25 full EviGraph | 0.317 |
 | BM25 + source-rerank full EviGraph | 0.370 |
 
 Latest source-rerank diagnostic counts:
@@ -84,7 +84,7 @@ experiment card, generated paper Markdown, and generated LaTeX tables.
 
 The latest full refresh passed:
 
-- Unit tests: `196 tests OK`
+- Unit tests: `197 tests OK`
 - Manifest: `configs/experiments.finqa_300.local_planner.json`
 - Result directory: `outputs/eval/finqa_300_local_planner`
 - Pipeline report: `outputs/pipeline/pipeline_report.md`
@@ -115,7 +115,7 @@ story:
 | --- | ---: | ---: |
 | Oracle-doc full EviGraph | 0.403 | 0.50+ |
 | BM25 + source-rerank full EviGraph | 0.370 | 0.45+ |
-| Open BM25 full EviGraph | 0.313 | 0.35+ |
+| Open BM25 full EviGraph | 0.317 | 0.35+ |
 
 Required additions for the next paper-quality phase:
 
@@ -243,6 +243,12 @@ Required additions for the next paper-quality phase:
   single context contains both numerator and denominator evidence. This fixes
   the open BM25 ETR 2004 split-chunk case and moves open BM25 to 0.313 without
   reducing oracle-doc or source-rerank.
+- Grouped prose-ratio fallback for explicit `paid in cash` over `purchase
+  price` questions. This fixes the HOLX 2007 open-retrieval split-chunk case
+  where the cash-paid prose and estimated-purchase-price table were both
+  retrieved but not combined, changing the answer from `100%` to `3.1%`.
+  Open BM25 exact match moves to 0.317; oracle-doc remains 0.403 and
+  source-rerank remains 0.370.
 
 Do not repeat these as broad rewrites. Build only from failure reports and add
 small verified fixes.

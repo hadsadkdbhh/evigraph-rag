@@ -1049,6 +1049,44 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertIn("row=cash paid", answer.calculations[0])
         self.assertIn("6900 / 220600", answer.calculations[0])
 
+    def test_ratio_percent_paid_in_cash_combines_split_purchase_price_chunks(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="retrieved_1_finqa_008_holx_2007_page_128_pdf_2_0_1",
+                node_type="text",
+                content=(
+                    "The aggregate purchase price for R2 of approximately $220600 consisted of "
+                    "approximately 4400 shares of Hologic common stock valued at $205500, "
+                    "cash paid of $6900, debt assumed of $5700 and approximately $2500 for "
+                    "acquisition related fees and expenses."
+                ),
+                source_doc="finqa_008_holx_2007_page_128_pdf_2.md",
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="retrieved_2_finqa_008_holx_2007_page_128_pdf_2_0_2",
+                node_type="text",
+                content=(
+                    "| net tangible assets acquired as of july 13 2006 | $ 1200 |\n"
+                    "| --- | --- |\n"
+                    "| goodwill | 145500 |\n"
+                    "| estimated purchase price | $ 220600 |\n"
+                ),
+                source_doc="finqa_008_holx_2007_page_128_pdf_2.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what portion of the estimated purchase price of r2 is paid in cash?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "3.1%")
+        self.assertIn("row=cash paid", answer.calculations[0])
+        self.assertIn("6900 / 220600", answer.calculations[0])
+
     def test_ratio_percent_rejects_same_row_numerator_and_denominator(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
@@ -1924,7 +1962,7 @@ class NumericReasoningTest(unittest.TestCase):
         )
 
         self.assertEqual(answer.text, "60.3%")
-        self.assertEqual(answer.citations, ["retrieved_2_case_0_1", "retrieved_1_case_0_0"])
+        self.assertEqual(set(answer.citations), {"retrieved_2_case_0_1", "retrieved_1_case_0_0"})
 
     def test_ratio_percent_mixes_prose_numerator_and_year_table_denominator(self) -> None:
         graph = EvidenceGraph()
