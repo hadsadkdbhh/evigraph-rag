@@ -1367,6 +1367,35 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertIn("row=institutional securities", answer.calculations[0])
         self.assertIn("denominator_row=total", answer.calculations[0])
 
+    def test_ratio_percent_in_named_column_uses_same_row_total_column(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "retail / hnw long-term aum by asset class and client region.\n"
+                    "| ( dollar amounts in millions ) | americas | emea | asia-pacific | total |\n"
+                    "| --- | ---: | ---: | ---: | ---: |\n"
+                    "| equity | 94805 | 53140 | 16803 | 164748 |\n"
+                    "| long-term retail/hnw | 298024 | 77699 | 27761 | 403484 |\n"
+                    "retail and hnw long-term inflows of $ 9.8 billion were driven by demand.\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the long-term retail/hnw in americas as a percentage of the total long-term retail/hnw?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "73.9%")
+        self.assertIn("row=long-term retail/hnw", answer.calculations[0])
+        self.assertIn("numerator_column=americas", answer.calculations[0])
+        self.assertIn("denominator_column=total", answer.calculations[0])
+        self.assertIn("298024 / 403484", answer.calculations[0])
+
     def test_ratio_percent_selects_query_measure_column(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

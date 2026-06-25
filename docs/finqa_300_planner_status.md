@@ -328,6 +328,14 @@ now returns `453815 / 2996337 = 0.2`. On FinQA-300, exact match rises to 0.393
 oracle-doc, 0.310 open BM25, and 0.363 source-rerank. Source-rerank
 wrong-operation-or-row falls to 55, and wrong-operation-type falls to 11.
 
+The next denominator-selection pass extends same-row column ratios to named
+table columns. For BLK 2012, `long-term retail/hnw in americas as a percentage
+of total long-term retail/hnw` now resolves to the `long-term retail/hnw` row,
+`americas` column over `total` column, producing `298024 / 403484 = 73.9%`.
+This raises oracle-doc exact match to 0.397; open BM25 remains 0.310 and
+source-rerank remains 0.363. Oracle wrong-operation-or-row falls to 48, and
+oracle wrong-denominator falls to 2.
+
 ## Current Pipeline Gate
 
 The FinQA-300 local-planner run is now wired into the one-command project
@@ -337,7 +345,7 @@ pipeline:
 python .\scripts\run_pipeline.py --refresh-results
 ```
 
-The 2026-06-25 pipeline gate passed unit tests (`190 tests OK`), reran or reused the
+The 2026-06-25 pipeline gate passed unit tests (`193 tests OK`), reran or reused the
 FinQA-300 local-planner manifest, regenerated row/operation diagnostics, and
 rebuilt paper-ready Markdown and LaTeX tables under
 `paper/generated/finqa_300_local_planner/`. Use

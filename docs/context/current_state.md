@@ -33,7 +33,7 @@ Latest documented FinQA-300 local planner exact match:
 
 | Setting | Accuracy |
 | --- | ---: |
-| Oracle-doc full EviGraph | 0.393 |
+| Oracle-doc full EviGraph | 0.397 |
 | Open BM25 full EviGraph | 0.310 |
 | BM25 + source-rerank full EviGraph | 0.363 |
 
@@ -84,7 +84,7 @@ experiment card, generated paper Markdown, and generated LaTeX tables.
 
 The latest full refresh passed:
 
-- Unit tests: `190 tests OK`
+- Unit tests: `193 tests OK`
 - Manifest: `configs/experiments.finqa_300.local_planner.json`
 - Result directory: `outputs/eval/finqa_300_local_planner`
 - Pipeline report: `outputs/pipeline/pipeline_report.md`
@@ -113,7 +113,7 @@ story:
 
 | Setting | Current | Target |
 | --- | ---: | ---: |
-| Oracle-doc full EviGraph | 0.393 | 0.50+ |
+| Oracle-doc full EviGraph | 0.397 | 0.50+ |
 | BM25 + source-rerank full EviGraph | 0.363 | 0.45+ |
 | Open BM25 full EviGraph | 0.310 | 0.35+ |
 
@@ -210,6 +210,15 @@ Required additions for the next paper-quality phase:
   BM25, and 0.363 source-rerank; source-rerank
   `wrong_numeric_operation_or_row` falls to 55 and `wrong_operation_type` falls
   to 11.
+- Named-column same-row total ratios for regional/segment tables. The existing
+  same-row column-ratio path now also handles questions shaped like `X in
+  COLUMN as a percentage of total X`, selecting the named header as numerator
+  and the same row's `total` column as denominator. This fixes the BLK 2012
+  long-term retail/HNW Americas case (`298024 / 403484 = 73.9%`) and avoids
+  falling back to unrelated prose such as `$9.8 billion` inflows. FinQA-300
+  moves to 0.397 oracle-doc, while open BM25 remains 0.310 and source-rerank
+  remains 0.363. Oracle wrong-operation-or-row falls to 48 and oracle
+  wrong-denominator falls to 2.
 
 Do not repeat these as broad rewrites. Build only from failure reports and add
 small verified fixes.

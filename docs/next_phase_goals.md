@@ -12,7 +12,7 @@ Latest FinQA-300 local-planner exact match:
 
 | setting | current EM |
 | --- | ---: |
-| Oracle-doc full EviGraph | 0.393 |
+| Oracle-doc full EviGraph | 0.397 |
 | Open BM25 full EviGraph | 0.310 |
 | BM25 + source-rerank full EviGraph | 0.363 |
 
@@ -95,4 +95,3 @@ executor, or verifier mechanisms.
 4. Add ablation manifests and generated paper tables.
 5. Rewrite the methodology section around operation planner, verifier, and
    evidence graph rather than rule patches.
-

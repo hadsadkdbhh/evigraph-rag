@@ -2000,6 +2000,8 @@ class NumericReasoner:
     def _same_row_column_ratio_query(self, query_lower: str) -> bool:
         if "total" not in query_lower:
             return False
+        if re.search(r"\bin\s+.+?\s+as\s+(?:a\s+)?percentage\s+of\s+(?:the\s+)?total\b", query_lower):
+            return True
         column_cues = [
             "due after",
             "due in",
@@ -2017,6 +2019,9 @@ class NumericReasoner:
         query_lower: str,
         query_year: str | None,
     ) -> int | None:
+        named_column_index = self._named_same_row_ratio_column(headers, query_lower)
+        if named_column_index is not None:
+            return named_column_index
         if "due after" in query_lower or "thereafter" in query_lower:
             thereafter_index = self._column_with_terms(headers, ["thereafter"])
             if thereafter_index is not None:
@@ -2027,6 +2032,32 @@ class NumericReasoner:
         if query_year:
             return self._header_year_index(headers, query_year)
         return None
+
+    def _named_same_row_ratio_column(self, headers: list[str], query_lower: str) -> int | None:
+        match = re.search(
+            r"\bin\s+(?P<column>.+?)\s+as\s+(?:a\s+)?percentage\s+of\s+(?:the\s+)?total\b",
+            query_lower,
+        )
+        if not match:
+            return None
+        terms = [term for term in self._keywords(match.group("column")) if term not in {"the", "a", "an"}]
+        if not terms:
+            return None
+        best: tuple[int, int] | None = None
+        for index, header in enumerate(headers):
+            if "total" in header.lower():
+                continue
+            header_terms = set(self._keywords(header))
+            matched = [term for term in terms if term in header_terms or term in header.lower()]
+            if not matched:
+                continue
+            score = 10 * len(matched) + sum(len(term) for term in matched)
+            candidate = (score, -index)
+            if best is None or candidate > best:
+                best = candidate
+        if best is None:
+            return None
+        return -best[1]
 
     def _same_row_ratio_denominator_column(self, headers: list[str]) -> int | None:
         return self._column_with_terms(headers, ["total"])

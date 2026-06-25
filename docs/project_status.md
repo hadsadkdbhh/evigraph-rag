@@ -55,9 +55,9 @@ The pipeline now ends with an experiment-closure gate. That gate validates the
 three 300-row evaluation CSVs, failure reports, row/operation diagnostics,
 dataset inspection/gate artifacts, experiment card, and generated paper tables.
 
-The 2026-06-24 full refresh passed all three stages: unit tests
-(`190 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
-FinQA-300 local-planner exact-match results are 0.393 oracle-doc, 0.310 open
+The 2026-06-25 full refresh passed all three stages: unit tests
+(`193 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
+FinQA-300 local-planner exact-match results are 0.397 oracle-doc, 0.310 open
 BM25, and 0.363 BM25 plus source rerank.
 
 Run the quick MVP0 acceptance suite:
@@ -377,3 +377,13 @@ classifies non-percent `planned_ratio` traces as plain ratios. The target case
 now computes `453815 / 2996337 = 0.2`. On FinQA-300, exact match rises to 0.393
 oracle-doc, 0.310 open BM25, and 0.363 source-rerank. Source-rerank
 wrong-operation-or-row falls to 55 and wrong-operation-type falls to 11.
+
+The latest denominator-selection pass extends the existing same-row column
+ratio mechanism to named table columns. For BLK 2012, the query asks for
+long-term retail/HNW in the Americas as a percentage of total long-term
+retail/HNW. The system now selects the same `long-term retail/hnw` row,
+`americas` as the numerator column, and `total` as the denominator column,
+computing `298024 / 403484 = 73.9%` instead of using unrelated prose inflows as
+the denominator. On FinQA-300, oracle-doc rises to 0.397, while open BM25 stays
+0.310 and source-rerank stays 0.363. Oracle wrong-operation-or-row falls to 48
+and oracle wrong-denominator falls to 2.
