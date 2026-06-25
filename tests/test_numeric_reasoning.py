@@ -1679,6 +1679,58 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.citations, ["complete"])
         self.assertIn("denominator_row=total accounts payable and other current liabilities", answer.calculations[0])
 
+    def test_ratio_percent_major_facilities_owned_uses_total_facilities(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="facilities",
+                node_type="text",
+                content=(
+                    "| ( square feet in millions ) | unitedstates | othercountries | total |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| owned facilities1 | 29.9 | 16.7 | 46.6 |\n"
+                    "| leased facilities2 | 2.3 | 6.0 | 8.3 |\n"
+                    "| total facilities | 32.2 | 22.7 | 54.9 |\n"
+                ),
+                source_doc="intc.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what percentage of major facilities by square footage are owned as of december 28 , 2013?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "84.9%")
+        self.assertIn("row=owned facilities1", answer.calculations[0])
+        self.assertIn("denominator_row=total facilities", answer.calculations[0])
+
+    def test_ratio_percent_major_facilities_leased_uses_total_facilities(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="facilities",
+                node_type="text",
+                content=(
+                    "| ( square feet in millions ) | unitedstates | othercountries | total |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| owned facilities1 | 29.9 | 16.7 | 46.6 |\n"
+                    "| leased facilities2 | 2.3 | 6.0 | 8.3 |\n"
+                    "| total facilities | 32.2 | 22.7 | 54.9 |\n"
+                ),
+                source_doc="intc.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what percentage of major facilities by square footage are leased as of december 28 , 2013?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "15.1%")
+        self.assertIn("row=leased facilities2", answer.calculations[0])
+        self.assertIn("denominator_row=total facilities", answer.calculations[0])
+
     def test_ratio_percent_due_after_total(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

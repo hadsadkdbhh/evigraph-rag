@@ -3262,6 +3262,12 @@ class NumericReasoner:
         return 999, 999, node_id
 
     def _denominator_terms(self, query_lower: str) -> list[str]:
+        if (
+            "major facilities" in query_lower
+            and "square footage" in query_lower
+            and re.search(r"\b(?:owned|leased)\b", query_lower)
+        ):
+            return ["total", "facilities"]
         if " as a percentage of " in query_lower:
             return self._keywords(query_lower.split(" as a percentage of ", 1)[1])
         if " compared to " in query_lower:
@@ -3293,6 +3299,11 @@ class NumericReasoner:
     def _ratio_numerator_terms(self, query_lower: str) -> list[str]:
         if re.search(r"\bpaid\s+in\s+cash\b", query_lower):
             return ["cash", "paid"]
+        if "major facilities" in query_lower and "square footage" in query_lower:
+            if re.search(r"\bleased\b", query_lower):
+                return ["leased", "facilities"]
+            if re.search(r"\bowned\b", query_lower):
+                return ["owned", "facilities"]
         patterns = [
             r"what\s+(?:are|is|was|were)\s+(.+?)\s+as\s+a\s+percentage\s+of",
             r"(.+?)\s+where\s+what\s+percentage\s+of",

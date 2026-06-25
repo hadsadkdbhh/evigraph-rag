@@ -33,9 +33,9 @@ Latest documented FinQA-300 local planner exact match:
 
 | Setting | Accuracy |
 | --- | ---: |
-| Oracle-doc full EviGraph | 0.407 |
-| Open BM25 full EviGraph | 0.320 |
-| BM25 + source-rerank full EviGraph | 0.373 |
+| Oracle-doc full EviGraph | 0.413 |
+| Open BM25 full EviGraph | 0.327 |
+| BM25 + source-rerank full EviGraph | 0.380 |
 
 Latest source-rerank diagnostic counts:
 
@@ -84,7 +84,7 @@ experiment card, generated paper Markdown, and generated LaTeX tables.
 
 The latest full refresh passed:
 
-- Unit tests: `199 tests OK`
+- Unit tests: `201 tests OK`
 - Manifest: `configs/experiments.finqa_300.local_planner.json`
 - Result directory: `outputs/eval/finqa_300_local_planner`
 - Pipeline report: `outputs/pipeline/pipeline_report.md`
@@ -113,9 +113,9 @@ story:
 
 | Setting | Current | Target |
 | --- | ---: | ---: |
-| Oracle-doc full EviGraph | 0.407 | 0.50+ |
-| BM25 + source-rerank full EviGraph | 0.373 | 0.45+ |
-| Open BM25 full EviGraph | 0.320 | 0.35+ |
+| Oracle-doc full EviGraph | 0.413 | 0.50+ |
+| BM25 + source-rerank full EviGraph | 0.380 | 0.45+ |
+| Open BM25 full EviGraph | 0.327 | 0.35+ |
 
 Required additions for the next paper-quality phase:
 
@@ -255,6 +255,12 @@ Required additions for the next paper-quality phase:
   fixes AAP 2011 S&P 500 ROI (`100` to `65.70` equals `-34.3%`) across
   oracle-doc, open BM25, and source-rerank. FinQA-300 moves to 0.407 oracle-doc,
   0.320 open BM25, and 0.373 source-rerank.
+- Facilities square-footage ratio operand mapping. For explicit `major
+  facilities by square footage are owned/leased` queries, numerator terms now
+  target `owned facilities` or `leased facilities`, while the denominator
+  targets `total facilities`. This fixes INTC 2013 owned and leased facility
+  share questions across oracle-doc, open BM25, and source-rerank. FinQA-300
+  moves to 0.413 oracle-doc, 0.327 open BM25, and 0.380 source-rerank.
 
 Do not repeat these as broad rewrites. Build only from failure reports and add
 small verified fixes.

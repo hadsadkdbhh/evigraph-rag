@@ -6,17 +6,17 @@ Generated from `outputs\eval\finqa_300_local_planner` after the latest manifest 
 
 | setting | method | EM | answer supported | calculation supported | operation semantics | row grounded | tokens |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Oracle-doc | full_evigraph | 0.41 | 0.76 | 0.50 | 0.81 | 0.78 | 1176.61 |
-| Open BM25 | full_evigraph | 0.32 | 0.80 | 0.50 | 0.83 | 0.81 | 852.98 |
-| BM25 + source rerank | full_evigraph | 0.37 | 0.78 | 0.51 | 0.83 | 0.80 | 1185.57 |
+| Oracle-doc | full_evigraph | 0.41 | 0.77 | 0.51 | 0.82 | 0.79 | 1176.61 |
+| Open BM25 | full_evigraph | 0.33 | 0.81 | 0.50 | 0.84 | 0.81 | 852.98 |
+| BM25 + source rerank | full_evigraph | 0.38 | 0.79 | 0.51 | 0.84 | 0.80 | 1185.57 |
 
 ## Full EviGraph Failure Categories
 
 | setting | wrong row/op | no numeric | no percent | additive/lookup | ratio | unsupported |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Oracle-doc | 46 | 35 | 40 | 30 | 18 | 9 |
-| Open BM25 | 61 | 39 | 42 | 35 | 19 | 8 |
-| BM25 + source rerank | 53 | 37 | 38 | 32 | 17 | 11 |
+| Oracle-doc | 46 | 35 | 38 | 30 | 18 | 9 |
+| Open BM25 | 61 | 39 | 40 | 35 | 19 | 8 |
+| BM25 + source rerank | 53 | 37 | 36 | 32 | 17 | 11 |
 
 ## Row/Operation Diagnostics
 

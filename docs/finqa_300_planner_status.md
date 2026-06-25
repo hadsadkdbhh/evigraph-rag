@@ -377,6 +377,13 @@ single-context failure. This fixes AAP 2011 S&P 500 ROI across all three
 retrieval settings. Exact match rises to 0.407 oracle-doc, 0.320 open BM25, and
 0.373 source-rerank.
 
+The facilities square-footage pass adds targeted operand mapping for explicit
+`major facilities by square footage are owned/leased` questions. It maps the
+operand rows to `owned facilities` or `leased facilities` over `total
+facilities`, fixing both INTC 2013 facility-share examples across all three
+retrieval settings. Exact match rises to 0.413 oracle-doc, 0.327 open BM25, and
+0.380 source-rerank.
+
 ## Current Pipeline Gate
 
 The FinQA-300 local-planner run is now wired into the one-command project
@@ -386,7 +393,7 @@ pipeline:
 python .\scripts\run_pipeline.py --refresh-results
 ```
 
-The 2026-06-25 pipeline gate passed unit tests (`199 tests OK`), reran or reused the
+The 2026-06-25 pipeline gate passed unit tests (`201 tests OK`), reran or reused the
 FinQA-300 local-planner manifest, regenerated row/operation diagnostics, and
 rebuilt paper-ready Markdown and LaTeX tables under
 `paper/generated/finqa_300_local_planner/`. Use

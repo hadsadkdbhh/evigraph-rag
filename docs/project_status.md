@@ -56,9 +56,9 @@ three 300-row evaluation CSVs, failure reports, row/operation diagnostics,
 dataset inspection/gate artifacts, experiment card, and generated paper tables.
 
 The 2026-06-25 full refresh passed all three stages: unit tests
-(`199 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
-FinQA-300 local-planner exact-match results are 0.407 oracle-doc, 0.320 open
-BM25, and 0.373 BM25 plus source rerank.
+(`201 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
+FinQA-300 local-planner exact-match results are 0.413 oracle-doc, 0.327 open
+BM25, and 0.380 BM25 plus source rerank.
 
 Run the quick MVP0 acceptance suite:
 
@@ -429,3 +429,10 @@ across adjacent parsed table blocks and retries same-source grouped chunks after
 single-context failure. This fixes AAP 2011 S&P 500 ROI (`65.70` vs `100.00`,
 or `-34.3%`) across oracle-doc, open BM25, and source-rerank. FinQA-300 rises to
 0.407 oracle-doc, 0.320 open BM25, and 0.373 source-rerank.
+
+The facilities square-footage pass adds targeted operand mapping for explicit
+`major facilities by square footage are owned/leased` questions: owned or
+leased facilities become the numerator and total facilities becomes the
+denominator. This fixes both INTC 2013 owned and leased facility-share examples
+across oracle-doc, open BM25, and source-rerank. FinQA-300 rises to 0.413
+oracle-doc, 0.327 open BM25, and 0.380 source-rerank.
