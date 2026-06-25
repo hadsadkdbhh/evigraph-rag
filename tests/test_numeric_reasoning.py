@@ -928,6 +928,78 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "-34.3%")
         self.assertIn("row=s&p 500 index", answer.calculations[0])
 
+    def test_roi_from_sp500_table_recovers_truncated_year_header(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="truncated_table",
+                node_type="text",
+                content=(
+                    "| company/index | december 30 2006 | december 29 2007 | january 3 2009 | january 2 2010 |\n"
+                    "| --- | --- | --- | --- | --- |\n"
+                    "| advance auto parts | $ 100.00 | $ 108.00 | $ 97.\n"
+                    "ary 3 2009 | january 2 2010 |\n"
+                    "| --- | --- | --- | --- | --- |\n"
+                    "| advance auto parts | $ 100.00 | $ 108.00 | $ 97.26 | $ 116.01 |\n"
+                    "| s&p 500 index | 100.00 | 104.24 | 65.70 | 78.62 |\n"
+                    "| s&p retail index | 100.00 | 82.15 | 58.29 | 82.36 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the roi of an investment in s&p500 index from 2006 to january 3 , 2009?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "-34.3%")
+        self.assertIn("row=s&p 500 index", answer.calculations[0])
+
+    def test_roi_from_sp500_table_combines_same_source_chunks(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="retrieved_1_finqa_086_aap_2011_page_28_pdf_2_0_0",
+                node_type="text",
+                content=(
+                    "| company/index | december 30 2006 | december 29 2007 | january 3 2009 | january 2 2010 |\n"
+                    "| --- | --- | --- | --- | --- |\n"
+                    "| advance auto parts | $ 100.00 | $ 108.00 | $ 97."
+                ),
+                source_doc="finqa_086_aap_2011_page_28_pdf_2.md",
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="retrieved_2_finqa_086_aap_2011_page_28_pdf_2_0_1",
+                node_type="text",
+                content=(
+                    "ary 3 2009 | january 2 2010 |\n"
+                    "| --- | --- | --- | --- | --- |\n"
+                    "| advance auto parts | $ 100.00 | $ 108.00 | $ 97.26 | $ 116.01 |\n"
+                    "| s&p 500 index | 100.00 | 104.24 | 65.70 | 78.62 |\n"
+                    "| s&p retail index | 100.00 | 82.15 | 58.29 | 82.36 |\n"
+                ),
+                source_doc="finqa_086_aap_2011_page_28_pdf_2.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the roi of an investment in s&p500 index from 2006 to january 3 , 2009?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "-34.3%")
+        self.assertIn("row=s&p 500 index", answer.calculations[0])
+        self.assertEqual(
+            set(answer.citations),
+            {
+                "retrieved_1_finqa_086_aap_2011_page_28_pdf_2_0_0",
+                "retrieved_2_finqa_086_aap_2011_page_28_pdf_2_0_1",
+            },
+        )
+
     def test_total_debt_percent_change_reports_magnitude(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

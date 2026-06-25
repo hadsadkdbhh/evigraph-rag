@@ -33,9 +33,9 @@ Latest documented FinQA-300 local planner exact match:
 
 | Setting | Accuracy |
 | --- | ---: |
-| Oracle-doc full EviGraph | 0.403 |
-| Open BM25 full EviGraph | 0.317 |
-| BM25 + source-rerank full EviGraph | 0.370 |
+| Oracle-doc full EviGraph | 0.407 |
+| Open BM25 full EviGraph | 0.320 |
+| BM25 + source-rerank full EviGraph | 0.373 |
 
 Latest source-rerank diagnostic counts:
 
@@ -84,7 +84,7 @@ experiment card, generated paper Markdown, and generated LaTeX tables.
 
 The latest full refresh passed:
 
-- Unit tests: `197 tests OK`
+- Unit tests: `199 tests OK`
 - Manifest: `configs/experiments.finqa_300.local_planner.json`
 - Result directory: `outputs/eval/finqa_300_local_planner`
 - Pipeline report: `outputs/pipeline/pipeline_report.md`
@@ -113,9 +113,9 @@ story:
 
 | Setting | Current | Target |
 | --- | ---: | ---: |
-| Oracle-doc full EviGraph | 0.403 | 0.50+ |
-| BM25 + source-rerank full EviGraph | 0.370 | 0.45+ |
-| Open BM25 full EviGraph | 0.317 | 0.35+ |
+| Oracle-doc full EviGraph | 0.407 | 0.50+ |
+| BM25 + source-rerank full EviGraph | 0.373 | 0.45+ |
+| Open BM25 full EviGraph | 0.320 | 0.35+ |
 
 Required additions for the next paper-quality phase:
 
@@ -249,6 +249,12 @@ Required additions for the next paper-quality phase:
   retrieved but not combined, changing the answer from `100%` to `3.1%`.
   Open BM25 exact match moves to 0.317; oracle-doc remains 0.403 and
   source-rerank remains 0.370.
+- ROI table repair for chunk-truncated cumulative-return tables. The ROI path
+  now carries a previous year-header block across adjacent parsed table blocks
+  and, if individual contexts fail, retries same-source grouped chunks. This
+  fixes AAP 2011 S&P 500 ROI (`100` to `65.70` equals `-34.3%`) across
+  oracle-doc, open BM25, and source-rerank. FinQA-300 moves to 0.407 oracle-doc,
+  0.320 open BM25, and 0.373 source-rerank.
 
 Do not repeat these as broad rewrites. Build only from failure reports and add
 small verified fixes.

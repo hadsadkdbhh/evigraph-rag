@@ -56,9 +56,9 @@ three 300-row evaluation CSVs, failure reports, row/operation diagnostics,
 dataset inspection/gate artifacts, experiment card, and generated paper tables.
 
 The 2026-06-25 full refresh passed all three stages: unit tests
-(`197 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
-FinQA-300 local-planner exact-match results are 0.403 oracle-doc, 0.317 open
-BM25, and 0.370 BM25 plus source rerank.
+(`199 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
+FinQA-300 local-planner exact-match results are 0.407 oracle-doc, 0.320 open
+BM25, and 0.373 BM25 plus source rerank.
 
 Run the quick MVP0 acceptance suite:
 
@@ -422,3 +422,10 @@ case where the same-source evidence separately contained cash paid (`$6900`)
 and estimated purchase price (`$220600`), moving the open answer from `100%` to
 `3.1%`. Open BM25 rises to 0.317 without reducing oracle-doc or source-rerank,
 which remain 0.403 and 0.370.
+
+The latest shared-failure pass repairs ROI extraction from chunk-truncated
+cumulative-return tables. The ROI path now inherits a previous year-header block
+across adjacent parsed table blocks and retries same-source grouped chunks after
+single-context failure. This fixes AAP 2011 S&P 500 ROI (`65.70` vs `100.00`,
+or `-34.3%`) across oracle-doc, open BM25, and source-rerank. FinQA-300 rises to
+0.407 oracle-doc, 0.320 open BM25, and 0.373 source-rerank.

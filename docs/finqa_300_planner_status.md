@@ -370,6 +370,13 @@ same-source chunks containing the `$6900` cash-paid prose and the `$220600`
 estimated-purchase-price table. Open BM25 exact match rises to 0.317; oracle-doc
 remains 0.403 and source-rerank remains 0.370.
 
+The latest shared-failure pass repairs ROI extraction from chunk-truncated
+cumulative-return tables. The ROI path now carries a previous year-header block
+across adjacent parsed table blocks and retries same-source grouped chunks after
+single-context failure. This fixes AAP 2011 S&P 500 ROI across all three
+retrieval settings. Exact match rises to 0.407 oracle-doc, 0.320 open BM25, and
+0.373 source-rerank.
+
 ## Current Pipeline Gate
 
 The FinQA-300 local-planner run is now wired into the one-command project
@@ -379,7 +386,7 @@ pipeline:
 python .\scripts\run_pipeline.py --refresh-results
 ```
 
-The 2026-06-25 pipeline gate passed unit tests (`197 tests OK`), reran or reused the
+The 2026-06-25 pipeline gate passed unit tests (`199 tests OK`), reran or reused the
 FinQA-300 local-planner manifest, regenerated row/operation diagnostics, and
 rebuilt paper-ready Markdown and LaTeX tables under
 `paper/generated/finqa_300_local_planner/`. Use

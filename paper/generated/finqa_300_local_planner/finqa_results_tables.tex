@@ -7,9 +7,9 @@
 \toprule
 Setting & Method & EM & Ans. & Calc. & OpSem & Row & Tokens \\
 \midrule
-Oracle-doc & Full EviGraph & 0.40 & 0.76 & 0.50 & 0.81 & 0.78 & 1176.61 \\
-Open BM25 & Full EviGraph & 0.32 & 0.80 & 0.49 & 0.83 & 0.80 & 852.98 \\
-BM25 + source rerank & Full EviGraph & 0.37 & 0.78 & 0.50 & 0.83 & 0.79 & 1185.57 \\
+Oracle-doc & Full EviGraph & 0.41 & 0.76 & 0.50 & 0.81 & 0.78 & 1176.61 \\
+Open BM25 & Full EviGraph & 0.32 & 0.80 & 0.50 & 0.83 & 0.81 & 852.98 \\
+BM25 + source rerank & Full EviGraph & 0.37 & 0.78 & 0.51 & 0.83 & 0.80 & 1185.57 \\
 \bottomrule
 \end{tabular}
 \caption{FinQA diagnostic results. EM is numeric exact match. Ans., Calc., OpSem, and Row are verifier diagnostics for answer support, calculation-result support, operation-semantics checking, and row grounding. Open hybrid is a deterministic lexical/numeric reranker; source rerank uses the provided source document and is an analysis setting rather than a deployable open-retrieval claim.}
@@ -23,9 +23,9 @@ BM25 + source rerank & Full EviGraph & 0.37 & 0.78 & 0.50 & 0.83 & 0.79 & 1185.5
 \toprule
 Setting & Wrong row/op & No numeric & No percent & Add./lookup & Ratio & Unsupported \\
 \midrule
-Oracle-doc & 46 & 36 & 40 & 30 & 18 & 9 \\
-Open BM25 & 61 & 40 & 42 & 35 & 19 & 8 \\
-BM25 + source rerank & 53 & 38 & 38 & 32 & 17 & 11 \\
+Oracle-doc & 46 & 35 & 40 & 30 & 18 & 9 \\
+Open BM25 & 61 & 39 & 42 & 35 & 19 & 8 \\
+BM25 + source rerank & 53 & 37 & 38 & 32 & 17 & 11 \\
 \bottomrule
 \end{tabular}
 \caption{Failure categories for full EviGraph on the FinQA diagnostic subset. The categories are generated directly from the manifest CSVs and should be used to drive the next engineering iteration.}

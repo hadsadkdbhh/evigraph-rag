@@ -723,36 +723,73 @@ class NumericReasoner:
             return None
         base_year, target_year = years[0], years[1]
         for node_id, text in contexts:
-            for headers, rows in self._markdown_tables(text):
-                target_index = self._header_year_index(headers, target_year)
-                base_index = self._header_year_index(headers, base_year)
-                if target_index is None:
-                    continue
-                if base_index is None:
-                    earlier = [
-                        index
-                        for index, header in enumerate(headers)
-                        if (match := re.search(r"\b(20\d{2})\b", header)) and int(match.group(1)) < int(target_year)
-                    ]
-                    if earlier:
-                        base_index = earlier[0]
-                if base_index is None:
-                    continue
-                row = self._best_query_row(query_lower, headers, rows)
-                if not row or max(base_index, target_index) >= len(row):
-                    continue
-                base_value = self._first_number(row[base_index])
-                target_value = self._first_number(row[target_index])
-                if base_value is None or target_value is None or base_value == 0:
-                    continue
-                operation = self.executor.percent_change(target_value, base_value)
-                if operation is None:
-                    continue
-                return NumericAnswer(
-                    text=f"{operation.value:.1f}%",
-                    calculation=f"percent_change row={row[0]} roi years={base_year}->{target_year}: {operation.expression}",
-                    cited_node_ids=[node_id],
-                )
+            answer = self._roi_from_text(node_id, text, query_lower, base_year, target_year)
+            if answer is not None:
+                return answer
+        groups: dict[str, list[tuple[str, str]]] = {}
+        for node_id, text in contexts:
+            groups.setdefault(self._context_source_key(node_id), []).append((node_id, text))
+        for grouped_contexts in groups.values():
+            if len(grouped_contexts) < 2:
+                continue
+            grouped_contexts = sorted(grouped_contexts, key=lambda item: self._context_chunk_order(item[0]))
+            node_ids = [node_id for node_id, _text in grouped_contexts]
+            combined_text = "\n".join(text for _node_id, text in grouped_contexts)
+            answer = self._roi_from_text(node_ids[0], combined_text, query_lower, base_year, target_year)
+            if answer is not None:
+                return NumericAnswer(answer.text, answer.calculation, node_ids)
+        return None
+
+    def _roi_from_text(
+        self,
+        node_id: str,
+        text: str,
+        query_lower: str,
+        base_year: str,
+        target_year: str,
+    ) -> NumericAnswer | None:
+        previous_year_headers: list[str] | None = None
+        for headers, rows in self._markdown_tables(text):
+            effective_headers = headers
+            target_index = self._header_year_index(effective_headers, target_year)
+            base_index = self._header_year_index(effective_headers, base_year)
+            if target_index is None and previous_year_headers and rows and len(previous_year_headers) == len(rows[0]):
+                effective_headers = previous_year_headers
+                target_index = self._header_year_index(effective_headers, target_year)
+                base_index = self._header_year_index(effective_headers, base_year)
+            if target_index is None:
+                if any(re.search(r"\b20\d{2}\b", header) for header in headers):
+                    previous_year_headers = headers
+                continue
+            if base_index is None:
+                earlier = [
+                    index
+                    for index, header in enumerate(effective_headers)
+                    if (match := re.search(r"\b(20\d{2})\b", header)) and int(match.group(1)) < int(target_year)
+                ]
+                if earlier:
+                    base_index = earlier[0]
+            if base_index is None:
+                previous_year_headers = effective_headers
+                continue
+            row = self._best_query_row(query_lower, effective_headers, rows)
+            if not row or max(base_index, target_index) >= len(row):
+                previous_year_headers = effective_headers
+                continue
+            base_value = self._first_number(row[base_index])
+            target_value = self._first_number(row[target_index])
+            if base_value is None or target_value is None or base_value == 0:
+                previous_year_headers = effective_headers
+                continue
+            operation = self.executor.percent_change(target_value, base_value)
+            if operation is None:
+                previous_year_headers = effective_headers
+                continue
+            return NumericAnswer(
+                text=f"{operation.value:.1f}%",
+                calculation=f"percent_change row={row[0]} roi years={base_year}->{target_year}: {operation.expression}",
+                cited_node_ids=[node_id],
+            )
         return None
 
     def _percent_change(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
