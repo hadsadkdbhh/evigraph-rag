@@ -56,9 +56,9 @@ three 300-row evaluation CSVs, failure reports, row/operation diagnostics,
 dataset inspection/gate artifacts, experiment card, and generated paper tables.
 
 The 2026-06-25 full refresh passed all three stages: unit tests
-(`194 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
-FinQA-300 local-planner exact-match results are 0.400 oracle-doc, 0.310 open
-BM25, and 0.367 BM25 plus source rerank.
+(`195 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
+FinQA-300 local-planner exact-match results are 0.403 oracle-doc, 0.310 open
+BM25, and 0.370 BM25 plus source rerank.
 
 Run the quick MVP0 acceptance suite:
 
@@ -397,3 +397,14 @@ single denominator row. On FinQA-300, oracle-doc rises to 0.400 and
 source-rerank rises to 0.367, while open BM25 stays 0.310. Oracle
 wrong-operation-or-row falls to 47; source-rerank wrong-operation-or-row falls
 to 54 and source-rerank wrong-operation-type falls to 10.
+
+The next operation-type pass handles `increase in X as a percentage of Y in
+YEAR` questions where the numerator is a prose-supported sum of increase
+components and the denominator is a year-labeled table row. For ETR 2004, the
+system now sums the `other regulatory credits` increase components
+(`14.3 + 11.8 + 11.4`) and divides by `2003 net revenue` (`973.7`), yielding
+`3.9%` for the gold `3.85%`. On FinQA-300, oracle-doc rises to 0.403 and
+source-rerank rises to 0.370, while open BM25 stays 0.310 because the open
+retrieval setting still selects a misleading context for this example. Oracle
+wrong-operation-or-row falls to 46; source-rerank wrong-operation-or-row falls
+to 53 and source-rerank wrong-operation-type falls to 9.

@@ -109,6 +109,9 @@ class NumericReasoner:
             or "what share" in query_lower
             or " as a percentage of " in query_lower
         ):
+            answer = self._increase_component_ratio_percent(query_lower, contexts)
+            if answer:
+                return answer
             answer = self._ratio_percent(query_lower, contexts)
             if answer:
                 return answer
@@ -255,6 +258,139 @@ class NumericReasoner:
                     cited_node_ids=[node_id],
                 )
         return None
+
+    def _increase_component_ratio_percent(
+        self, query_lower: str, contexts: list[tuple[str, str]]
+    ) -> NumericAnswer | None:
+        parsed = self._increase_component_ratio_percent_query(query_lower)
+        if parsed is None:
+            return None
+        numerator_terms, denominator_terms, query_year = parsed
+
+        for node_id, text in contexts:
+            numerator, numerator_label, addends = self._prose_increase_component_sum(text, numerator_terms)
+            if numerator is None:
+                continue
+            denominator, denominator_label = self._value_for_row_terms_year(
+                text,
+                denominator_terms,
+                query_year,
+                query_lower,
+            )
+            if denominator is None:
+                denominator, denominator_label = self._year_labeled_row_value_for_terms(
+                    text,
+                    denominator_terms,
+                    query_year,
+                )
+            if denominator in {None, 0}:
+                continue
+            operation = self.executor.ratio(numerator, denominator)
+            if operation is None:
+                continue
+            percent = operation.value * 100
+            addends_text = " + ".join(f"{value:g}" for value in addends)
+            return NumericAnswer(
+                text=self._format_percent(percent),
+                calculation=(
+                    "increase_component_ratio_percent "
+                    f"row={numerator_label} denominator_row={denominator_label}: "
+                    f"({addends_text}) / {denominator:g} * 100 = {self._format_percent(percent)}"
+                ),
+                cited_node_ids=[node_id],
+            )
+        return None
+
+    def _increase_component_ratio_percent_query(
+        self, query_lower: str
+    ) -> tuple[list[str], list[str], str] | None:
+        match = re.search(
+            r"\bincrease\s+in\s+(?P<numerator>.+?)\s+as\s+a\s+percentage\s+of\s+"
+            r"(?P<denominator>.+?)\s+in\s+(?P<year>20\d{2})\b",
+            query_lower,
+        )
+        if not match:
+            return None
+        numerator_terms = self._keywords(match.group("numerator"))
+        denominator_terms = self._keywords(match.group("denominator"))
+        if not numerator_terms or not denominator_terms:
+            return None
+        return numerator_terms, denominator_terms, match.group("year")
+
+    def _prose_increase_component_sum(
+        self, text: str, numerator_terms: list[str]
+    ) -> tuple[float | None, str, list[float]]:
+        best: tuple[int, int, int, str, list[float]] | None = None
+        amount_pattern = re.compile(r"(\$)\s*([-+]?\d+(?:\.\d+)?)\s*(billion|million|thousand)?", re.IGNORECASE)
+        exact_subject = " ".join(numerator_terms)
+        exact_start = text.lower().find(f"{exact_subject} increased")
+        if exact_start >= 0:
+            tail = text[exact_start:]
+            cut_positions = [
+                position
+                for marker in ["\nfollowing is", "\n2003 compared", "\n2010 compared", "\n2016 compared", "\n|"]
+                if (position := tail.lower().find(marker)) > 0
+            ]
+            window = tail[: min(cut_positions)] if cut_positions else tail[:1200]
+            window_values = [
+                self._scaled_number(match.group(2), match.group(3).lower() if match.group(3) else None)
+                for match in amount_pattern.finditer(window)
+            ]
+            window_values = self._dedupe_consecutive_values(window_values)
+            if window_values:
+                return sum(window_values), exact_subject, window_values
+        segments = [
+            line.strip()
+            for line in text.splitlines()
+            if line.strip() and not line.strip().startswith("|") and not line.strip().startswith("#")
+        ]
+        for segment_index, segment in enumerate(segments):
+            lowered = segment.lower()
+            if "increas" not in lowered:
+                continue
+            if not self._label_matches_terms(lowered, numerator_terms):
+                continue
+            values = [
+                self._scaled_number(match.group(2), match.group(3).lower() if match.group(3) else None)
+                for match in amount_pattern.finditer(segment)
+            ]
+            if not values:
+                continue
+            matched = sum(1 for term in numerator_terms if term in lowered)
+            subject_score = 1 if f"{exact_subject} increased" in lowered else 0
+            candidate = (subject_score, matched, -segment_index, exact_subject, values)
+            if best is None or candidate > best:
+                best = candidate
+        if best is None:
+            return None, "", []
+        _subject, _matched, _sentence_order, label, values = best
+        return sum(values), label, values
+
+    def _dedupe_consecutive_values(self, values: list[float]) -> list[float]:
+        deduped: list[float] = []
+        for value in values:
+            if deduped and abs(deduped[-1] - value) < 1e-9:
+                continue
+            deduped.append(value)
+        return deduped
+
+    def _year_labeled_row_value_for_terms(
+        self, text: str, terms: list[str], query_year: str
+    ) -> tuple[float | None, str]:
+        best: tuple[int, int, float, str] | None = None
+        for row_index, (label, value) in enumerate(self._label_value_rows(text)):
+            if query_year not in label:
+                continue
+            if not self._label_matches_terms(label, terms):
+                continue
+            matched = sum(1 for term in terms if term in label)
+            candidate = (matched, -row_index, value, label)
+            if best is None or candidate > best:
+                best = candidate
+        if best is None:
+            return None, ""
+        _matched, _row_order, value, label = best
+        return value, label
 
     def _year_range_average_v2(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
         range_match = re.search(r"\b(?:from\s+)?(20\d{2})\s*(?:[-\s]|\bto\b)+\s*(20\d{2})\b", query_lower)

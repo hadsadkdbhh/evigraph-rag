@@ -33,15 +33,15 @@ Latest documented FinQA-300 local planner exact match:
 
 | Setting | Accuracy |
 | --- | ---: |
-| Oracle-doc full EviGraph | 0.400 |
+| Oracle-doc full EviGraph | 0.403 |
 | Open BM25 full EviGraph | 0.310 |
-| BM25 + source-rerank full EviGraph | 0.367 |
+| BM25 + source-rerank full EviGraph | 0.370 |
 
 Latest source-rerank diagnostic counts:
 
 | Failure class | Count |
 | --- | ---: |
-| wrong_numeric_operation_or_row | 54 |
+| wrong_numeric_operation_or_row | 53 |
 | no_numeric_answer_other | 38 |
 | no_numeric_answer_percent | 38 |
 | no_numeric_answer_additive_or_lookup | 32 |
@@ -53,7 +53,7 @@ Latest row/operation diagnostic split for source-rerank:
 | Label | Count |
 | --- | ---: |
 | ambiguous_supported_wrong_number | 29 |
-| wrong_operation_type | 10 |
+| wrong_operation_type | 9 |
 | wrong_row_label | 8 |
 | wrong_year_or_period | 6 |
 | wrong_denominator | 3 |
@@ -84,7 +84,7 @@ experiment card, generated paper Markdown, and generated LaTeX tables.
 
 The latest full refresh passed:
 
-- Unit tests: `194 tests OK`
+- Unit tests: `195 tests OK`
 - Manifest: `configs/experiments.finqa_300.local_planner.json`
 - Result directory: `outputs/eval/finqa_300_local_planner`
 - Pipeline report: `outputs/pipeline/pipeline_report.md`
@@ -113,8 +113,8 @@ story:
 
 | Setting | Current | Target |
 | --- | ---: | ---: |
-| Oracle-doc full EviGraph | 0.400 | 0.50+ |
-| BM25 + source-rerank full EviGraph | 0.367 | 0.45+ |
+| Oracle-doc full EviGraph | 0.403 | 0.50+ |
+| BM25 + source-rerank full EviGraph | 0.370 | 0.45+ |
 | Open BM25 full EviGraph | 0.310 | 0.35+ |
 
 Required additions for the next paper-quality phase:
@@ -228,6 +228,15 @@ Required additions for the next paper-quality phase:
   oracle-doc, 0.310 open BM25, and 0.367 source-rerank. Oracle
   wrong-operation-or-row falls to 47; source-rerank wrong-operation-or-row
   falls to 54 and source-rerank wrong-operation-type falls to 10.
+- Increase-component ratio-percent operations. The ratio-percent path now
+  handles questions shaped like `increase in X as a percentage of Y in YEAR` by
+  summing nearby prose-supported increase components for `X` and dividing by
+  the year-labeled denominator row for `Y`. This fixes the ETR 2004 other
+  regulatory credits case (`(14.3 + 11.8 + 11.4) / 973.7 * 100 = 3.9%` for
+  gold `3.85%`). FinQA-300 moves to 0.403 oracle-doc, 0.310 open BM25, and
+  0.370 source-rerank. Oracle wrong-operation-or-row falls to 46; source-rerank
+  wrong-operation-or-row falls to 53 and source-rerank wrong-operation-type
+  falls to 9.
 
 Do not repeat these as broad rewrites. Build only from failure reports and add
 small verified fixes.

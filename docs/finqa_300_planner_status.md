@@ -346,6 +346,18 @@ Oracle wrong-operation-or-row falls to 47, oracle wrong-operation-type falls to
 11, source-rerank wrong-operation-or-row falls to 54, and source-rerank
 wrong-operation-type falls to 10.
 
+The next operation-type pass handles `increase in X as a percentage of Y in
+YEAR` questions that require summing prose increase components before dividing
+by a year-labeled denominator row. For ETR 2004, `other regulatory credits`
+increased due to `$14.3 million`, `$11.8 million`, and `$11.4 million`; these
+components divided by `2003 net revenue` of `$973.7 million` produce `3.9%`,
+matching the gold `3.85%` under numeric tolerance. This raises oracle-doc exact
+match to 0.403 and source-rerank exact match to 0.370, while open BM25 remains
+0.310 because open retrieval still selects a misleading context for this
+example. Oracle wrong-operation-or-row falls to 46, oracle wrong-operation-type
+falls to 10, source-rerank wrong-operation-or-row falls to 53, and source-rerank
+wrong-operation-type falls to 9.
+
 ## Current Pipeline Gate
 
 The FinQA-300 local-planner run is now wired into the one-command project
@@ -355,7 +367,7 @@ pipeline:
 python .\scripts\run_pipeline.py --refresh-results
 ```
 
-The 2026-06-25 pipeline gate passed unit tests (`194 tests OK`), reran or reused the
+The 2026-06-25 pipeline gate passed unit tests (`195 tests OK`), reran or reused the
 FinQA-300 local-planner manifest, regenerated row/operation diagnostics, and
 rebuilt paper-ready Markdown and LaTeX tables under
 `paper/generated/finqa_300_local_planner/`. Use

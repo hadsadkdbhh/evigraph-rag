@@ -305,6 +305,7 @@ def _calculation_operation(calculation: str) -> str | None:
         "planned_percent_of_increase": "percent_of_increase",
         "percent_delta": "percent_delta",
         "ratio_percent": "ratio_percent",
+        "increase_component_ratio_percent": "ratio_percent",
         "ratio_between_years": "ratio_between_years",
         "row_average": "row_average",
         "row_values_average": "row_values_average",
