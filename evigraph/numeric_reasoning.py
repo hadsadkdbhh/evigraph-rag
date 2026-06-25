@@ -145,6 +145,9 @@ class NumericReasoner:
                 return answer
 
         if "ratio" in query_lower:
+            answer = self._acquisition_liabilities_to_assets_ratio(query_lower, contexts)
+            if answer:
+                return answer
             answer = self._same_year_row_ratio(query_lower, contexts)
             if answer:
                 return answer
@@ -192,6 +195,66 @@ class NumericReasoner:
             "ratio" in query_lower
             and re.search(r"\bfor\s+20\d{2}\b.+?\bto\s+(?:the\s+)?(?:amounts?\s+)?after\s+20\d{2}\b", query_lower)
         )
+
+    def _acquisition_liabilities_to_assets_ratio(
+        self, query_lower: str, contexts: list[tuple[str, str]]
+    ) -> NumericAnswer | None:
+        if "ratio" not in query_lower or "asset" not in query_lower:
+            return None
+        if not re.search(r"\b(?:debt|debts|liabilit(?:y|ies))\b", query_lower):
+            return None
+        if not any(term in query_lower for term in ["purchase transaction", "acquisition", "purchase price"]):
+            return None
+
+        for node_id, text in contexts:
+            parsed_tables = self._markdown_tables(text)
+            loose_table = self._loose_markdown_table(text)
+            if loose_table is not None:
+                parsed_tables.append(loose_table)
+
+            for _headers, rows in parsed_tables:
+                assets_row = self._row_by_label(rows, ["total", "assets", "acquired"])
+                if assets_row is None:
+                    continue
+                denominator = self._row_first_numeric_value(assets_row)
+                if denominator in {None, 0}:
+                    continue
+
+                numerator_rows: list[tuple[str, float]] = []
+                seen_labels: set[str] = set()
+                for terms in (["debt", "assumed"], ["liabilities", "assumed"], ["liability", "assumed"]):
+                    row = self._row_by_label(rows, terms)
+                    if row is None:
+                        continue
+                    label = row[0].strip()
+                    normalized_label = label.lower()
+                    if normalized_label in seen_labels:
+                        continue
+                    value = self._row_first_numeric_value(row)
+                    if value is None:
+                        continue
+                    seen_labels.add(normalized_label)
+                    numerator_rows.append((label, abs(value)))
+
+                if not numerator_rows:
+                    continue
+                numerator = sum(value for _label, value in numerator_rows)
+                operation = self.executor.ratio(numerator, denominator)
+                if operation is None:
+                    continue
+                percent = operation.value * 100
+                labels = ",".join(label for label, _value in numerator_rows)
+                addends = " + ".join(f"{value:g}" for _label, value in numerator_rows)
+                return NumericAnswer(
+                    text=self._format_percent(percent),
+                    calculation=(
+                        "acquisition_liabilities_to_assets_ratio "
+                        f"numerator_rows={labels} denominator_row={assets_row[0].strip()}: "
+                        f"({addends}) / {denominator:g} * 100 = {self._format_percent(percent)}"
+                    ),
+                    cited_node_ids=[node_id],
+                )
+        return None
 
     def _year_range_average_v2(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
         range_match = re.search(r"\b(?:from\s+)?(20\d{2})\s*(?:[-\s]|\bto\b)+\s*(20\d{2})\b", query_lower)
@@ -3318,6 +3381,13 @@ class NumericReasoner:
         if not match:
             return None
         return self._to_float(match.group(0))
+
+    def _row_first_numeric_value(self, row: list[str]) -> float | None:
+        for cell in row[1:]:
+            value = self._first_number(cell)
+            if value is not None:
+                return value
+        return None
 
     def _to_float(self, value: str) -> float:
         return float(value.replace(",", ""))

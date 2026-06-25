@@ -56,9 +56,9 @@ three 300-row evaluation CSVs, failure reports, row/operation diagnostics,
 dataset inspection/gate artifacts, experiment card, and generated paper tables.
 
 The 2026-06-25 full refresh passed all three stages: unit tests
-(`193 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
-FinQA-300 local-planner exact-match results are 0.397 oracle-doc, 0.310 open
-BM25, and 0.363 BM25 plus source rerank.
+(`194 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
+FinQA-300 local-planner exact-match results are 0.400 oracle-doc, 0.310 open
+BM25, and 0.367 BM25 plus source rerank.
 
 Run the quick MVP0 acceptance suite:
 
@@ -387,3 +387,13 @@ computing `298024 / 403484 = 73.9%` instead of using unrelated prose inflows as
 the denominator. On FinQA-300, oracle-doc rises to 0.397, while open BM25 stays
 0.310 and source-rerank stays 0.363. Oracle wrong-operation-or-row falls to 48
 and oracle wrong-denominator falls to 2.
+
+The next wrong-operation-type pass adds a narrow acquisition liability-to-asset
+operation. For DRE 2007, the query asks for the ratio of debts to assets in a
+purchase transaction; the correct operation combines `debt assumed` and `other
+liabilities assumed`, then divides by `total assets acquired`. The system now
+computes `(148527 + 5829) / 867558 * 100 = 17.8%` instead of selecting a noisy
+single denominator row. On FinQA-300, oracle-doc rises to 0.400 and
+source-rerank rises to 0.367, while open BM25 stays 0.310. Oracle
+wrong-operation-or-row falls to 47; source-rerank wrong-operation-or-row falls
+to 54 and source-rerank wrong-operation-type falls to 10.

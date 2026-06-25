@@ -12,9 +12,9 @@ Latest FinQA-300 local-planner exact match:
 
 | setting | current EM |
 | --- | ---: |
-| Oracle-doc full EviGraph | 0.397 |
+| Oracle-doc full EviGraph | 0.400 |
 | Open BM25 full EviGraph | 0.310 |
-| BM25 + source-rerank full EviGraph | 0.363 |
+| BM25 + source-rerank full EviGraph | 0.367 |
 
 The engineering pipeline and experiment artifact closure are complete. The
 remaining work is research quality: stronger numerical reasoning, stronger

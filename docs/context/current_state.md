@@ -33,15 +33,15 @@ Latest documented FinQA-300 local planner exact match:
 
 | Setting | Accuracy |
 | --- | ---: |
-| Oracle-doc full EviGraph | 0.397 |
+| Oracle-doc full EviGraph | 0.400 |
 | Open BM25 full EviGraph | 0.310 |
-| BM25 + source-rerank full EviGraph | 0.363 |
+| BM25 + source-rerank full EviGraph | 0.367 |
 
 Latest source-rerank diagnostic counts:
 
 | Failure class | Count |
 | --- | ---: |
-| wrong_numeric_operation_or_row | 55 |
+| wrong_numeric_operation_or_row | 54 |
 | no_numeric_answer_other | 38 |
 | no_numeric_answer_percent | 38 |
 | no_numeric_answer_additive_or_lookup | 32 |
@@ -53,7 +53,7 @@ Latest row/operation diagnostic split for source-rerank:
 | Label | Count |
 | --- | ---: |
 | ambiguous_supported_wrong_number | 29 |
-| wrong_operation_type | 11 |
+| wrong_operation_type | 10 |
 | wrong_row_label | 8 |
 | wrong_year_or_period | 6 |
 | wrong_denominator | 3 |
@@ -84,7 +84,7 @@ experiment card, generated paper Markdown, and generated LaTeX tables.
 
 The latest full refresh passed:
 
-- Unit tests: `193 tests OK`
+- Unit tests: `194 tests OK`
 - Manifest: `configs/experiments.finqa_300.local_planner.json`
 - Result directory: `outputs/eval/finqa_300_local_planner`
 - Pipeline report: `outputs/pipeline/pipeline_report.md`
@@ -113,8 +113,8 @@ story:
 
 | Setting | Current | Target |
 | --- | ---: | ---: |
-| Oracle-doc full EviGraph | 0.397 | 0.50+ |
-| BM25 + source-rerank full EviGraph | 0.363 | 0.45+ |
+| Oracle-doc full EviGraph | 0.400 | 0.50+ |
+| BM25 + source-rerank full EviGraph | 0.367 | 0.45+ |
 | Open BM25 full EviGraph | 0.310 | 0.35+ |
 
 Required additions for the next paper-quality phase:
@@ -219,6 +219,15 @@ Required additions for the next paper-quality phase:
   moves to 0.397 oracle-doc, while open BM25 remains 0.310 and source-rerank
   remains 0.363. Oracle wrong-operation-or-row falls to 48 and oracle
   wrong-denominator falls to 2.
+- Acquisition liability-to-asset ratios for purchase transaction tables. The
+  ratio path now recognizes questions asking for debt/liability to assets in an
+  acquisition or purchase transaction and combines `debt assumed` with `other
+  liabilities assumed` before dividing by `total assets acquired`. This fixes
+  the DRE 2007 purchase-transaction case
+  (`(148527 + 5829) / 867558 * 100 = 17.8%`). FinQA-300 moves to 0.400
+  oracle-doc, 0.310 open BM25, and 0.367 source-rerank. Oracle
+  wrong-operation-or-row falls to 47; source-rerank wrong-operation-or-row
+  falls to 54 and source-rerank wrong-operation-type falls to 10.
 
 Do not repeat these as broad rewrites. Build only from failure reports and add
 small verified fixes.

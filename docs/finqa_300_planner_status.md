@@ -336,6 +336,16 @@ This raises oracle-doc exact match to 0.397; open BM25 remains 0.310 and
 source-rerank remains 0.363. Oracle wrong-operation-or-row falls to 48, and
 oracle wrong-denominator falls to 2.
 
+The next wrong-operation-type pass targets acquisition liability-to-asset
+ratios. For DRE 2007, `what was the ratio of the debts to the assets in the
+purchase transaction` should combine `debt assumed` and `other liabilities
+assumed` before dividing by `total assets acquired`, yielding
+`(148527 + 5829) / 867558 * 100 = 17.8%`. This raises oracle-doc exact match to
+0.400 and source-rerank exact match to 0.367, while open BM25 remains 0.310.
+Oracle wrong-operation-or-row falls to 47, oracle wrong-operation-type falls to
+11, source-rerank wrong-operation-or-row falls to 54, and source-rerank
+wrong-operation-type falls to 10.
+
 ## Current Pipeline Gate
 
 The FinQA-300 local-planner run is now wired into the one-command project
@@ -345,7 +355,7 @@ pipeline:
 python .\scripts\run_pipeline.py --refresh-results
 ```
 
-The 2026-06-25 pipeline gate passed unit tests (`193 tests OK`), reran or reused the
+The 2026-06-25 pipeline gate passed unit tests (`194 tests OK`), reran or reused the
 FinQA-300 local-planner manifest, regenerated row/operation diagnostics, and
 rebuilt paper-ready Markdown and LaTeX tables under
 `paper/generated/finqa_300_local_planner/`. Use

@@ -2221,6 +2221,41 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertIn("453815 / 2.99634e+06", answer.calculations[0])
         self.assertEqual(answer.citations, ["correct"])
 
+    def test_acquisition_debts_to_assets_ratio_combines_assumed_liabilities(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="dre_table",
+                node_type="text",
+                content=(
+                    "the assets acquired and liabilities assumed were recorded at their estimated fair value "
+                    "at the date of acquisition, as summarized below.\n"
+                    "| operating rental properties | $ 602011 |\n"
+                    "| --- | --- |\n"
+                    "| land held for development | 154300 |\n"
+                    "| total real estate investments | 756311 |\n"
+                    "| other assets | 10478 |\n"
+                    "| lease related intangible assets | 86047 |\n"
+                    "| goodwill | 14722 |\n"
+                    "| total assets acquired | 867558 |\n"
+                    "| debt assumed | -148527 ( 148527 ) |\n"
+                    "| other liabilities assumed | -5829 ( 5829 ) |\n"
+                    "| purchase price net of assumed liabilities | $ 713202 |\n"
+                ),
+                source_doc="dre.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the ratio of the debts to the assets in the purchase transaction",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "17.8%")
+        self.assertIn("acquisition_liabilities_to_assets_ratio", answer.calculations[0])
+        self.assertIn("(148527 + 5829) / 867558 * 100", answer.calculations[0])
+        self.assertEqual(answer.citations, ["dre_table"])
+
     def test_percent_of_total_due_after_uses_same_row_columns(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

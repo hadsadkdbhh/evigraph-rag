@@ -8,23 +8,23 @@ Generated from `outputs\eval\finqa_300_local_planner` after the latest manifest 
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Oracle-doc | full_evigraph | 0.40 | 0.75 | 0.50 | 0.80 | 0.78 | 1176.61 |
 | Open BM25 | full_evigraph | 0.31 | 0.79 | 0.49 | 0.82 | 0.80 | 852.98 |
-| BM25 + source rerank | full_evigraph | 0.36 | 0.78 | 0.50 | 0.82 | 0.79 | 1185.57 |
+| BM25 + source rerank | full_evigraph | 0.37 | 0.78 | 0.50 | 0.82 | 0.79 | 1185.57 |
 
 ## Full EviGraph Failure Categories
 
 | setting | wrong row/op | no numeric | no percent | additive/lookup | ratio | unsupported |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Oracle-doc | 48 | 36 | 40 | 30 | 18 | 9 |
+| Oracle-doc | 47 | 36 | 40 | 30 | 18 | 9 |
 | Open BM25 | 62 | 40 | 43 | 35 | 19 | 8 |
-| BM25 + source rerank | 55 | 38 | 38 | 32 | 17 | 11 |
+| BM25 + source rerank | 54 | 38 | 38 | 32 | 17 | 11 |
 
 ## Row/Operation Diagnostics
 
 | setting | wrong numerator | wrong denominator | wrong year/period | wrong row label | wrong operation type | ambiguous |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Oracle-doc | 7 | 2 | 2 | 6 | 12 | 24 |
+| Oracle-doc | 7 | 2 | 2 | 6 | 11 | 24 |
 | Open BM25 | 7 | 7 | 7 | 12 | 15 | 28 |
-| BM25 + source rerank | 6 | 3 | 6 | 8 | 11 | 29 |
+| BM25 + source rerank | 6 | 3 | 6 | 8 | 10 | 29 |
 
 ## Paper-Safe Claims
 
