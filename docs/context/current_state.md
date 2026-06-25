@@ -24,6 +24,7 @@ Use the 300-example FinQA validation subset as the current reality check.
 - One-command pipeline report: `outputs/pipeline/pipeline_report.md`
 - Experiment closure report: `outputs/pipeline/experiment_closure_report.md`
 - Paper table artifacts: `paper/generated/finqa_300_local_planner/`
+- Next phase goals: `docs/next_phase_goals.md`
 - Main diagnostics:
   - `outputs/eval/finqa_300_local_planner/finqa_300_subset_source_rerank_full_local_planner_failures.md`
   - `outputs/eval/finqa_300_local_planner/finqa_300_subset_source_rerank_full_local_planner_row_operation_diagnostics.md`
@@ -102,6 +103,29 @@ does not mean benchmark performance is paper-final; it means every FinQA-300
 iteration now has a fixed dataset, fixed manifest, three retrieval settings,
 failure reports, row/operation diagnostics, paper tables, an experiment card,
 and a machine-checked closure report.
+
+## Next Phase Targets
+
+The next phase is now defined in `docs/next_phase_goals.md`.
+
+Target exact-match gates before presenting FinQA-300 as a positive empirical
+story:
+
+| Setting | Current | Target |
+| --- | ---: | ---: |
+| Oracle-doc full EviGraph | 0.393 | 0.50+ |
+| BM25 + source-rerank full EviGraph | 0.363 | 0.45+ |
+| Open BM25 full EviGraph | 0.310 | 0.35+ |
+
+Required additions for the next paper-quality phase:
+
+- Baselines: BM25 top-k reader, dense retrieval, LLM direct RAG,
+  retrieve-then-program, and top-k plus local numeric executor.
+- Ablations: no risk scoring, no verifier, no evidence-graph selection, no
+  operation planner, planner without verifier-grounded rejection, and top-k with
+  the same answer generator.
+- Paper narrative: weaken rule-patch language and foreground operation planner,
+  verifier, and evidence graph.
 
 ## What Has Already Been Tried
 

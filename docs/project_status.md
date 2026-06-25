@@ -18,6 +18,10 @@ Last updated from the checked-in FinQA MVP0 run.
   `outputs/` is ignored by Git, while `python scripts/run_pipeline.py` is the
   quick path after generated CSVs exist.
 - AAAI readiness: early research prototype; the system is not yet at submission-quality benchmark performance.
+- Next phase goals are fixed in `docs/next_phase_goals.md`: raise Oracle-doc to
+  `0.50+`, source-rerank to `0.45+`, and open BM25 to `0.35+`; add baselines
+  and ablations; and rewrite the paper emphasis around operation planner,
+  verifier, and evidence graph rather than rule patches.
 
 ## Reproducibility Gates
 

@@ -40,9 +40,14 @@ This file tracks what the current repository can and cannot support as paper evi
 
 ## Evidence Needed Before Submission
 
+- Reach the next FinQA-300 target gates: 0.50+ oracle-doc, 0.45+
+  source-rerank, and 0.35+ open BM25, as defined in
+  `docs/next_phase_goals.md`.
 - Continue scaling beyond the 300-example FinQA diagnostic subset once the
   operation planner and open retrieval improve.
 - Add stronger baselines, including dense retrieval and retrieve-then-read RAG; the current deterministic open hybrid baseline is a first reproducible lexical/numeric reranker, not a substitute for dense retrieval.
+- Add required ablations so the paper can attribute gains to evidence graph
+  control, risk scoring, operation planning, and verifier-grounded rejection.
 - Add task-appropriate metrics beyond brittle numeric/string exact match.
 - Add failure analysis and qualitative case studies from real examples.
 - Keep the MVP0 acceptance gate green from a clean checkout.

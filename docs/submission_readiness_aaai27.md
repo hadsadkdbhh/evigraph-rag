@@ -41,6 +41,9 @@ Current blockers:
 - The current FinQA subset is too small for final benchmark claims.
 - The paper needs a full reproducibility checklist and a clear code/data release note.
 - The exact-match results are diagnostic, not strong enough to sell as benchmark superiority.
+- The next phase target is to lift FinQA-300 exact match to at least 0.50+
+  oracle-doc, 0.45+ source-rerank, and 0.35+ open BM25 before treating the
+  FinQA-300 table as a positive empirical result.
 
 ## Submission-Safe Claim Strategy
 
@@ -70,7 +73,14 @@ Priority 1: make the paper defensible.
 
 Priority 2: strengthen the empirical story.
 
+- Use `docs/next_phase_goals.md` as the target gate for the next empirical
+  phase.
 - Add a dense retrieval baseline for open retrieval; the deterministic hybrid baseline is present but does not yet improve exact match over BM25.
+- Add BM25 top-k reader, LLM direct RAG, retrieve-then-program, and top-k plus
+  local numeric executor baselines.
+- Add ablations for no risk scoring, no verifier, no evidence-graph selection,
+  no operation planner, planner without verifier-grounded rejection, and top-k
+  with the same answer generator.
 - Scale FinQA beyond the 100-example smoke subset once exact commands and caching are stable.
 - Keep oracle-doc, open BM25, hybrid/dense open retrieval, and source-rerank analysis in separate table blocks.
 - Track failure categories and row/operation diagnostics after every manifest run and prioritize the largest open-retrieval error classes.
