@@ -358,6 +358,12 @@ example. Oracle wrong-operation-or-row falls to 46, oracle wrong-operation-type
 falls to 10, source-rerank wrong-operation-or-row falls to 53, and source-rerank
 wrong-operation-type falls to 9.
 
+The follow-up open-retrieval pass lets the same operation combine same-source
+chunks only after trying individual contexts first. This fixes the open BM25
+ETR 2004 split-chunk case without reintroducing the source-rerank duplicate
+chunk regression. Open BM25 exact match rises to 0.313; oracle-doc remains
+0.403 and source-rerank remains 0.370.
+
 ## Current Pipeline Gate
 
 The FinQA-300 local-planner run is now wired into the one-command project
@@ -367,7 +373,7 @@ pipeline:
 python .\scripts\run_pipeline.py --refresh-results
 ```
 
-The 2026-06-25 pipeline gate passed unit tests (`195 tests OK`), reran or reused the
+The 2026-06-25 pipeline gate passed unit tests (`196 tests OK`), reran or reused the
 FinQA-300 local-planner manifest, regenerated row/operation diagnostics, and
 rebuilt paper-ready Markdown and LaTeX tables under
 `paper/generated/finqa_300_local_planner/`. Use

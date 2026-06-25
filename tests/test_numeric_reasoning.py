@@ -1771,6 +1771,46 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertIn("increase_component_ratio_percent", answer.calculations[0])
         self.assertIn("(14.3 + 11.8 + 11.4) / 973.7 * 100", answer.calculations[0])
 
+    def test_increase_component_ratio_combines_same_source_chunks(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="retrieved_1_etr_0_0",
+                node_type="text",
+                content=(
+                    "Other regulatory credits increased primarily due to: "
+                    "the deferral in 2004 of $14.3 million of capacity charges; "
+                    "the amortization in 2003 of $11.8 million of deferred capacity charges; "
+                    "and the deferral in 2004 of $11.4 million related to severance."
+                ),
+                source_doc="etr.md",
+                metadata={"retrieval_rank": 1},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="neighbor_1_etr_0_1",
+                node_type="text",
+                content=(
+                    "Following is an analysis of the change in net revenue comparing 2003 to 2002.\n"
+                    "|  | ( in millions ) |\n"
+                    "| --- | --- |\n"
+                    "| 2002 net revenue | $ 922.9 |\n"
+                    "| 2003 net revenue | $ 973.7 |\n"
+                ),
+                source_doc="etr.md",
+                metadata={"retrieval_rank": 1, "neighbor_context": True},
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the increase in other regulatory credits as a percentage of net revenue in 2003?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "3.9%")
+        self.assertEqual(answer.citations, ["retrieved_1_etr_0_0", "neighbor_1_etr_0_1"])
+
     def test_ratio_percent_prefers_later_mixed_prose_over_partial_rows(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

@@ -268,38 +268,78 @@ class NumericReasoner:
         numerator_terms, denominator_terms, query_year = parsed
 
         for node_id, text in contexts:
-            numerator, numerator_label, addends = self._prose_increase_component_sum(text, numerator_terms)
-            if numerator is None:
-                continue
-            denominator, denominator_label = self._value_for_row_terms_year(
+            answer = self._increase_component_ratio_percent_from_text(
+                node_id,
                 text,
+                numerator_terms,
                 denominator_terms,
                 query_year,
                 query_lower,
             )
-            if denominator is None:
-                denominator, denominator_label = self._year_labeled_row_value_for_terms(
-                    text,
-                    denominator_terms,
-                    query_year,
-                )
-            if denominator in {None, 0}:
+            if answer is not None:
+                return answer
+
+        groups: dict[str, list[tuple[str, str]]] = {}
+        for node_id, text in contexts:
+            groups.setdefault(self._context_source_key(node_id), []).append((node_id, text))
+        for grouped_contexts in groups.values():
+            if len(grouped_contexts) < 2:
                 continue
-            operation = self.executor.ratio(numerator, denominator)
-            if operation is None:
-                continue
-            percent = operation.value * 100
-            addends_text = " + ".join(f"{value:g}" for value in addends)
-            return NumericAnswer(
-                text=self._format_percent(percent),
-                calculation=(
-                    "increase_component_ratio_percent "
-                    f"row={numerator_label} denominator_row={denominator_label}: "
-                    f"({addends_text}) / {denominator:g} * 100 = {self._format_percent(percent)}"
-                ),
-                cited_node_ids=[node_id],
+            ordered_contexts = sorted(grouped_contexts, key=lambda item: self._context_chunk_order(item[0]))
+            node_ids = [node_id for node_id, _text in ordered_contexts]
+            combined_text = "\n".join(text for _node_id, text in ordered_contexts)
+            answer = self._increase_component_ratio_percent_from_text(
+                node_ids[0],
+                combined_text,
+                numerator_terms,
+                denominator_terms,
+                query_year,
+                query_lower,
             )
+            if answer is not None:
+                return NumericAnswer(answer.text, answer.calculation, node_ids)
         return None
+
+    def _increase_component_ratio_percent_from_text(
+        self,
+        node_id: str,
+        text: str,
+        numerator_terms: list[str],
+        denominator_terms: list[str],
+        query_year: str,
+        query_lower: str,
+    ) -> NumericAnswer | None:
+        numerator, numerator_label, addends = self._prose_increase_component_sum(text, numerator_terms)
+        if numerator is None:
+            return None
+        denominator, denominator_label = self._value_for_row_terms_year(
+            text,
+            denominator_terms,
+            query_year,
+            query_lower,
+        )
+        if denominator is None:
+            denominator, denominator_label = self._year_labeled_row_value_for_terms(
+                text,
+                denominator_terms,
+                query_year,
+            )
+        if denominator in {None, 0}:
+            return None
+        operation = self.executor.ratio(numerator, denominator)
+        if operation is None:
+            return None
+        percent = operation.value * 100
+        addends_text = " + ".join(f"{value:g}" for value in addends)
+        return NumericAnswer(
+            text=self._format_percent(percent),
+            calculation=(
+                "increase_component_ratio_percent "
+                f"row={numerator_label} denominator_row={denominator_label}: "
+                f"({addends_text}) / {denominator:g} * 100 = {self._format_percent(percent)}"
+            ),
+            cited_node_ids=[node_id],
+        )
 
     def _increase_component_ratio_percent_query(
         self, query_lower: str

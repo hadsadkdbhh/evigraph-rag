@@ -56,8 +56,8 @@ three 300-row evaluation CSVs, failure reports, row/operation diagnostics,
 dataset inspection/gate artifacts, experiment card, and generated paper tables.
 
 The 2026-06-25 full refresh passed all three stages: unit tests
-(`195 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
-FinQA-300 local-planner exact-match results are 0.403 oracle-doc, 0.310 open
+(`196 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
+FinQA-300 local-planner exact-match results are 0.403 oracle-doc, 0.313 open
 BM25, and 0.370 BM25 plus source rerank.
 
 Run the quick MVP0 acceptance suite:
@@ -408,3 +408,10 @@ source-rerank rises to 0.370, while open BM25 stays 0.310 because the open
 retrieval setting still selects a misleading context for this example. Oracle
 wrong-operation-or-row falls to 46; source-rerank wrong-operation-or-row falls
 to 53 and source-rerank wrong-operation-type falls to 9.
+
+The follow-up open-retrieval pass keeps the same operation but lets it combine
+same-source chunks only after single-context evidence fails. This fixes the open
+BM25 ETR 2004 case where the numerator prose and denominator table were
+retrieved as adjacent chunks rather than as a full source context. Open BM25
+rises to 0.313 without reducing oracle-doc or source-rerank, which remain 0.403
+and 0.370.

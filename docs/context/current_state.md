@@ -34,7 +34,7 @@ Latest documented FinQA-300 local planner exact match:
 | Setting | Accuracy |
 | --- | ---: |
 | Oracle-doc full EviGraph | 0.403 |
-| Open BM25 full EviGraph | 0.310 |
+| Open BM25 full EviGraph | 0.313 |
 | BM25 + source-rerank full EviGraph | 0.370 |
 
 Latest source-rerank diagnostic counts:
@@ -84,7 +84,7 @@ experiment card, generated paper Markdown, and generated LaTeX tables.
 
 The latest full refresh passed:
 
-- Unit tests: `195 tests OK`
+- Unit tests: `196 tests OK`
 - Manifest: `configs/experiments.finqa_300.local_planner.json`
 - Result directory: `outputs/eval/finqa_300_local_planner`
 - Pipeline report: `outputs/pipeline/pipeline_report.md`
@@ -115,7 +115,7 @@ story:
 | --- | ---: | ---: |
 | Oracle-doc full EviGraph | 0.403 | 0.50+ |
 | BM25 + source-rerank full EviGraph | 0.370 | 0.45+ |
-| Open BM25 full EviGraph | 0.310 | 0.35+ |
+| Open BM25 full EviGraph | 0.313 | 0.35+ |
 
 Required additions for the next paper-quality phase:
 
@@ -237,6 +237,12 @@ Required additions for the next paper-quality phase:
   0.370 source-rerank. Oracle wrong-operation-or-row falls to 46; source-rerank
   wrong-operation-or-row falls to 53 and source-rerank wrong-operation-type
   falls to 9.
+- Same-source fallback for increase-component ratios in open retrieval. The
+  operation now first tries each context independently, preserving full-source
+  source-rerank behavior, and then combines same-source chunks only when no
+  single context contains both numerator and denominator evidence. This fixes
+  the open BM25 ETR 2004 split-chunk case and moves open BM25 to 0.313 without
+  reducing oracle-doc or source-rerank.
 
 Do not repeat these as broad rewrites. Build only from failure reports and add
 small verified fixes.
