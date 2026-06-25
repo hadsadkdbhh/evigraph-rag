@@ -337,9 +337,12 @@ pipeline:
 python .\scripts\run_pipeline.py --refresh-results
 ```
 
-The 2026-06-24 refresh passed unit tests (`190 tests OK`), reran the
+The 2026-06-25 pipeline gate passed unit tests (`190 tests OK`), reran or reused the
 FinQA-300 local-planner manifest, regenerated row/operation diagnostics, and
 rebuilt paper-ready Markdown and LaTeX tables under
 `paper/generated/finqa_300_local_planner/`. Use
 `outputs/pipeline/pipeline_report.md` as the first artifact to check after each
-full refresh.
+full refresh. The pipeline now also writes
+`outputs/pipeline/experiment_closure_report.md`, which validates the expected
+three 300-row evaluation CSVs, failure reports, row/operation diagnostics,
+dataset inspection/gate artifacts, experiment card, and generated paper tables.

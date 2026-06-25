@@ -7,6 +7,10 @@ Last updated from the checked-in FinQA MVP0 run.
 - Engineering pipeline: complete for MVP0 reproducibility.
 - MVP0 experiment loop: complete for toy, stress, 100-example FinQA smoke, and a
   300-example FinQA validation-scale diagnostic run.
+- FinQA-300 experiment loop: 100% complete as an artifact-closure workflow.
+  This means dataset, manifest, three retrieval settings, failure reports,
+  row/operation diagnostics, paper tables, experiment card, and closure report
+  are all checked by `python scripts/run_pipeline.py`.
 - FinQA-300 local-planner pipeline: closed as a one-command reproducibility
   path for tests, optional result refresh, diagnostics, and paper tables.
 - Clean-checkout pipeline contract: documented in `README.md`; a fresh clone
@@ -35,6 +39,7 @@ The pipeline writes:
 - `outputs/pipeline/pipeline_report.md`
 - `outputs/pipeline/pipeline_report_quick.md`
 - `outputs/pipeline/pipeline_report_full_refresh.md`
+- `outputs/pipeline/experiment_closure_report.md`
 - `paper/generated/finqa_300_local_planner/finqa_results_summary.md`
 - `paper/generated/finqa_300_local_planner/finqa_results_tables.tex`
 
@@ -42,6 +47,9 @@ The pipeline now starts with an internal preflight check. It verifies the
 manifest, config, raw question file, corpus directory, and, for the quick path,
 the presence of generated evaluation CSVs. If a clean checkout tries the quick
 path first, it fails with an explicit instruction to run `--refresh-results`.
+The pipeline now ends with an experiment-closure gate. That gate validates the
+three 300-row evaluation CSVs, failure reports, row/operation diagnostics,
+dataset inspection/gate artifacts, experiment card, and generated paper tables.
 
 The 2026-06-24 full refresh passed all three stages: unit tests
 (`190 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed

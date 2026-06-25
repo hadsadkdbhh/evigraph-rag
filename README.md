@@ -28,7 +28,9 @@ The full refresh performs the reproducibility gate end to end:
 4. Runs oracle-doc, open BM25, and source-rerank full EviGraph evaluations.
 5. Regenerates failure reports and row/operation diagnostics.
 6. Rebuilds paper-ready Markdown and LaTeX tables.
-7. Writes pipeline reports under `outputs/pipeline/`.
+7. Runs the experiment-closure gate over all expected CSVs, diagnostics, paper
+   tables, and the experiment card.
+8. Writes pipeline and closure reports under `outputs/pipeline/`.
 
 After one successful full refresh, the faster local check is:
 
@@ -51,7 +53,9 @@ Expected current FinQA-300 exact-match results:
 Main reproducibility artifacts:
 
 - `outputs/pipeline/pipeline_report.md`
+- `outputs/pipeline/experiment_closure_report.md`
 - `outputs/eval/finqa_300_local_planner/summary.md`
+- `outputs/eval/finqa_300_local_planner/experiment_card.md`
 - `outputs/eval/finqa_300_local_planner/*_failures.md`
 - `outputs/eval/finqa_300_local_planner/*_row_operation_diagnostics.md`
 - `paper/generated/finqa_300_local_planner/finqa_results_summary.md`

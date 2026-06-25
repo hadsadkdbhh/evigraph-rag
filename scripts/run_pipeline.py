@@ -9,8 +9,11 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from evigraph.pipeline import ExperimentClosureGate
 
 
 @dataclass
@@ -51,6 +54,7 @@ def main() -> int:
     parser.add_argument("--refresh-results", action="store_true", help="Run the manifest before building assets.")
     parser.add_argument("--skip-tests", action="store_true", help="Skip unittest discovery.")
     parser.add_argument("--skip-paper-assets", action="store_true", help="Skip paper asset generation.")
+    parser.add_argument("--skip-closure", action="store_true", help="Skip experiment artifact closure checks.")
     args = parser.parse_args()
 
     report_dir = Path(args.report_dir)
@@ -84,6 +88,9 @@ def main() -> int:
             )
         )
 
+    if not args.skip_closure:
+        steps.append(run_experiment_closure(args, report_dir))
+
     return write_report(args, report_dir, steps)
 
 
@@ -99,6 +106,7 @@ def write_report(args: Namespace, report_dir: Path, steps: list[StepResult]) -> 
             "paper_output_dir": str(Path(args.paper_output_dir)),
             "markdown_summary": str(Path(args.paper_output_dir) / "finqa_results_summary.md"),
             "latex_tables": str(Path(args.paper_output_dir) / "finqa_results_tables.tex"),
+            "experiment_closure": str(report_dir / "experiment_closure_report.md"),
         },
     }
     report_stem = "pipeline_report_full_refresh" if args.refresh_results else "pipeline_report_quick"
@@ -157,6 +165,29 @@ def run_preflight(args: Namespace) -> StepResult:
         name="preflight",
         command=["internal", "preflight"],
         returncode=1 if errors else 0,
+        stdout_tail=stdout,
+        stderr_tail=stderr,
+    )
+
+
+def run_experiment_closure(args: Namespace, report_dir: Path) -> StepResult:
+    result = ExperimentClosureGate().evaluate(
+        manifest_path=args.manifest,
+        eval_dir=args.eval_dir,
+        paper_output_dir=args.paper_output_dir,
+        report_dir=report_dir,
+    )
+    failed = [check for check in result["checks"] if not check["ok"]]
+    metrics = [
+        f"{item['experiment']}/{item['method']}: accuracy={item['accuracy']:.3f}, rows={item['rows']}"
+        for item in result["metrics"]
+    ]
+    stdout = "\n".join(metrics + [f"closure report: {display_path(result['artifacts']['closure_report_markdown'])}"])
+    stderr = "\n".join(f"{check['name']}: {check['detail']}" for check in failed)
+    return StepResult(
+        name="experiment_closure",
+        command=["internal", "experiment_closure"],
+        returncode=0 if result["ok"] else 1,
         stdout_tail=stdout,
         stderr_tail=stderr,
     )
@@ -228,6 +259,7 @@ def render_markdown(report: dict) -> str:
             f"- Paper output directory: `{display_path(report['artifacts']['paper_output_dir'])}`",
             f"- Markdown summary: `{display_path(report['artifacts']['markdown_summary'])}`",
             f"- LaTeX tables: `{display_path(report['artifacts']['latex_tables'])}`",
+            f"- Experiment closure: `{display_path(report['artifacts']['experiment_closure'])}`",
             "",
         ]
     )
