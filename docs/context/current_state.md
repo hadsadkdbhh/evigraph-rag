@@ -35,31 +35,31 @@ Latest documented FinQA-300 local planner exact match:
 
 | Setting | Accuracy |
 | --- | ---: |
-| Oracle-doc full EviGraph | 0.463 |
-| Open BM25 full EviGraph | 0.370 |
-| BM25 + source-rerank full EviGraph | 0.430 |
+| Oracle-doc full EviGraph | 0.487 |
+| Open BM25 full EviGraph | 0.393 |
+| BM25 + source-rerank full EviGraph | 0.463 |
 
 Latest source-rerank diagnostic counts:
 
 | Failure class | Count |
 | --- | ---: |
-| wrong_numeric_operation_or_row | 44 |
-| no_numeric_answer_other | 33 |
+| wrong_numeric_operation_or_row | 42 |
+| no_numeric_answer_other | 32 |
 | no_numeric_answer_percent | 34 |
-| no_numeric_answer_additive_or_lookup | 31 |
+| no_numeric_answer_additive_or_lookup | 24 |
 | no_numeric_answer_ratio | 17 |
-| unsupported_textual_prediction | 11 |
+| unsupported_textual_prediction | 12 |
 
 Latest row/operation diagnostic split for source-rerank:
 
 | Label | Count |
 | --- | ---: |
-| ambiguous_supported_wrong_number | 27 |
-| wrong_operation_type | 6 |
+| ambiguous_supported_wrong_number | 26 |
+| wrong_operation_type | 5 |
 | wrong_row_label | 4 |
 | wrong_year_or_period | 5 |
-| wrong_denominator | 2 |
-| wrong_numerator | 5 |
+| wrong_denominator | 1 |
+| wrong_numerator | 4 |
 
 ## Pipeline Closure
 
@@ -86,7 +86,7 @@ experiment card, generated paper Markdown, and generated LaTeX tables.
 
 The latest full refresh passed:
 
-- Unit tests: `218 tests OK`
+- Unit tests: `228 tests OK`
 - Manifest: `configs/experiments.finqa_300.local_planner.json`
 - Result directory: `outputs/eval/finqa_300_local_planner`
 - Pipeline report: `outputs/pipeline/pipeline_report.md`
@@ -117,9 +117,9 @@ story:
 
 | Setting | Current | Target |
 | --- | ---: | ---: |
-| Oracle-doc full EviGraph | 0.463 | 0.50+ |
-| BM25 + source-rerank full EviGraph | 0.430 | 0.45+ |
-| Open BM25 full EviGraph | 0.370 | 0.35+ |
+| Oracle-doc full EviGraph | 0.487 | 0.50+ |
+| BM25 + source-rerank full EviGraph | 0.463 | 0.45+ |
+| Open BM25 full EviGraph | 0.393 | 0.35+ |
 
 Required additions for the next paper-quality phase:
 
@@ -277,6 +277,15 @@ Required additions for the next paper-quality phase:
   LMT 2005 renewal footnote ratio (`2262 / 2425 = 93.3%`), and two DRE 2002
   quarterly-cash-dividend period changes (`0.455 / 0.450 - 1 = 1.1%`). FinQA-300
   moves to 0.437 oracle-doc, 0.350 open BM25, and 0.403 source-rerank.
+- Source-aware planner pass. Source-rerank selection now prefers safe
+  `source_doc_match` anchors over cross-document rank-one distractors, and the
+  numeric context order mirrors that preference. The local program planner also
+  adds bounded operations for respectively ordered prose sums, per-unit costs,
+  issued-note row sums, row-year sums, exclusive total-minus-period amounts,
+  implied ownership value, and issuable stock value. FinQA-300 moves to 0.487
+  oracle-doc, 0.393 open BM25, and 0.463 source-rerank. Source-rerank and open
+  BM25 have cleared the current target floors; oracle-doc remains four correct
+  examples short of 0.50.
 
 Do not repeat these as broad rewrites. Build only from failure reports and add
 small verified fixes.

@@ -52,6 +52,14 @@ class EvidenceSetSelector:
         graph: EvidenceGraph,
         scores: dict[str, EvidenceScore],
     ) -> EvidenceNode | None:
+        source_matched = [
+            node
+            for node in graph.nodes.values()
+            if node.metadata.get("rerank_boost") == "source_doc_match" and not self._is_context_expansion(node)
+        ]
+        if source_matched:
+            return self._best_safe_anchor(source_matched, scores)
+
         ranked_by_retrieval = sorted(
             graph.nodes.values(),
             key=lambda node: (self._retrieval_rank(node), node.node_id),
@@ -65,6 +73,27 @@ class EvidenceSetSelector:
             if max(score.misleading_risk, score.contradiction_risk) < self.risk_threshold:
                 return node
         return None
+
+    def _best_safe_anchor(
+        self,
+        nodes: list[EvidenceNode],
+        scores: dict[str, EvidenceScore],
+    ) -> EvidenceNode | None:
+        safe_nodes = [
+            node
+            for node in nodes
+            if max(scores[node.node_id].misleading_risk, scores[node.node_id].contradiction_risk) < self.risk_threshold
+        ]
+        if not safe_nodes:
+            return None
+        return max(
+            safe_nodes,
+            key=lambda node: (
+                scores[node.node_id].final_score,
+                -self._retrieval_rank(node),
+                node.node_id,
+            ),
+        )
 
     def _retrieval_rank(self, node: EvidenceNode) -> int:
         try:

@@ -208,6 +208,35 @@ class RetrievalSelectionTest(unittest.TestCase):
         self.assertEqual(selected[0].node_id, "rank_one")
         self.assertEqual(len(selected), 4)
 
+    def test_selector_prefers_source_rerank_anchor_over_cross_doc_rank_one(self) -> None:
+        graph = EvidenceGraph()
+        cross_doc_rank_one = EvidenceNode(
+            node_id="cross_doc_rank_one",
+            node_type="text",
+            content="distractor with higher lexical score",
+            source_doc="other.md",
+            modality="text",
+            metadata={"retrieval_rank": 1},
+        )
+        source_match = EvidenceNode(
+            node_id="source_match",
+            node_type="text",
+            content="gold source document evidence",
+            source_doc="report.md",
+            modality="text",
+            metadata={"retrieval_rank": 2, "rerank_boost": "source_doc_match"},
+        )
+        graph.add_node(cross_doc_rank_one)
+        graph.add_node(source_match)
+        scores = {
+            cross_doc_rank_one.node_id: self._score(4.0),
+            source_match.node_id: self._score(3.5),
+        }
+
+        selected = EvidenceSetSelector(max_nodes=2).select("what ratio?", graph, scores)
+
+        self.assertEqual(selected[0].node_id, "source_match")
+
     def test_selector_uses_neighbor_chunks_only_as_context_expansion(self) -> None:
         graph = EvidenceGraph()
         anchor = EvidenceNode(

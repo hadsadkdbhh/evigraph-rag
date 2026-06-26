@@ -212,6 +212,34 @@ class NumericReasoner:
             if answer:
                 return answer
 
+        answer = self._respectively_prose_sum(query_lower, contexts)
+        if answer:
+            return answer
+
+        answer = self._per_unit_cost_from_prose(query_lower, contexts)
+        if answer:
+            return answer
+
+        answer = self._table_row_sum(query_lower, contexts)
+        if answer:
+            return answer
+
+        answer = self._row_year_sum(query_lower, contexts)
+        if answer:
+            return answer
+
+        answer = self._exclusive_total_less_period_amount(query_lower, contexts)
+        if answer:
+            return answer
+
+        answer = self._implied_total_value_from_ownership(query_lower, contexts)
+        if answer:
+            return answer
+
+        answer = self._issuable_stock_value(query_lower, contexts)
+        if answer:
+            return answer
+
         if self.planner_fallback is not None:
             planned = self._planner_answer(query, contexts)
             if planned:
@@ -3799,6 +3827,320 @@ class NumericReasoner:
                 )
         return None
 
+    def _respectively_prose_sum(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        if "total" not in query_lower:
+            return None
+        query_years = re.findall(r"\b(20\d{2})\b", query_lower)
+        if len(query_years) < 2:
+            return None
+        query_terms = set(self._keywords(query_lower))
+        for node_id, text in contexts:
+            for sentence in self._prose_sentences(text):
+                sentence_lower = sentence.lower()
+                if not all(year in sentence_lower for year in query_years):
+                    continue
+                sentence_terms = set(self._keywords(sentence_lower))
+                if len(query_terms & sentence_terms) < 2:
+                    continue
+                value_match = re.search(
+                    r"\bof\s+(?P<values>[-+]?\d[\d,]*(?:\.\d+)?(?:\s*[a-z]+)?"
+                    r"(?:\s*,\s*[-+]?\d[\d,]*(?:\.\d+)?(?:\s*[a-z]+)?)*"
+                    r"(?:\s*,?\s+and\s+[-+]?\d[\d,]*(?:\.\d+)?(?:\s*[a-z]+)?)?)\s+in\s+"
+                    r"(?:19|20)\d{2}",
+                    sentence_lower,
+                )
+                if value_match:
+                    values = [
+                        self._first_number(value)
+                        for value in re.findall(r"[-+]?\d[\d,]*(?:\.\d+)?", value_match.group("values"))
+                    ]
+                    values = [value for value in values if value is not None]
+                    if len(values) == len(query_years):
+                        operation = self.executor.sum(values)
+                        if operation is not None:
+                            return NumericAnswer(
+                                text=self._format_number(operation.value),
+                                calculation=f"respectively_prose_sum years={','.join(query_years)}: {operation.expression}",
+                                cited_node_ids=[node_id],
+                            )
+                amount_match = re.search(
+                    r"\b(?:was|were|totaled|amounted to)\s+\$?\s*(?P<values>[-+]?\d[\d,]*(?:\.\d+)?"
+                    r"(?:\s*(?:billion|million|thousand))?"
+                    r"(?:\s*,?\s+and\s+\$?\s*[-+]?\d[\d,]*(?:\.\d+)?(?:\s*(?:billion|million|thousand))?)*)"
+                    r"\s+as\s+of\s+",
+                    sentence_lower,
+                )
+                if not amount_match:
+                    continue
+                values = [
+                    self._scaled_number(value, scale)
+                    for value, scale in re.findall(
+                        r"\$?\s*([-+]?\d[\d,]*(?:\.\d+)?)(?:\s*(billion|million|thousand))?",
+                        amount_match.group("values"),
+                    )
+                ]
+                if len(values) != len(query_years):
+                    continue
+                operation = self.executor.sum(values)
+                if operation is None:
+                    continue
+                return NumericAnswer(
+                    text=self._format_number(operation.value),
+                    calculation=f"respectively_prose_sum years={','.join(query_years)}: {operation.expression}",
+                    cited_node_ids=[node_id],
+                )
+        return None
+
+    def _per_unit_cost_from_prose(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        if " per " not in query_lower:
+            return None
+        if not any(term in query_lower for term in ["cost", "price", "amount", "value"]):
+            return None
+        query_years = re.findall(r"\b(20\d{2})\b", query_lower)
+        query_terms = set(self._keywords(query_lower))
+        for node_id, text in contexts:
+            for sentence in self._prose_sentences(text):
+                sentence_lower = sentence.lower()
+                if query_years and not any(year in sentence_lower for year in query_years):
+                    continue
+                sentence_terms = set(self._keywords(sentence_lower))
+                if len(query_terms & sentence_terms) < 2:
+                    continue
+                amount_match = re.search(
+                    r"\$\s*([-+]?\d[\d,]*(?:\.\d+)?)\s*(billion|million|thousand)?",
+                    sentence_lower,
+                )
+                if not amount_match:
+                    continue
+                count_match = re.search(
+                    r"\b([-+]?\d[\d,]*(?:\.\d+)?)\s+"
+                    r"(?:locomotives?|cars?|shares?|units?|options?|awards?)\b",
+                    sentence_lower,
+                )
+                if not count_match:
+                    continue
+                amount = self._scaled_absolute_amount(amount_match.group(1), amount_match.group(2))
+                count = self._to_float(count_match.group(1))
+                if count == 0:
+                    continue
+                operation = self.executor.ratio(amount, count)
+                if operation is None:
+                    continue
+                text = f"{round(operation.value):.0f}" if operation.value >= 1000 else self._format_number(operation.value)
+                return NumericAnswer(
+                    text=text,
+                    calculation=(
+                        f"per_unit_cost_from_prose amount={amount:g} count={count:g}: "
+                        f"{operation.expression}"
+                    ),
+                    cited_node_ids=[node_id],
+                )
+        return None
+
+    def _table_row_sum(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        if "total" not in query_lower:
+            return None
+        if not any(term in query_lower for term in ["issued", "issuance", "notes"]):
+            return None
+        query_years = set(re.findall(r"\b(20\d{2})\b", query_lower))
+        query_terms = set(self._keywords(query_lower))
+        for node_id, text in contexts:
+            for headers, rows in self._markdown_tables(text):
+                values = []
+                labels = []
+                for row in rows:
+                    row_text = " ".join(row).lower()
+                    row_terms = set(self._keywords(row_text))
+                    if len(query_terms & row_terms) < 2:
+                        continue
+                    if query_years and not any(year in row_text for year in query_years):
+                        continue
+                    value = self._first_numeric_cell_after_label(row)
+                    if value is None:
+                        continue
+                    values.append(value)
+                    labels.append(row[0].strip())
+                if len(values) < 2:
+                    continue
+                operation = self.executor.sum(values)
+                if operation is None:
+                    continue
+                return NumericAnswer(
+                    text=self._format_number(operation.value),
+                    calculation=f"table_row_sum rows={'; '.join(labels)}: {operation.expression}",
+                    cited_node_ids=[node_id],
+                )
+        return None
+
+    def _row_year_sum(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        if "total" not in query_lower:
+            return None
+        if any(term in query_lower for term in ["percent", "percentage", "ratio", "average", " per ", "change"]):
+            return None
+        query_years = re.findall(r"\b(20\d{2})\b", query_lower)
+        if len(query_years) < 2:
+            return None
+        for node_id, text in contexts:
+            for headers, rows in self._markdown_tables(text):
+                row = self._best_query_row(query_lower, headers, rows)
+                if not row:
+                    continue
+                values = []
+                for year in query_years:
+                    year_index = self._header_year_index(headers, year)
+                    if year_index is None or year_index >= len(row):
+                        continue
+                    value = self._first_number(row[year_index])
+                    if value is not None:
+                        values.append(value)
+                if len(values) != len(query_years):
+                    continue
+                operation = self.executor.sum(values)
+                if operation is None:
+                    continue
+                return NumericAnswer(
+                    text=self._format_number(operation.value),
+                    calculation=f"row_year_sum row={row[0]} years={','.join(query_years)}: {operation.expression}",
+                    cited_node_ids=[node_id],
+                )
+        return None
+
+    def _exclusive_total_less_period_amount(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        if "exclusive of" not in query_lower:
+            return None
+        query_years = re.findall(r"\b(20\d{2})\b", query_lower)
+        if not query_years:
+            return None
+        query_terms = set(self._keywords(query_lower))
+        for node_id, text in contexts:
+            for sentence in self._prose_sentences(text):
+                sentence_lower = sentence.lower()
+                if not any(year in sentence_lower for year in query_years):
+                    continue
+                if len(query_terms & set(self._keywords(sentence_lower))) < 2:
+                    continue
+                total_match = re.search(
+                    r"\btotaled\s+(?:approximately\s+)?\$\s*([-+]?\d[\d,]*(?:\.\d+)?)\s*(billion|million|thousand)?",
+                    sentence_lower,
+                )
+                period_match = re.search(
+                    r"\$\s*([-+]?\d[\d,]*(?:\.\d+)?)\s*(billion|million|thousand)?\s+of\s+which\s+was\s+incurred\s+during\s+"
+                    r"(?:19|20)\d{2}",
+                    sentence_lower,
+                )
+                if not total_match or not period_match:
+                    continue
+                total = self._scaled_number(total_match.group(1), total_match.group(2))
+                period = self._scaled_number(period_match.group(1), period_match.group(2))
+                operation = self.executor.difference(total, period)
+                return NumericAnswer(
+                    text=self._format_number(operation.value),
+                    calculation=f"exclusive_total_less_period: {operation.expression}",
+                    cited_node_ids=[node_id],
+                )
+        return None
+
+    def _implied_total_value_from_ownership(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        if "implied total value" not in query_lower:
+            return None
+        for node_id, text in contexts:
+            for sentence in self._prose_sentences(text):
+                sentence_lower = sentence.lower()
+                if "ownership" not in sentence_lower and "interest" not in sentence_lower:
+                    continue
+                percent_match = re.search(
+                    r"\b([-+]?\d[\d,]*(?:\.\d+)?)\s*%\s*(?:\([^)]*%\s*\)\s*)?(?:equity\s+)?ownership",
+                    sentence_lower,
+                )
+                amount_match = re.search(
+                    r"\bfor\s+\$\s*([-+]?\d[\d,]*(?:\.\d+)?)\s*(billion|million|thousand)?",
+                    sentence_lower,
+                )
+                if not percent_match or not amount_match:
+                    continue
+                percent = self._to_float(percent_match.group(1))
+                if percent == 0:
+                    continue
+                amount = self._scaled_number(amount_match.group(1), amount_match.group(2))
+                operation = self.executor.ratio(amount, percent / 100.0)
+                if operation is None:
+                    continue
+                return NumericAnswer(
+                    text=self._format_number(operation.value),
+                    calculation=(
+                        f"implied_total_value_from_ownership amount={amount:g} ownership={percent:g}%: "
+                        f"{operation.expression}"
+                    ),
+                    cited_node_ids=[node_id],
+                )
+        return None
+
+    def _issuable_stock_value(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        if "issuable stock" not in query_lower and "authorized for issuance" not in query_lower:
+            return None
+        query_years = re.findall(r"\b(20\d{2})\b", query_lower)
+        if not query_years:
+            return None
+        query_year = query_years[0]
+        for node_id, text in contexts:
+            shares_match = re.search(
+                r"authorized\s+for\s+issuance[^.]{0,120}?\bwas\s+([-+]?\d[\d,]*(?:\.\d+)?)\s+million\s+shares",
+                text.lower(),
+            )
+            if not shares_match:
+                continue
+            shares = self._to_float(shares_match.group(1))
+            for headers, rows in self._markdown_tables(text):
+                year_index = self._header_year_index(headers, query_year)
+                if year_index is None:
+                    continue
+                row = self._row_by_label(rows, ["fair", "value", "per", "share"])
+                if row is None or year_index >= len(row):
+                    continue
+                fair_value = self._first_number(row[year_index])
+                if fair_value is None:
+                    continue
+                operation = self.executor.product([shares, fair_value])
+                if operation is None:
+                    continue
+                return NumericAnswer(
+                    text=f"{operation.value:.1f}",
+                    calculation=(
+                        f"issuable_stock_value shares_millions={shares:g} fair_value_per_share={fair_value:g}: "
+                        f"{operation.expression}"
+                    ),
+                    cited_node_ids=[node_id],
+                )
+        return None
+
     def _contexts(self, support_graph: EvidenceGraph) -> list[tuple[str, str]]:
         contexts = []
         for node in sorted(support_graph.nodes.values(), key=self._context_order):
@@ -3814,8 +4156,9 @@ class NumericReasoner:
             rank = int(node.metadata.get("retrieval_rank", 999))
         except (TypeError, ValueError):
             rank = 999
+        source_match_order = 0 if node.metadata.get("rerank_boost") == "source_doc_match" else 1
         neighbor_order = 1 if node.metadata.get("neighbor_context") else 0
-        return rank, neighbor_order, node.node_id
+        return source_match_order, rank, neighbor_order, node.node_id
 
     def _node_text(self, node: EvidenceNode) -> str:
         content = node.content
@@ -4421,6 +4764,13 @@ class NumericReasoner:
                 return value
         return None
 
+    def _first_numeric_cell_after_label(self, row: list[str]) -> float | None:
+        for cell in row[1:]:
+            value = self._first_number(cell)
+            if value is not None:
+                return value
+        return None
+
     def _to_float(self, value: str) -> float:
         return float(value.replace(",", ""))
 
@@ -4430,6 +4780,16 @@ class NumericReasoner:
             return number * 1000.0
         if scale == "thousand":
             return number / 1000.0
+        return number
+
+    def _scaled_absolute_amount(self, value: str, scale: str | None) -> float:
+        number = self._to_float(value)
+        if scale == "billion":
+            return number * 1_000_000_000.0
+        if scale == "million":
+            return number * 1_000_000.0
+        if scale == "thousand":
+            return number * 1_000.0
         return number
 
     def _format_percent(self, value: float) -> str:

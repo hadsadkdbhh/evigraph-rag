@@ -50,6 +50,43 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "244")
         self.assertEqual(answer.citations, ["rank1_correct"])
 
+    def test_numeric_contexts_prefer_source_rerank_match_over_cross_doc_rank_one(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="rank1_distractor",
+                node_type="text",
+                content=(
+                    "|  | 2016 | 2015 |\n"
+                    "| --- | --- | --- |\n"
+                    "| total redeemable stock of subsidiaries | $ 100 | $ 100 |\n"
+                ),
+                source_doc="distractor.md",
+                metadata={"retrieval_rank": 1},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="rank2_source_match",
+                node_type="text",
+                content=(
+                    "|  | 2016 | 2015 |\n"
+                    "| --- | --- | --- |\n"
+                    "| total redeemable stock of subsidiaries | $ 353 | $ 109 |\n"
+                ),
+                source_doc="report.md",
+                metadata={"retrieval_rank": 2, "rerank_boost": "source_doc_match"},
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the change in millions of total redeemable stock of subsidiaries from 2015 to 2016?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "244")
+        self.assertEqual(answer.citations, ["rank2_source_match"])
+
     def test_row_matching_skips_weak_single_term_overlap(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
@@ -3239,6 +3276,193 @@ class NumericReasoningTest(unittest.TestCase):
 
         self.assertEqual(answer.text, "32.6%")
         self.assertIn("implicit_percent_increase", answer.calculations[0])
+
+    def test_respectively_prose_sum_for_total_values_across_years(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "( a ) includes matching buy/sell volumes of 24 mbpd, 77 mbpd "
+                    "and 71 mbpd in 2006, 2005 and 2004."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "in tpd, what were total matching buy/sell volumes in 2006, 2005 and 2004?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "172")
+        self.assertIn("respectively_prose_sum", answer.calculations[0])
+
+    def test_per_unit_cost_from_prose_uses_scaled_million_amount(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "Included in capital investments in 2012 was $75 million for the early "
+                    "buyout of 165 locomotives under long-term operating and capital leases."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the cost per car for the buyout of locomotives in 2012?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "454545")
+        self.assertIn("per_unit_cost_from_prose", answer.calculations[0])
+
+    def test_total_issued_notes_sum_uses_requested_currency_rows(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| type | face value | issuance | maturity |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| u.s. dollar notes | $ 850 | march 2014 | march 2019 |\n"
+                    "| euro notes | $ 1020 | march 2014 | march 2021 |\n"
+                    "| u.s. dollar notes | $ 1150 | november 2014 | november 2044 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the total of u.s. dollar notes issued in 2014, in millions?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "2000")
+        self.assertIn("table_row_sum", answer.calculations[0])
+
+    def test_combined_respectively_amounts_sum(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "The amount of such parent company guarantees was $255.7 and $327.1 "
+                    "as of December 31, 2008 and 2007, respectively."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the total amount of parent company guarantees combined for 2007 and 2008, in millions?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "582.8")
+        self.assertIn("respectively_prose_sum", answer.calculations[0])
+
+    def test_exclusive_total_less_current_period_amount(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "Capital expenditures associated with the retail segment since its inception "
+                    "totaled approximately $290 million through the end of fiscal 2003, "
+                    "$92 million of which was incurred during 2003."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what were capital expenditures associated with the retail segment since its inception, exclusive of the amount incurred during 2003, in millions?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "198")
+        self.assertIn("exclusive_total_less_period", answer.calculations[0])
+
+    def test_implied_total_value_from_ownership_percent_and_price(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "International Networks segment acquired 20% ( 20 % ) equity ownership interests "
+                    "in Eurosport, a European sports satellite and cable network, from TF1 "
+                    "for $264 million, including transaction costs."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the implied total value of the european sports satellite and cable network as of the transaction date?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "1320")
+        self.assertIn("implied_total_value_from_ownership", answer.calculations[0])
+
+    def test_total_row_sum_across_query_years(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| in millions | december 31 2013 | december 31 2012 |\n"
+                    "| --- | --- | --- |\n"
+                    "| commercial mortgages | 867 | 1392 |\n"
+                    "| total residential mortgages | 1356 | 2220 |\n"
+                    "| total | 2255 | 3693 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "in millions what was total residential mortgages balance for 2013 and 2012?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "3576")
+        self.assertIn("row_year_sum", answer.calculations[0])
+
+    def test_total_issuable_stock_value_multiplies_authorized_shares_by_fair_value(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "The number of shares of common stock authorized for issuance under the ESPP "
+                    "was 13.8 million shares.\n"
+                    "|  | 2016 | 2015 | 2014 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| fair value per share | $31.00 | $18.13 | $11.75 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the value, in millions of dollars, of the total issuable stock in 2014?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "162.2")
+        self.assertIn("issuable_stock_value", answer.calculations[0])
 
     def test_percentage_exact_match_allows_rounding(self) -> None:
         self.assertEqual(numeric_exact_match("86.8%", "87%"), 1.0)

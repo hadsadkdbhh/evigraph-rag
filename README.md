@@ -46,9 +46,9 @@ Expected current FinQA-300 exact-match results:
 
 | setting | full EviGraph EM |
 | --- | ---: |
-| Oracle-doc | 0.463 |
-| Open BM25 | 0.370 |
-| BM25 + source rerank | 0.430 |
+| Oracle-doc | 0.487 |
+| Open BM25 | 0.393 |
+| BM25 + source rerank | 0.463 |
 
 Main reproducibility artifacts:
 
@@ -193,8 +193,8 @@ evidence annotations from retrieval.
 
 The current FinQA-300 local-planner manifest uses the sample `source_doc` field
 to evaluate oracle-document reasoning before open retrieval. On this diagnostic
-subset, `full_evigraph` currently reaches 0.463 exact match in oracle-doc mode,
-0.370 in open BM25 mode, and 0.430 in BM25 + source-rerank mode. The CSVs also
+subset, `full_evigraph` currently reaches 0.487 exact match in oracle-doc mode,
+0.393 in open BM25 mode, and 0.463 in BM25 + source-rerank mode. The CSVs also
 report diagnostic verifier metrics including arithmetic support,
 calculation-result support, operation-semantics checking, row-operation
 grounding, and semantic grounding. These are diagnostic baselines, not final
