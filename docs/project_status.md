@@ -55,10 +55,10 @@ The pipeline now ends with an experiment-closure gate. That gate validates the
 three 300-row evaluation CSVs, failure reports, row/operation diagnostics,
 dataset inspection/gate artifacts, experiment card, and generated paper tables.
 
-The 2026-06-25 full refresh passed all three stages: unit tests
-(`203 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
-FinQA-300 local-planner exact-match results are 0.420 oracle-doc, 0.333 open
-BM25, and 0.387 BM25 plus source rerank.
+The 2026-06-26 full refresh passed all three stages: unit tests
+(`208 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
+FinQA-300 local-planner exact-match results are 0.437 oracle-doc, 0.350 open
+BM25, and 0.403 BM25 plus source rerank.
 
 Run the quick MVP0 acceptance suite:
 
@@ -443,3 +443,9 @@ as numerator and the exact Alpharetta table row as denominator, while ABMD 2006
 office-facility closing uses the prose lease-expense sequence for fiscal 2006
 instead of the future-minimum-lease-payments table. FinQA-300 rises to 0.420
 oracle-doc, 0.333 open BM25, and 0.387 source-rerank.
+
+The Open-BM25 floor pass adds five failure-driven closures: HII equity-plan
+remaining availability over issued-plus-remaining shares, two LMT commitment
+expiration ratios, and two DRE quarterly-cash-dividend period-disambiguation
+cases. Open BM25 reaches the 0.350 target floor, while oracle-doc rises to
+0.437 and source-rerank rises to 0.403.

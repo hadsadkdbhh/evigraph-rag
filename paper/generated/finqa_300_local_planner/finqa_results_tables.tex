@@ -7,9 +7,9 @@
 \toprule
 Setting & Method & EM & Ans. & Calc. & OpSem & Row & Tokens \\
 \midrule
-Oracle-doc & Full EviGraph & 0.42 & 0.77 & 0.51 & 0.82 & 0.79 & 1176.61 \\
-Open BM25 & Full EviGraph & 0.33 & 0.81 & 0.51 & 0.84 & 0.81 & 852.98 \\
-BM25 + source rerank & Full EviGraph & 0.39 & 0.79 & 0.52 & 0.84 & 0.80 & 1185.57 \\
+Oracle-doc & Full EviGraph & 0.44 & 0.77 & 0.52 & 0.82 & 0.80 & 1176.61 \\
+Open BM25 & Full EviGraph & 0.35 & 0.81 & 0.51 & 0.84 & 0.82 & 852.98 \\
+BM25 + source rerank & Full EviGraph & 0.40 & 0.79 & 0.52 & 0.84 & 0.81 & 1185.57 \\
 \bottomrule
 \end{tabular}
 \caption{FinQA diagnostic results. EM is numeric exact match. Ans., Calc., OpSem, and Row are verifier diagnostics for answer support, calculation-result support, operation-semantics checking, and row grounding. Open hybrid is a deterministic lexical/numeric reranker; source rerank uses the provided source document and is an analysis setting rather than a deployable open-retrieval claim.}
@@ -23,9 +23,9 @@ BM25 + source rerank & Full EviGraph & 0.39 & 0.79 & 0.52 & 0.84 & 0.80 & 1185.5
 \toprule
 Setting & Wrong row/op & No numeric & No percent & Add./lookup & Ratio & Unsupported \\
 \midrule
-Oracle-doc & 45 & 35 & 37 & 30 & 18 & 9 \\
-Open BM25 & 60 & 39 & 39 & 35 & 19 & 8 \\
-BM25 + source rerank & 52 & 37 & 35 & 32 & 17 & 11 \\
+Oracle-doc & 43 & 35 & 35 & 29 & 18 & 9 \\
+Open BM25 & 57 & 39 & 38 & 34 & 19 & 8 \\
+BM25 + source rerank & 49 & 37 & 34 & 31 & 17 & 11 \\
 \bottomrule
 \end{tabular}
 \caption{Failure categories for full EviGraph on the FinQA diagnostic subset. The categories are generated directly from the manifest CSVs and should be used to drive the next engineering iteration.}
@@ -39,9 +39,9 @@ BM25 + source rerank & 52 & 37 & 35 & 32 & 17 & 11 \\
 \toprule
 Setting & Num. & Den. & Year/period & Row label & Op. type & Ambig. \\
 \midrule
-Oracle-doc & 6 & 2 & 2 & 6 & 10 & 24 \\
-Open BM25 & 7 & 7 & 7 & 12 & 13 & 28 \\
-BM25 + source rerank & 5 & 3 & 6 & 8 & 9 & 29 \\
+Oracle-doc & 6 & 2 & 2 & 5 & 10 & 23 \\
+Open BM25 & 7 & 5 & 6 & 9 & 13 & 28 \\
+BM25 + source rerank & 5 & 2 & 5 & 6 & 9 & 28 \\
 \bottomrule
 \end{tabular}
 \caption{Row/operation diagnostics for wrong numeric full EviGraph answers. Counts are multi-label: one failed example can expose more than one diagnostic signal.}

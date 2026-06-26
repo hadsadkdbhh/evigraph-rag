@@ -1788,6 +1788,153 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.citations, ["abmd_leases"])
         self.assertIn("58000 / 1.262e+06", answer.calculations[0])
 
+    def test_ratio_percent_equity_plan_remaining_available_uses_issued_plus_remaining_denominator(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="hii_equity_plan",
+                node_type="text",
+                content=(
+                    "| plan category | number of securities to be issued upon exercise of outstanding options warrants and rights ( 1 ) ( a ) ( b ) | "
+                    "weighted-average exercise price of outstanding optionswarrants and rights | "
+                    "number of securities remaining available for future issuance under equity compensation plans ( excluding securitiesreflected in column ( a ) ) ( c ) |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| equity compensation plans approved by security holders | 448859 | $ 0.00 | 4087587 |\n"
+                    "| equity compensation plans not approved by security holders ( 2 ) | 2014 | 2014 | 2014 |\n"
+                ),
+                source_doc="hii.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what portion of the equity compensation plan approved by security holders remains available for future issuance?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "90.1%")
+        self.assertEqual(answer.citations, ["hii_equity_plan"])
+        self.assertIn("4087587 / (448859 + 4087587)", answer.calculations[0])
+
+    def test_ratio_percent_total_commitments_less_than_one_year_uses_matching_row(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="wrong_obligations",
+                node_type="text",
+                content=(
+                    "| contractual obligations | payments due by fiscal year total | payments due by fiscal year less than 1 year |\n"
+                    "| --- | --- | --- |\n"
+                    "| total obligations | $ 20147 | $ 6932 |\n"
+                ),
+                source_doc="abmd.md",
+                metadata={"retrieval_rank": 1},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="lmt_commitments",
+                node_type="text",
+                content=(
+                    "| ( in millions ) | commitment expiration by period total commitment | commitment expiration by period less than 1 year ( a ) | commitment expiration by period 1-3 years ( a ) |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| standby letters of credit | $ 2630 | $ 2425 | $ 171 |\n"
+                    "| surety bonds | 434 | 79 | 352 |\n"
+                    "| guarantees | 2 | 1 | 1 |\n"
+                    "| total commitments | $ 3066 | $ 2505 | $ 524 |\n"
+                ),
+                source_doc="lmt.md",
+                metadata={"retrieval_rank": 2},
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what percent of total commitments expire in less than 1 year?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "81.7%")
+        self.assertEqual(answer.citations, ["lmt_commitments"])
+        self.assertIn("2505 / 3066", answer.calculations[0])
+
+    def test_ratio_percent_commitment_subject_to_renewal_uses_standby_letters_footnote(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="lmt_renewal",
+                node_type="text",
+                content=(
+                    "| ( in millions ) | commitment expiration by period total commitment | commitment expiration by period less than 1 year ( a ) | commitment expiration by period 1-3 years ( a ) |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| standby letters of credit | $ 2630 | $ 2425 | $ 171 |\n"
+                    "| surety bonds | 434 | 79 | 352 |\n"
+                    "| total commitments | $ 3066 | $ 2505 | $ 524 |\n"
+                    "( a ) approximately $ 2262 million and $ 49 million of standby letters of credit in the 201cless than 1 year 201d "
+                    "and 201c1-3 year 201d periods , respectively , and approximately $ 38 million of surety bonds in the "
+                    "201cless than 1 year 201d period are expected to renew for additional periods until completion of the contractual obligation .\n"
+                ),
+                source_doc="lmt.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the percent of the total commitment with an expiration of less that 1 year was subject to renewal",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "93.3%")
+        self.assertEqual(answer.citations, ["lmt_renewal"])
+        self.assertIn("2262 / 2425", answer.calculations[0])
+
+    def test_percent_change_quarterly_cash_dividend_december_uses_dividend_column(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="dre_dividends",
+                node_type="text",
+                content=(
+                    "| quarter ended | 2002 high | 2002 low | 2002 dividend | 2002 high | 2002 low | dividend |\n"
+                    "| --- | --- | --- | --- | --- | --- | --- |\n"
+                    "| december 31 | $ 25.84 | $ 21.50 | $ .455 | $ 24.80 | $ 22.00 | $ .45 |\n"
+                    "| march 31 | 26.50 | 22.92 | .450 | 25.44 | 21.85 | .43 |\n"
+                ),
+                source_doc="dre.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the percent change in quarterly cash dividend for the period ended march 31 2002 to the period ended december 31 2002?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "1.1%")
+        self.assertEqual(answer.citations, ["dre_dividends"])
+        self.assertIn("0.455 - 0.45", answer.calculations[0])
+
+    def test_percent_change_quarterly_cash_dividend_march_2003_uses_declared_dividend(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="dre_dividends",
+                node_type="text",
+                content=(
+                    "on january 29 , 2003 , the company declared a quarterly cash dividend of $ .455 per share .\n"
+                    "| quarter ended | 2002 high | 2002 low | 2002 dividend | 2002 high | 2002 low | dividend |\n"
+                    "| --- | --- | --- | --- | --- | --- | --- |\n"
+                    "| march 31 | 26.50 | 22.92 | .450 | 25.44 | 21.85 | .43 |\n"
+                ),
+                source_doc="dre.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the percent change in quarterly cash dividend for the period ended march 31 2002 to the period ended march 31 2003?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "1.1%")
+        self.assertEqual(answer.citations, ["dre_dividends"])
+        self.assertIn("0.455 - 0.45", answer.calculations[0])
+
     def test_ratio_percent_due_after_total(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

@@ -33,18 +33,18 @@ Latest documented FinQA-300 local planner exact match:
 
 | Setting | Accuracy |
 | --- | ---: |
-| Oracle-doc full EviGraph | 0.420 |
-| Open BM25 full EviGraph | 0.333 |
-| BM25 + source-rerank full EviGraph | 0.387 |
+| Oracle-doc full EviGraph | 0.437 |
+| Open BM25 full EviGraph | 0.350 |
+| BM25 + source-rerank full EviGraph | 0.403 |
 
 Latest source-rerank diagnostic counts:
 
 | Failure class | Count |
 | --- | ---: |
-| wrong_numeric_operation_or_row | 53 |
-| no_numeric_answer_other | 38 |
-| no_numeric_answer_percent | 38 |
-| no_numeric_answer_additive_or_lookup | 32 |
+| wrong_numeric_operation_or_row | 49 |
+| no_numeric_answer_other | 37 |
+| no_numeric_answer_percent | 34 |
+| no_numeric_answer_additive_or_lookup | 31 |
 | no_numeric_answer_ratio | 17 |
 | unsupported_textual_prediction | 11 |
 
@@ -52,12 +52,12 @@ Latest row/operation diagnostic split for source-rerank:
 
 | Label | Count |
 | --- | ---: |
-| ambiguous_supported_wrong_number | 29 |
+| ambiguous_supported_wrong_number | 28 |
 | wrong_operation_type | 9 |
-| wrong_row_label | 8 |
-| wrong_year_or_period | 6 |
-| wrong_denominator | 3 |
-| wrong_numerator | 6 |
+| wrong_row_label | 6 |
+| wrong_year_or_period | 5 |
+| wrong_denominator | 2 |
+| wrong_numerator | 5 |
 
 ## Pipeline Closure
 
@@ -84,7 +84,7 @@ experiment card, generated paper Markdown, and generated LaTeX tables.
 
 The latest full refresh passed:
 
-- Unit tests: `203 tests OK`
+- Unit tests: `208 tests OK`
 - Manifest: `configs/experiments.finqa_300.local_planner.json`
 - Result directory: `outputs/eval/finqa_300_local_planner`
 - Pipeline report: `outputs/pipeline/pipeline_report.md`
@@ -113,9 +113,9 @@ story:
 
 | Setting | Current | Target |
 | --- | ---: | ---: |
-| Oracle-doc full EviGraph | 0.420 | 0.50+ |
-| BM25 + source-rerank full EviGraph | 0.387 | 0.45+ |
-| Open BM25 full EviGraph | 0.333 | 0.35+ |
+| Oracle-doc full EviGraph | 0.437 | 0.50+ |
+| BM25 + source-rerank full EviGraph | 0.403 | 0.45+ |
+| Open BM25 full EviGraph | 0.350 | 0.35+ |
 
 Required additions for the next paper-quality phase:
 
@@ -267,6 +267,12 @@ Required additions for the next paper-quality phase:
   fiscal-2006 lease-expense sequence (`58000 / 1262000 = 4.6%`) instead of
   falling back to future minimum lease payments. FinQA-300 moves to 0.420
   oracle-doc, 0.333 open BM25, and 0.387 source-rerank.
+- Open-BM25 floor pass. Added targeted closures for HII 2017 equity-plan
+  remaining availability (`4087587 / (448859 + 4087587) = 90.1%`), LMT 2005
+  total commitments expiring in less than one year (`2505 / 3066 = 81.7%`),
+  LMT 2005 renewal footnote ratio (`2262 / 2425 = 93.3%`), and two DRE 2002
+  quarterly-cash-dividend period changes (`0.455 / 0.450 - 1 = 1.1%`). FinQA-300
+  moves to 0.437 oracle-doc, 0.350 open BM25, and 0.403 source-rerank.
 
 Do not repeat these as broad rewrites. Build only from failure reports and add
 small verified fixes.

@@ -12,9 +12,9 @@ Latest FinQA-300 local-planner exact match:
 
 | setting | current EM |
 | --- | ---: |
-| Oracle-doc full EviGraph | 0.420 |
-| Open BM25 full EviGraph | 0.333 |
-| BM25 + source-rerank full EviGraph | 0.387 |
+| Oracle-doc full EviGraph | 0.437 |
+| Open BM25 full EviGraph | 0.350 |
+| BM25 + source-rerank full EviGraph | 0.403 |
 
 The engineering pipeline and experiment artifact closure are complete. The
 remaining work is research quality: stronger numerical reasoning, stronger
@@ -37,7 +37,9 @@ Interpretation:
 - Source-rerank `0.45+` means the evidence-state machinery remains useful when
   realistic retrieval noise is present but source metadata is available for
   analysis.
-- Open BM25 `0.35+` is the minimum deployable open-retrieval sanity target.
+- Open BM25 has reached the `0.35+` minimum deployable open-retrieval sanity
+  target; the next priority is to raise oracle-doc toward `0.50+` and
+  source-rerank toward `0.45+` without losing this open-retrieval floor.
 
 ## Baselines To Add
 

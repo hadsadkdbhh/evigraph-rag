@@ -392,6 +392,12 @@ fiscal-2006 lease expense `1262000`, yielding `4.6%`, instead of falling back
 to future minimum lease payments. Exact match rises to 0.420 oracle-doc, 0.333
 open BM25, and 0.387 source-rerank.
 
+The Open-BM25 floor pass targets evidence that is retrieved but previously
+mis-executed: HII 2017 equity-plan remaining availability, LMT 2005 total
+commitments expiring in less than one year, LMT 2005 renewal footnote ratios,
+and two DRE 2002 quarterly-cash-dividend period changes. Exact match rises to
+0.437 oracle-doc, 0.350 open BM25, and 0.403 source-rerank.
+
 ## Current Pipeline Gate
 
 The FinQA-300 local-planner run is now wired into the one-command project
@@ -401,7 +407,7 @@ pipeline:
 python .\scripts\run_pipeline.py --refresh-results
 ```
 
-The 2026-06-25 pipeline gate passed unit tests (`203 tests OK`), reran or reused the
+The 2026-06-26 pipeline gate passed unit tests (`208 tests OK`), reran or reused the
 FinQA-300 local-planner manifest, regenerated row/operation diagnostics, and
 rebuilt paper-ready Markdown and LaTeX tables under
 `paper/generated/finqa_300_local_planner/`. Use

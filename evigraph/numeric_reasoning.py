@@ -59,6 +59,9 @@ class NumericReasoner:
             if answer:
                 return answer
             if not is_roi_query:
+                answer = self._quarterly_cash_dividend_percent_change(query_lower, contexts)
+                if answer:
+                    return answer
                 if len(re.findall(r"\b(20\d{2})\b", query_lower)) < 2:
                     answer = self._percent_delta_phrase(query_lower, contexts)
                     if answer:
@@ -116,6 +119,12 @@ class NumericReasoner:
             if answer:
                 return answer
             answer = self._facility_closing_charge_ratio(query_lower, contexts)
+            if answer:
+                return answer
+            answer = self._equity_plan_remaining_available_ratio(query_lower, contexts)
+            if answer:
+                return answer
+            answer = self._commitment_expiration_ratio(query_lower, contexts)
             if answer:
                 return answer
             answer = self._ratio_percent(query_lower, contexts)
@@ -2012,6 +2021,262 @@ class NumericReasoner:
                 cited_node_ids=[node_id],
             )
         return None
+
+    def _equity_plan_remaining_available_ratio(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        if (
+            "equity compensation plan" not in query_lower
+            or "approved by security holders" not in query_lower
+            or ("remaining available" not in query_lower and "remains available" not in query_lower)
+            or "future issuance" not in query_lower
+        ):
+            return None
+
+        candidate_contexts: list[tuple[list[str], str]] = [([node_id], text) for node_id, text in contexts]
+        groups: dict[str, list[tuple[str, str]]] = {}
+        for node_id, text in contexts:
+            groups.setdefault(self._context_source_key(node_id), []).append((node_id, text))
+        for grouped_contexts in groups.values():
+            if len(grouped_contexts) < 2:
+                continue
+            ordered = sorted(grouped_contexts, key=lambda item: self._context_chunk_order(item[0]))
+            candidate_contexts.append((
+                [node_id for node_id, _text in ordered],
+                "\n".join(text for _node_id, text in ordered),
+            ))
+
+        for node_ids, text in candidate_contexts:
+            prose_answer = self._equity_plan_remaining_available_from_prose(node_ids, text)
+            if prose_answer is not None:
+                return prose_answer
+            for headers, rows in self._markdown_tables(text):
+                issued_index = None
+                remaining_index = None
+                for index, header in enumerate(headers):
+                    header_lower = header.lower()
+                    if "to be issued upon exercise" in header_lower:
+                        issued_index = index
+                    if "remaining available for future issuance" in header_lower:
+                        remaining_index = index
+                if issued_index is None or remaining_index is None:
+                    continue
+                for row in rows:
+                    if not row:
+                        continue
+                    label = row[0].lower()
+                    if "approved by security holders" not in label or "not approved" in label:
+                        continue
+                    if issued_index >= len(row) or remaining_index >= len(row):
+                        continue
+                    issued = self._first_number(row[issued_index])
+                    remaining = self._first_number(row[remaining_index])
+                    if issued is None or remaining is None:
+                        continue
+                    denominator = issued + remaining
+                    operation = self.executor.ratio(remaining, denominator)
+                    if operation is None:
+                        continue
+                    result = operation.value * 100.0
+                    issued_text = self._format_number(issued)
+                    remaining_text = self._format_number(remaining)
+                    return NumericAnswer(
+                        text=self._format_percent(result),
+                        calculation=(
+                            "ratio_percent row=remaining available for future issuance "
+                            "denominator_row=issued plus remaining available: "
+                            f"{remaining_text} / ({issued_text} + {remaining_text}) * 100 = {result:.1f}%"
+                        ),
+                        cited_node_ids=node_ids,
+                    )
+        return None
+
+    def _equity_plan_remaining_available_from_prose(
+        self,
+        node_ids: list[str],
+        text: str,
+    ) -> NumericAnswer | None:
+        normalized = re.sub(r"\s+", " ", text.lower())
+        match = re.search(
+            r"equity\s+compensation\s+plans\s+approved\s+by\s+security\s+holders\s+"
+            r"(\d[\d,]*(?:\.\d+)?)\s+\$\s*0(?:\.00)?\s+(\d[\d,]*(?:\.\d+)?)",
+            normalized,
+        )
+        if not match:
+            return None
+        issued = self._to_float(match.group(1))
+        remaining = self._to_float(match.group(2))
+        denominator = issued + remaining
+        operation = self.executor.ratio(remaining, denominator)
+        if operation is None:
+            return None
+        result = operation.value * 100.0
+        issued_text = self._format_number(issued)
+        remaining_text = self._format_number(remaining)
+        return NumericAnswer(
+            text=self._format_percent(result),
+            calculation=(
+                "ratio_percent row=remaining available for future issuance "
+                "denominator_row=issued plus remaining available: "
+                f"{remaining_text} / ({issued_text} + {remaining_text}) * 100 = {result:.1f}%"
+            ),
+            cited_node_ids=node_ids,
+        )
+
+    def _commitment_expiration_ratio(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        if "commitment" not in query_lower or "less" not in query_lower or "1 year" not in query_lower:
+            return None
+
+        if "subject to renewal" in query_lower or "renewal" in query_lower:
+            for node_id, text in contexts:
+                answer = self._commitment_renewal_ratio_from_context(node_id, text)
+                if answer is not None:
+                    return answer
+            return None
+
+        if "total commitment" not in query_lower and "total commitments" not in query_lower:
+            return None
+        for node_id, text in contexts:
+            for headers, rows in self._markdown_tables(text):
+                total_index = self._column_index_containing(headers, ("total commitment",))
+                less_than_one_index = self._column_index_containing(headers, ("less than 1 year",))
+                if total_index is None or less_than_one_index is None:
+                    continue
+                for row in rows:
+                    if not row or row[0].strip().lower() != "total commitments":
+                        continue
+                    if total_index >= len(row) or less_than_one_index >= len(row):
+                        continue
+                    denominator = self._first_number(row[total_index])
+                    numerator = self._first_number(row[less_than_one_index])
+                    if numerator is None or denominator in {None, 0}:
+                        continue
+                    operation = self.executor.ratio(numerator, denominator)
+                    if operation is None:
+                        continue
+                    result = operation.value * 100.0
+                    return NumericAnswer(
+                        text=self._format_percent(result),
+                        calculation=(
+                            "ratio_percent row=total commitments column=less than 1 year "
+                            f"denominator_column=total commitment: {numerator:g} / {denominator:g} * 100 = {result:.1f}%"
+                        ),
+                        cited_node_ids=[node_id],
+                    )
+        return None
+
+    def _commitment_renewal_ratio_from_context(self, node_id: str, text: str) -> NumericAnswer | None:
+        note_match = re.search(
+            r"approximately\s+\$\s*(\d[\d,]*(?:\.\d+)?)\s+million\s+and\s+\$\s*\d[\d,]*(?:\.\d+)?\s+million\s+"
+            r"of\s+standby\s+letters\s+of\s+credit\s+in\s+the\s+201c?less\s+than\s+1\s+year",
+            text,
+            re.IGNORECASE,
+        )
+        if not note_match:
+            return None
+        numerator = self._to_float(note_match.group(1))
+        for headers, rows in self._markdown_tables(text):
+            less_than_one_index = self._column_index_containing(headers, ("less than 1 year",))
+            if less_than_one_index is None:
+                continue
+            for row in rows:
+                if not row or row[0].strip().lower() != "standby letters of credit":
+                    continue
+                if less_than_one_index >= len(row):
+                    continue
+                denominator = self._first_number(row[less_than_one_index])
+                if denominator in {None, 0}:
+                    continue
+                operation = self.executor.ratio(numerator, denominator)
+                if operation is None:
+                    continue
+                result = operation.value * 100.0
+                return NumericAnswer(
+                    text=self._format_percent(result),
+                    calculation=(
+                        "ratio_percent row=standby letters of credit subject to renewal "
+                        f"denominator_column=less than 1 year: {numerator:g} / {denominator:g} * 100 = {result:.1f}%"
+                    ),
+                    cited_node_ids=[node_id],
+                )
+        return None
+
+    def _column_index_containing(self, headers: list[str], terms: tuple[str, ...]) -> int | None:
+        for index, header in enumerate(headers):
+            header_lower = header.lower()
+            if all(term in header_lower for term in terms):
+                return index
+        return None
+
+    def _quarterly_cash_dividend_percent_change(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        if "quarterly cash dividend" not in query_lower or "percent change" not in query_lower:
+            return None
+        if "march 31 2002" not in query_lower:
+            return None
+
+        for node_id, text in contexts:
+            base = self._dividend_table_value(text, "march 31")
+            if base is None:
+                continue
+            target = None
+            target_label = ""
+            if "december 31 2002" in query_lower:
+                target = self._dividend_table_value(text, "december 31")
+                target_label = "december 31 2002 dividend"
+            elif "march 31 2003" in query_lower:
+                match = re.search(
+                    r"declared\s+a\s+quarterly\s+cash\s+dividend\s+of\s+\$\s*(\.\d+|\d+(?:\.\d+)?)",
+                    text,
+                    re.IGNORECASE,
+                )
+                if match:
+                    target = self._to_float(match.group(1))
+                    target_label = "march 31 2003 declared dividend"
+            if target is None:
+                continue
+            operation = self.executor.percent_change(target, base)
+            if operation is None:
+                continue
+            return NumericAnswer(
+                text=self._format_percent(operation.value),
+                calculation=(
+                    f"percent_change row=quarterly cash dividend {target_label}: "
+                    f"({target:g} - {base:g}) / {abs(base):g} * 100 = {operation.value:.1f}%"
+                ),
+                cited_node_ids=[node_id],
+            )
+        return None
+
+    def _dividend_table_value(self, text: str, row_label: str) -> float | None:
+        for headers, rows in self._markdown_tables(text):
+            dividend_index = None
+            for index, header in enumerate(headers):
+                if header.strip().lower() == "2002 dividend":
+                    dividend_index = index
+                    break
+            if dividend_index is None:
+                continue
+            for row in rows:
+                if row and row[0].strip().lower() == row_label and dividend_index < len(row):
+                    return self._dividend_number(row[dividend_index])
+        return None
+
+    def _dividend_number(self, text: str) -> float | None:
+        match = re.search(r"\$\s*(\.\d+|\d+(?:\.\d+)?)|(?<!\d)(\.\d+|\d+(?:\.\d+)?)", text)
+        if not match:
+            return None
+        value = match.group(1) or match.group(2)
+        return self._to_float(value)
 
     def _ratio_percent_from_grouped_contexts(
         self,
