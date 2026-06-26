@@ -18,9 +18,9 @@ Last updated from the checked-in FinQA MVP0 run.
   `outputs/` is ignored by Git, while `python scripts/run_pipeline.py` is the
   quick path after generated CSVs exist.
 - AAAI readiness: early research prototype; the system is not yet at submission-quality benchmark performance.
-- Next phase goals are fixed in `docs/next_phase_goals.md`: Oracle-doc is now
-  `0.487` toward the `0.50+` target, source-rerank has cleared the `0.45+`
-  target at `0.463`, and open BM25 has cleared the `0.35+` target at `0.393`.
+- Next phase goals are fixed in `docs/next_phase_goals.md`: Oracle-doc has
+  reached the `0.50+` target at `0.500`, source-rerank has cleared the `0.45+`
+  target at `0.477`, and open BM25 has cleared the `0.35+` target at `0.403`.
   Local-planner baselines/ablations have been added; the remaining paper work
   is stronger external baselines and a method narrative centered on operation
   planner, verifier, and evidence graph rather than rule patches.
@@ -58,9 +58,9 @@ three 300-row evaluation CSVs, failure reports, row/operation diagnostics,
 dataset inspection/gate artifacts, experiment card, and generated paper tables.
 
 The 2026-06-26 full refresh passed all three stages: unit tests
-(`228 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
-FinQA-300 local-planner exact-match results are 0.487 oracle-doc, 0.393 open
-BM25, and 0.463 BM25 plus source rerank. The local-planner ablation manifest
+(`232 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
+FinQA-300 local-planner exact-match results are 0.500 oracle-doc, 0.403 open
+BM25, and 0.477 BM25 plus source rerank. The local-planner ablation manifest
 also ran 3600 baseline/ablation examples and generated paper tables under
 `paper/generated/finqa_300_local_planner_ablation/`.
 
@@ -463,3 +463,13 @@ amounts, implied ownership value, and issuable stock value. FinQA-300 now
 reaches 0.487 oracle-doc, 0.393 open BM25, and 0.463 BM25 plus source rerank.
 Open BM25 and source-rerank have cleared their current target floors; the
 immediate remaining performance gate is Oracle-doc 0.50+.
+
+The Oracle-floor pass adds four narrow program-executor operations for direct
+stated-amount percentage products, acquisition per-share value, inventory
+component ratios, and two-year table-column increases. It fixes HII backlog
+conversion (`21 * 28% = 5.88`), HOLX acquisition stock price
+(`106500 / 4600 = 23.2`), LLY finished-products inventory share
+(`988.1 / 4111.8 = 24.03%`), and CME issued-and-outstanding stock increase
+(`339235 - 338240 = 995`). FinQA-300 now reaches 0.500 oracle-doc, 0.403 open
+BM25, and 0.477 BM25 plus source rerank. All current performance floors are
+met, but the paper still needs external baselines and more margin.

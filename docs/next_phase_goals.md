@@ -12,9 +12,9 @@ Latest FinQA-300 local-planner exact match:
 
 | setting | current EM |
 | --- | ---: |
-| Oracle-doc full EviGraph | 0.487 |
-| Open BM25 full EviGraph | 0.393 |
-| BM25 + source-rerank full EviGraph | 0.463 |
+| Oracle-doc full EviGraph | 0.500 |
+| Open BM25 full EviGraph | 0.403 |
+| BM25 + source-rerank full EviGraph | 0.477 |
 
 The engineering pipeline and experiment artifact closure are complete. The
 remaining work is research quality: stronger numerical reasoning, stronger
@@ -37,10 +37,11 @@ Interpretation:
 - Source-rerank `0.45+` means the evidence-state machinery remains useful when
   realistic retrieval noise is present but source metadata is available for
   analysis.
-- Open BM25 has exceeded the `0.35+` minimum deployable open-retrieval sanity
-  target at `0.393`, and source-rerank has cleared the `0.45+` analysis target
-  at `0.463`; the next priority is to raise oracle-doc from `0.487` to `0.50+`
-  without losing the open/source retrieval floors.
+- Oracle-doc has reached the `0.50+` minimum gate at `0.500`; Open BM25 has
+  exceeded the `0.35+` open-retrieval sanity target at `0.403`; and
+  source-rerank has cleared the `0.45+` analysis target at `0.477`. The next
+  priority is no longer merely crossing these floors, but adding external
+  baselines and increasing the margin so the empirical story is less fragile.
 
 ## Baselines To Add
 
@@ -99,10 +100,10 @@ executor, or verifier mechanisms.
 
 ## Immediate Work Order
 
-1. Continue improving Oracle-doc first until the operation planner reaches
-   `0.50+`.
-2. Once Oracle-doc moves, rerun source-rerank and open BM25 and inspect whether
-   retrieval or reasoning is the bottleneck.
+1. Add external baselines and no-operation-planner style ablations so the paper
+   can answer "stronger than what?"
+2. Continue improving Oracle-doc beyond the exact `0.50` floor while monitoring
+   source-rerank and open BM25 for regressions.
 3. Add no-operation-planner and planner-without-verifier-grounded-rejection
    ablations.
 4. Add dense retrieval and retrieve-then-read baselines.

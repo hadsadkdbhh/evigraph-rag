@@ -142,6 +142,9 @@ class NumericReasoner:
             answer = self._commitment_expiration_ratio(query_lower, contexts)
             if answer:
                 return answer
+            answer = self._inventory_component_ratio_percent(query_lower, contexts)
+            if answer:
+                return answer
             answer = self._ratio_percent(query_lower, contexts)
             if answer:
                 return answer
@@ -237,6 +240,18 @@ class NumericReasoner:
             return answer
 
         answer = self._issuable_stock_value(query_lower, contexts)
+        if answer:
+            return answer
+
+        answer = self._percent_of_stated_amount_prose(query_lower, contexts)
+        if answer:
+            return answer
+
+        answer = self._share_value_per_share_from_prose(query_lower, contexts)
+        if answer:
+            return answer
+
+        answer = self._increase_between_table_year_columns(query_lower, contexts)
         if answer:
             return answer
 
@@ -4021,6 +4036,118 @@ class NumericReasoner:
                 )
         return None
 
+    def _percent_of_stated_amount_prose(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        if not any(term in query_lower for term in ["anticipated amount", "converted into sales", "to be converted"]):
+            return None
+        if "percent" in query_lower or "percentage" in query_lower:
+            return None
+        for node_id, text in contexts:
+            for sentence in self._prose_sentences(text):
+                sentence_lower = sentence.lower()
+                if not any(term in sentence_lower for term in ["converted into sales", "to be converted"]):
+                    continue
+                match = re.search(
+                    r"([-+]?\d[\d,]*(?:\.\d+)?)\s*%\s*(?:\([^)]*%\s*\)\s*)?"
+                    r"of\s+the\s+\$\s*([-+]?\d[\d,]*(?:\.\d+)?)\s*(billion|million|thousand)?",
+                    sentence_lower,
+                )
+                if not match:
+                    continue
+                percent = self._to_float(match.group(1))
+                amount = self._scaled_to_query_unit(match.group(2), match.group(3), query_lower)
+                operation = self.executor.product([amount, percent / 100.0])
+                if operation is None:
+                    continue
+                return NumericAnswer(
+                    text=self._format_number(operation.value),
+                    calculation=(
+                        f"percent_of_stated_amount amount={amount:g} percent={percent:g}%: "
+                        f"{operation.expression}"
+                    ),
+                    cited_node_ids=[node_id],
+                )
+        return None
+
+    def _share_value_per_share_from_prose(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        if "common stock" not in query_lower:
+            return None
+        if not any(term in query_lower for term in ["price", "value"]):
+            return None
+        if "acquisition" not in query_lower and "purchase" not in query_lower:
+            return None
+        for node_id, text in contexts:
+            for sentence in self._prose_sentences(text):
+                sentence_lower = sentence.lower()
+                if "common stock" not in sentence_lower or "valued at" not in sentence_lower:
+                    continue
+                match = re.search(
+                    r"([-+]?\d[\d,]*(?:\.\d+)?)\s+shares\s+of\s+[^.]{0,80}?common\s+stock\s+valued\s+at\s+\$\s*"
+                    r"([-+]?\d[\d,]*(?:\.\d+)?)",
+                    sentence_lower,
+                )
+                if not match:
+                    continue
+                shares = self._to_float(match.group(1))
+                value = self._to_float(match.group(2))
+                if shares == 0:
+                    continue
+                operation = self.executor.ratio(value, shares)
+                if operation is None:
+                    continue
+                return NumericAnswer(
+                    text=f"{operation.value:.1f}",
+                    calculation=f"share_value_per_share value={value:g} shares={shares:g}: {operation.expression}",
+                    cited_node_ids=[node_id],
+                )
+        return None
+
+    def _increase_between_table_year_columns(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        if "increase" not in query_lower or "between years" not in query_lower:
+            return None
+        if re.findall(r"\b(20\d{2})\b", query_lower):
+            return None
+        for node_id, text in contexts:
+            for headers, rows in self._markdown_tables(text):
+                year_indices = [
+                    index
+                    for index, header in enumerate(headers)
+                    if re.search(r"\b(20\d{2})\b", header)
+                ]
+                if len(year_indices) != 2:
+                    continue
+                row = self._best_query_row(query_lower, headers, rows)
+                if not row:
+                    continue
+                first_index, second_index = year_indices
+                if first_index >= len(row) or second_index >= len(row):
+                    continue
+                first_value = self._first_number(row[first_index])
+                second_value = self._first_number(row[second_index])
+                if first_value is None or second_value is None:
+                    continue
+                operation = self.executor.difference(first_value, second_value)
+                return NumericAnswer(
+                    text=self._format_number(operation.value),
+                    calculation=(
+                        f"increase_between_table_year_columns row={row[0]} "
+                        f"columns={headers[first_index]}-{headers[second_index]}: {operation.expression}"
+                    ),
+                    cited_node_ids=[node_id],
+                )
+        return None
+
     def _exclusive_total_less_period_amount(
         self,
         query_lower: str,
@@ -4094,6 +4221,58 @@ class NumericReasoner:
                     calculation=(
                         f"implied_total_value_from_ownership amount={amount:g} ownership={percent:g}%: "
                         f"{operation.expression}"
+                    ),
+                    cited_node_ids=[node_id],
+                )
+        return None
+
+    def _inventory_component_ratio_percent(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        if "inventory" not in query_lower and "inventories" not in query_lower:
+            return None
+        component_terms = None
+        if "finished product" in query_lower:
+            component_terms = ["finished", "products"]
+        elif "work in process" in query_lower:
+            component_terms = ["work", "process"]
+        elif "raw material" in query_lower or "supplies" in query_lower:
+            component_terms = ["raw", "materials"]
+        if component_terms is None:
+            return None
+        query_years = re.findall(r"\b(20\d{2})\b", query_lower)
+        for node_id, text in contexts:
+            for headers, rows in self._markdown_tables(text):
+                column_index = None
+                if query_years:
+                    column_index = self._header_year_index(headers, query_years[0])
+                if column_index is None:
+                    column_index = self._first_year_header_index(headers)
+                if column_index is None:
+                    continue
+                numerator_row = self._row_by_label(rows, component_terms)
+                denominator_row = self._row_by_label(rows, ["inventories"])
+                if denominator_row is None:
+                    denominator_row = self._row_by_label(rows, ["total"])
+                if numerator_row is None or denominator_row is None:
+                    continue
+                if column_index >= len(numerator_row) or column_index >= len(denominator_row):
+                    continue
+                numerator = self._first_number(numerator_row[column_index])
+                denominator = self._first_number(denominator_row[column_index])
+                if numerator is None or denominator in (None, 0):
+                    continue
+                operation = self.executor.ratio(numerator, denominator)
+                if operation is None:
+                    continue
+                percent_value = operation.value * 100.0
+                return NumericAnswer(
+                    text=f"{percent_value:.2f}%",
+                    calculation=(
+                        f"inventory_component_ratio row={numerator_row[0]} denominator_row={denominator_row[0]} "
+                        f"column={headers[column_index]}: {operation.expression} * 100 = {percent_value:.2f}%"
                     ),
                     cited_node_ids=[node_id],
                 )
@@ -4734,6 +4913,12 @@ class NumericReasoner:
                 return index
         return None
 
+    def _first_year_header_index(self, headers: list[str]) -> int | None:
+        for index, header in enumerate(headers):
+            if re.search(r"\b(20\d{2})\b", header):
+                return index
+        return None
+
     def _entity_after_for(self, query_lower: str) -> str | None:
         match = re.search(r"\bfor\s+(.+?)\??$", query_lower)
         if not match:
@@ -4791,6 +4976,22 @@ class NumericReasoner:
         if scale == "thousand":
             return number * 1_000.0
         return number
+
+    def _scaled_to_query_unit(self, value: str, scale: str | None, query_lower: str) -> float:
+        number = self._to_float(value)
+        if "in billions" in query_lower or "in billion" in query_lower:
+            if scale == "million":
+                return number / 1000.0
+            if scale == "thousand":
+                return number / 1_000_000.0
+            return number
+        if "in millions" in query_lower or "in million" in query_lower:
+            if scale == "billion":
+                return number * 1000.0
+            if scale == "thousand":
+                return number / 1000.0
+            return number
+        return self._scaled_number(value, scale)
 
     def _format_percent(self, value: float) -> str:
         if abs(value - round(value)) < 0.05:

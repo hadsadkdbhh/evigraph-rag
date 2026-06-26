@@ -35,18 +35,18 @@ Latest documented FinQA-300 local planner exact match:
 
 | Setting | Accuracy |
 | --- | ---: |
-| Oracle-doc full EviGraph | 0.487 |
-| Open BM25 full EviGraph | 0.393 |
-| BM25 + source-rerank full EviGraph | 0.463 |
+| Oracle-doc full EviGraph | 0.500 |
+| Open BM25 full EviGraph | 0.403 |
+| BM25 + source-rerank full EviGraph | 0.477 |
 
 Latest source-rerank diagnostic counts:
 
 | Failure class | Count |
 | --- | ---: |
 | wrong_numeric_operation_or_row | 42 |
-| no_numeric_answer_other | 32 |
+| no_numeric_answer_other | 29 |
 | no_numeric_answer_percent | 34 |
-| no_numeric_answer_additive_or_lookup | 24 |
+| no_numeric_answer_additive_or_lookup | 22 |
 | no_numeric_answer_ratio | 17 |
 | unsupported_textual_prediction | 12 |
 
@@ -86,7 +86,7 @@ experiment card, generated paper Markdown, and generated LaTeX tables.
 
 The latest full refresh passed:
 
-- Unit tests: `228 tests OK`
+- Unit tests: `232 tests OK`
 - Manifest: `configs/experiments.finqa_300.local_planner.json`
 - Result directory: `outputs/eval/finqa_300_local_planner`
 - Pipeline report: `outputs/pipeline/pipeline_report.md`
@@ -117,9 +117,9 @@ story:
 
 | Setting | Current | Target |
 | --- | ---: | ---: |
-| Oracle-doc full EviGraph | 0.487 | 0.50+ |
-| BM25 + source-rerank full EviGraph | 0.463 | 0.45+ |
-| Open BM25 full EviGraph | 0.393 | 0.35+ |
+| Oracle-doc full EviGraph | 0.500 | 0.50+ |
+| BM25 + source-rerank full EviGraph | 0.477 | 0.45+ |
+| Open BM25 full EviGraph | 0.403 | 0.35+ |
 
 Required additions for the next paper-quality phase:
 
@@ -286,6 +286,13 @@ Required additions for the next paper-quality phase:
   oracle-doc, 0.393 open BM25, and 0.463 source-rerank. Source-rerank and open
   BM25 have cleared the current target floors; oracle-doc remains four correct
   examples short of 0.50.
+- Oracle-floor pass. Added four bounded executor paths for direct stated-amount
+  percentage products, acquisition per-share value, inventory-component ratios,
+  and two-year table-column increases. These close HII backlog conversion,
+  HOLX acquisition stock price, LLY inventory mix, and CME issued-and-outstanding
+  stock increase. FinQA-300 moves to 0.500 oracle-doc, 0.403 open BM25, and
+  0.477 source-rerank. All three current target floors are now met, but the
+  margin is thin and external baselines are still required for a paper claim.
 
 Do not repeat these as broad rewrites. Build only from failure reports and add
 small verified fixes.

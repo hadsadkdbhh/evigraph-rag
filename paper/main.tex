@@ -187,7 +187,7 @@ This suite is used for mechanism debugging, not public benchmark claims.
 
 We report top-k retrieval, utility-only evidence selection, and EviGraph ablations that remove risk scoring, verification, or support-subgraph extraction where applicable.
 All methods use the same local operation planner and executor, so differences isolate evidence-state control rather than model scale.
-The current ablation table shows that EviGraph improves open BM25 exact match over top-k (0.393 vs. 0.383) while using slightly fewer selected tokens, but source-rerank top-k remains stronger in exact match (0.487 vs. 0.463), indicating that graph selection can still prune answer-bearing nodes under partially oracle retrieval.
+The current ablation table shows that EviGraph improves open BM25 exact match over top-k (0.403 vs. 0.393) while using slightly fewer selected tokens, but source-rerank top-k remains stronger in exact match (0.500 vs. 0.477), indicating that graph selection can still prune answer-bearing nodes under partially oracle retrieval.
 We therefore frame the current numbers as diagnostic evidence for the planner--verifier mechanism, not as final benchmark superiority over dense retrieval or retrieve-then-read baselines.
 
 \input{generated/finqa_300_local_planner_ablation/finqa_results_tables}
@@ -198,8 +198,8 @@ The manifest runner emits a failure report that groups unresolved examples by er
 Current categories include missing numeric answer, wrong row/operation, additive lookup failures, ratio failures, and percent-operation failures.
 Table~\ref{tab:finqa-failure-categories} reports the current full EviGraph failure profile for the 300-example FinQA diagnostic subset.
 Table~\ref{tab:finqa-row-operation-diagnostics} further decomposes wrong numeric answers into operand, year/period, row-label, operation-type, and ambiguous supported wrong-number signals.
-The latest failure-driven planner repairs add grounded operation templates for rate-of-return multiplication, return-on-assets ratios, cumulative return tables, implied tier-2 capital, current ratio, respectively ordered prose differences, implicit percent-increase queries, source-aware support ordering, row-year sums, per-unit costs, and implied ownership-value calculations.
-These repairs move exact match to 0.487 under oracle-document retrieval, 0.393 under open BM25, and 0.463 under BM25 plus source reranking.
+The latest failure-driven planner repairs add grounded operation templates for rate-of-return multiplication, return-on-assets ratios, cumulative return tables, implied tier-2 capital, current ratio, respectively ordered prose differences, implicit percent-increase queries, source-aware support ordering, row-year sums, per-unit costs, implied ownership-value calculations, stated-amount percentage products, per-share acquisition value, inventory-component ratios, and two-year table-column differences.
+These repairs move exact match to 0.500 under oracle-document retrieval, 0.403 under open BM25, and 0.477 under BM25 plus source reranking.
 The largest remaining actionable categories are still operand selection, unresolved numeric-answer extraction, and selection-induced source-rerank pruning; the next phase must improve oracle-document row/column selection and add external baselines before claiming benchmark-level gains.
 
 \section{Conclusion}

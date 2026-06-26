@@ -3464,6 +3464,102 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "162.2")
         self.assertIn("issuable_stock_value", answer.calculations[0])
 
+    def test_percent_of_stated_backlog_amount_uses_query_units(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "We expect approximately 28% ( 28 % ) of the $21 billion total backlog "
+                    "as of December 31, 2014, to be converted into sales in 2015."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the anticipated amount of revenues from the of the $21 billion total backlog as of december 31, 2014, to be converted into sales in 2015 in billions",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "5.88")
+        self.assertIn("percent_of_stated_amount", answer.calculations[0])
+
+    def test_share_value_per_share_from_acquisition_prose(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "The initial aggregate purchase price for Suros consisted of 4600 shares "
+                    "of Hologic common stock valued at $106500, cash paid of $139000, "
+                    "and acquisition related fees."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the estimated price of hologic common stock used in the acquisition of suros?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "23.2")
+        self.assertIn("share_value_per_share", answer.calculations[0])
+
+    def test_inventory_component_ratio_prefers_inventories_row(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| | 2018 | 2017 |\n"
+                    "| --- | --- | --- |\n"
+                    "| finished products | $ 988.1 | $ 1211.4 |\n"
+                    "| work in process | 2628.2 | 2697.7 |\n"
+                    "| raw materials and supplies | 506.5 | 488.8 |\n"
+                    "| total ( approximates replacement cost ) | 4122.8 | 4397.9 |\n"
+                    "| inventories | $ 4111.8 | $ 4458.3 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the percent of the finished products to the total inventory?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "24.03%")
+        self.assertIn("inventory_component_ratio", answer.calculations[0])
+
+    def test_increase_between_two_year_columns_without_query_years(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| ( in thousands ) | december 31, 2017 | december 31, 2016 |\n"
+                    "| --- | --- | --- |\n"
+                    "| class a common stock authorized | 1000000 | 1000000 |\n"
+                    "| class a common stock issued and outstanding | 339235 | 338240 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the increase in class a common stock issued and outstanding between years, in thousands?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "995")
+        self.assertIn("increase_between_table_year_columns", answer.calculations[0])
+
     def test_percentage_exact_match_allows_rounding(self) -> None:
         self.assertEqual(numeric_exact_match("86.8%", "87%"), 1.0)
 
