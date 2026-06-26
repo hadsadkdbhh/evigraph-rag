@@ -46,9 +46,9 @@ Expected current FinQA-300 exact-match results:
 
 | setting | full EviGraph EM |
 | --- | ---: |
-| Oracle-doc | 0.437 |
-| Open BM25 | 0.350 |
-| BM25 + source rerank | 0.403 |
+| Oracle-doc | 0.463 |
+| Open BM25 | 0.370 |
+| BM25 + source rerank | 0.430 |
 
 Main reproducibility artifacts:
 
@@ -60,6 +60,8 @@ Main reproducibility artifacts:
 - `outputs/eval/finqa_300_local_planner/*_row_operation_diagnostics.md`
 - `paper/generated/finqa_300_local_planner/finqa_results_summary.md`
 - `paper/generated/finqa_300_local_planner/finqa_results_tables.tex`
+- `paper/generated/finqa_300_local_planner_ablation/finqa_results_summary.md`
+- `paper/generated/finqa_300_local_planner_ablation/finqa_results_tables.tex`
 
 These are diagnostic subset results, not final benchmark claims.
 
@@ -189,14 +191,21 @@ The checked-in FinQA subset uses `dreamerdeo/finqa`, validation split, pool size
 pre-text, table, and post-text to Markdown and excludes the gold answer and gold
 evidence annotations from retrieval.
 
-The current manifest uses the sample `source_doc` field to evaluate
-oracle-document reasoning before open retrieval. On this smoke subset,
-`full_evigraph` currently reaches 63/100 numeric exact matches in oracle-doc
-mode, 55/100 in open BM25 mode, 54/100 in deterministic open hybrid mode, and
-64/100 in source-rerank mode. The CSVs also report diagnostic verifier metrics including arithmetic support,
+The current FinQA-300 local-planner manifest uses the sample `source_doc` field
+to evaluate oracle-document reasoning before open retrieval. On this diagnostic
+subset, `full_evigraph` currently reaches 0.463 exact match in oracle-doc mode,
+0.370 in open BM25 mode, and 0.430 in BM25 + source-rerank mode. The CSVs also
+report diagnostic verifier metrics including arithmetic support,
 calculation-result support, operation-semantics checking, row-operation
 grounding, and semantic grounding. These are diagnostic baselines, not final
 benchmark claims.
+
+Run the local-planner baseline/ablation manifest:
+
+```powershell
+python scripts/run_manifest.py --manifest configs/experiments.finqa_300.local_planner_ablation.json
+python scripts/build_paper_assets.py --eval-dir outputs/eval/finqa_300_local_planner_ablation --output-dir paper/generated/finqa_300_local_planner_ablation --preset finqa_300_local_ablation
+```
 
 Generate a failure report for the FinQA ablation output:
 

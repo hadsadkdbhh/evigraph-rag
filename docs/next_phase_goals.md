@@ -1,6 +1,6 @@
 # Next Phase Goals
 
-Last updated: 2026-06-25
+Last updated: 2026-06-26
 
 This file defines the next research phase after the FinQA-300 experiment loop
 was closed as a reproducible artifact workflow. These are target gates for a
@@ -12,9 +12,9 @@ Latest FinQA-300 local-planner exact match:
 
 | setting | current EM |
 | --- | ---: |
-| Oracle-doc full EviGraph | 0.437 |
-| Open BM25 full EviGraph | 0.350 |
-| BM25 + source-rerank full EviGraph | 0.403 |
+| Oracle-doc full EviGraph | 0.463 |
+| Open BM25 full EviGraph | 0.370 |
+| BM25 + source-rerank full EviGraph | 0.430 |
 
 The engineering pipeline and experiment artifact closure are complete. The
 remaining work is research quality: stronger numerical reasoning, stronger
@@ -37,13 +37,18 @@ Interpretation:
 - Source-rerank `0.45+` means the evidence-state machinery remains useful when
   realistic retrieval noise is present but source metadata is available for
   analysis.
-- Open BM25 has reached the `0.35+` minimum deployable open-retrieval sanity
-  target; the next priority is to raise oracle-doc toward `0.50+` and
-  source-rerank toward `0.45+` without losing this open-retrieval floor.
+- Open BM25 has exceeded the `0.35+` minimum deployable open-retrieval sanity
+  target at `0.370`; the next priority is to raise oracle-doc toward `0.50+`
+  and source-rerank toward `0.45+` without losing this open-retrieval floor.
 
 ## Baselines To Add
 
-Add baselines before making a paper-level empirical claim:
+Current local-planner baselines and ablations have been added in
+`configs/experiments.finqa_300.local_planner_ablation.json` and generated under
+`paper/generated/finqa_300_local_planner_ablation/`.
+They cover top-k, utility-only, no-risk, no-verifier, no-support, and full
+EviGraph for the applicable retrieval settings.
+Before making a paper-level empirical claim, still add external baselines:
 
 - BM25 top-k reader baseline.
 - Dense retrieval baseline.
@@ -57,15 +62,20 @@ closure report.
 
 ## Ablations To Add
 
-Required ablations:
+Current ablations:
 
 - Full EviGraph.
 - No risk scoring.
 - No verifier.
 - No evidence-graph support selection.
+- Retrieval-only top-k context with the same answer generator.
+- Utility-only selection with the same answer generator.
+
+Still required:
+
 - No operation planner, using existing heuristic/generator path only.
 - Planner without verifier-grounded rejection.
-- Retrieval-only top-k context with the same answer generator.
+- Dense retrieval and retrieve-then-read baselines.
 
 The paper should report exact match separately from support diagnostics:
 answer support, calculation support, operation-semantics checking, row grounding,
@@ -92,8 +102,8 @@ executor, or verifier mechanisms.
    `0.50+`.
 2. Once Oracle-doc moves, rerun source-rerank and open BM25 and inspect whether
    retrieval or reasoning is the bottleneck.
-3. Add baseline manifests after the current local planner stops yielding obvious
-   gains from `ambiguous_supported_wrong_number`.
-4. Add ablation manifests and generated paper tables.
+3. Add no-operation-planner and planner-without-verifier-grounded-rejection
+   ablations.
+4. Add dense retrieval and retrieve-then-read baselines.
 5. Rewrite the methodology section around operation planner, verifier, and
    evidence graph rather than rule patches.

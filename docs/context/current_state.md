@@ -1,6 +1,6 @@
 # EviGraph-RAG Working Context
 
-Last updated: 2026-06-25
+Last updated: 2026-06-26
 
 This file is the durable context checkpoint for Codex. Read it before continuing
 project work after chat compaction or a new session. Keep it short, factual,
@@ -24,6 +24,8 @@ Use the 300-example FinQA validation subset as the current reality check.
 - One-command pipeline report: `outputs/pipeline/pipeline_report.md`
 - Experiment closure report: `outputs/pipeline/experiment_closure_report.md`
 - Paper table artifacts: `paper/generated/finqa_300_local_planner/`
+- Local-planner ablation manifest: `configs/experiments.finqa_300.local_planner_ablation.json`
+- Local-planner ablation artifacts: `paper/generated/finqa_300_local_planner_ablation/`
 - Next phase goals: `docs/next_phase_goals.md`
 - Main diagnostics:
   - `outputs/eval/finqa_300_local_planner/finqa_300_subset_source_rerank_full_local_planner_failures.md`
@@ -33,16 +35,16 @@ Latest documented FinQA-300 local planner exact match:
 
 | Setting | Accuracy |
 | --- | ---: |
-| Oracle-doc full EviGraph | 0.437 |
-| Open BM25 full EviGraph | 0.350 |
-| BM25 + source-rerank full EviGraph | 0.403 |
+| Oracle-doc full EviGraph | 0.463 |
+| Open BM25 full EviGraph | 0.370 |
+| BM25 + source-rerank full EviGraph | 0.430 |
 
 Latest source-rerank diagnostic counts:
 
 | Failure class | Count |
 | --- | ---: |
-| wrong_numeric_operation_or_row | 49 |
-| no_numeric_answer_other | 37 |
+| wrong_numeric_operation_or_row | 44 |
+| no_numeric_answer_other | 33 |
 | no_numeric_answer_percent | 34 |
 | no_numeric_answer_additive_or_lookup | 31 |
 | no_numeric_answer_ratio | 17 |
@@ -52,9 +54,9 @@ Latest row/operation diagnostic split for source-rerank:
 
 | Label | Count |
 | --- | ---: |
-| ambiguous_supported_wrong_number | 28 |
-| wrong_operation_type | 9 |
-| wrong_row_label | 6 |
+| ambiguous_supported_wrong_number | 27 |
+| wrong_operation_type | 6 |
+| wrong_row_label | 4 |
 | wrong_year_or_period | 5 |
 | wrong_denominator | 2 |
 | wrong_numerator | 5 |
@@ -84,7 +86,7 @@ experiment card, generated paper Markdown, and generated LaTeX tables.
 
 The latest full refresh passed:
 
-- Unit tests: `208 tests OK`
+- Unit tests: `218 tests OK`
 - Manifest: `configs/experiments.finqa_300.local_planner.json`
 - Result directory: `outputs/eval/finqa_300_local_planner`
 - Pipeline report: `outputs/pipeline/pipeline_report.md`
@@ -94,6 +96,8 @@ The latest full refresh passed:
 - Experiment card: `outputs/eval/finqa_300_local_planner/experiment_card.md`
 - Paper summary: `paper/generated/finqa_300_local_planner/finqa_results_summary.md`
 - LaTeX tables: `paper/generated/finqa_300_local_planner/finqa_results_tables.tex`
+- Ablation summary: `paper/generated/finqa_300_local_planner_ablation/finqa_results_summary.md`
+- Ablation LaTeX tables: `paper/generated/finqa_300_local_planner_ablation/finqa_results_tables.tex`
 
 Use `scripts/run_pipeline.py --refresh-results` as the default reproducibility
 gate before reporting new FinQA-300 numbers.
@@ -113,9 +117,9 @@ story:
 
 | Setting | Current | Target |
 | --- | ---: | ---: |
-| Oracle-doc full EviGraph | 0.437 | 0.50+ |
-| BM25 + source-rerank full EviGraph | 0.403 | 0.45+ |
-| Open BM25 full EviGraph | 0.350 | 0.35+ |
+| Oracle-doc full EviGraph | 0.463 | 0.50+ |
+| BM25 + source-rerank full EviGraph | 0.430 | 0.45+ |
+| Open BM25 full EviGraph | 0.370 | 0.35+ |
 
 Required additions for the next paper-quality phase:
 

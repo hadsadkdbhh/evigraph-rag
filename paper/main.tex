@@ -185,10 +185,12 @@ This suite is used for mechanism debugging, not public benchmark claims.
 
 \subsection{Baselines and Ablations}
 
-The current table reports full EviGraph with the local program planner under oracle-document, open BM25, and source-rerank settings.
-Earlier top-k, utility-only, and open-hybrid ablations remain engineering diagnostics; stronger dense retrieval and retrieve-then-read baselines are still required before making final benchmark-level claims.
+We report top-k retrieval, utility-only evidence selection, and EviGraph ablations that remove risk scoring, verification, or support-subgraph extraction where applicable.
+All methods use the same local operation planner and executor, so differences isolate evidence-state control rather than model scale.
+The current ablation table shows that EviGraph improves open BM25 exact match over top-k (0.370 vs. 0.360) while using slightly fewer selected tokens, but source-rerank top-k remains stronger in exact match (0.463 vs. 0.430), indicating that graph selection can still prune answer-bearing nodes under partially oracle retrieval.
+We therefore frame the current numbers as diagnostic evidence for the planner--verifier mechanism, not as final benchmark superiority over dense retrieval or retrieve-then-read baselines.
 
-\input{generated/finqa_300_local_planner/finqa_results_tables}
+\input{generated/finqa_300_local_planner_ablation/finqa_results_tables}
 
 \section{Failure Analysis}
 
@@ -196,9 +198,9 @@ The manifest runner emits a failure report that groups unresolved examples by er
 Current categories include missing numeric answer, wrong row/operation, additive lookup failures, ratio failures, and percent-operation failures.
 Table~\ref{tab:finqa-failure-categories} reports the current full EviGraph failure profile for the 300-example FinQA diagnostic subset.
 Table~\ref{tab:finqa-row-operation-diagnostics} further decomposes wrong numeric answers into operand, year/period, row-label, operation-type, and ambiguous supported wrong-number signals.
-The latest failure-driven repairs recover inline rows hidden by truncated Markdown table fragments, combine same-source table/prose chunks for year-specific sales-denominator ratios, preserve explicit total-denominator intent in local ratio plans, handle year-row-to-thereafter ratios in debt maturity schedules, resolve named-column over total-column ratios in regional tables, combine assumed debt with assumed liabilities for acquisition liability-to-asset ratios, sum prose increase components before dividing by year-labeled denominator rows, close prose/table ratio failures for facility and lease evidence, and add targeted period/operand disambiguation for equity-plan, commitment-expiration, and dividend-period cases.
-These repairs move exact match to 0.437 under oracle-document retrieval, 0.350 under open BM25, and 0.403 under BM25 plus source reranking.
-The largest remaining actionable categories are still operand selection and unresolved numeric-answer extraction, especially denominator, year/period, and row-label ambiguity inside supported calculations.
+The latest failure-driven planner repairs add grounded operation templates for rate-of-return multiplication, return-on-assets ratios, cumulative return tables, implied tier-2 capital, current ratio, respectively ordered prose differences, and implicit percent-increase queries.
+These repairs move exact match to 0.463 under oracle-document retrieval, 0.370 under open BM25, and 0.430 under BM25 plus source reranking.
+The largest remaining actionable categories are still operand selection, unresolved numeric-answer extraction, and selection-induced source-rerank pruning; the next phase must improve row/column selection and retrieval baselines before claiming benchmark-level gains.
 
 \section{Conclusion}
 

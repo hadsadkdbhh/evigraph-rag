@@ -18,10 +18,12 @@ Last updated from the checked-in FinQA MVP0 run.
   `outputs/` is ignored by Git, while `python scripts/run_pipeline.py` is the
   quick path after generated CSVs exist.
 - AAAI readiness: early research prototype; the system is not yet at submission-quality benchmark performance.
-- Next phase goals are fixed in `docs/next_phase_goals.md`: raise Oracle-doc to
-  `0.50+`, source-rerank to `0.45+`, and open BM25 to `0.35+`; add baselines
-  and ablations; and rewrite the paper emphasis around operation planner,
-  verifier, and evidence graph rather than rule patches.
+- Next phase goals are fixed in `docs/next_phase_goals.md`: Oracle-doc is now
+  `0.463` toward the `0.50+` target, source-rerank is `0.430` toward the
+  `0.45+` target, and open BM25 has cleared the `0.35+` target at `0.370`.
+  Local-planner baselines/ablations have been added; the remaining paper work
+  is stronger external baselines and a method narrative centered on operation
+  planner, verifier, and evidence graph rather than rule patches.
 
 ## Reproducibility Gates
 
@@ -56,9 +58,11 @@ three 300-row evaluation CSVs, failure reports, row/operation diagnostics,
 dataset inspection/gate artifacts, experiment card, and generated paper tables.
 
 The 2026-06-26 full refresh passed all three stages: unit tests
-(`208 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
-FinQA-300 local-planner exact-match results are 0.437 oracle-doc, 0.350 open
-BM25, and 0.403 BM25 plus source rerank.
+(`218 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
+FinQA-300 local-planner exact-match results are 0.463 oracle-doc, 0.370 open
+BM25, and 0.430 BM25 plus source rerank. The local-planner ablation manifest
+also ran 3600 baseline/ablation examples and generated paper tables under
+`paper/generated/finqa_300_local_planner_ablation/`.
 
 Run the quick MVP0 acceptance suite:
 

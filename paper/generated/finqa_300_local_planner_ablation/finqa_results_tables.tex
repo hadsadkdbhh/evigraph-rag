@@ -7,8 +7,17 @@
 \toprule
 Setting & Method & EM & Ans. & Calc. & OpSem & Row & Tokens \\
 \midrule
+Oracle-doc & Top-k & 0.46 & 0.75 & 0.53 & 0.81 & 0.78 & 1414.75 \\
+Oracle-doc & Utility-only & 0.46 & 0.75 & 0.52 & 0.80 & 0.77 & 1265.82 \\
+Oracle-doc & evigraph\_wo\_risk & 0.46 & 0.75 & 0.53 & 0.81 & 0.78 & 1176.61 \\
+Oracle-doc & evigraph\_wo\_verifier & 0.47 & 0.00 & 0.00 & 0.00 & 0.00 & 1176.61 \\
+Oracle-doc & evigraph\_wo\_support & 0.46 & 0.75 & 0.53 & 0.81 & 0.78 & 1176.61 \\
 Oracle-doc & Full EviGraph & 0.46 & 0.75 & 0.53 & 0.81 & 0.78 & 1176.61 \\
+Open BM25 & Top-k & 0.36 & 0.77 & 0.51 & 0.79 & 0.78 & 858.12 \\
+Open BM25 & Utility-only & 0.31 & 0.75 & 0.46 & 0.76 & 0.75 & 857.23 \\
 Open BM25 & Full EviGraph & 0.37 & 0.79 & 0.52 & 0.83 & 0.80 & 852.98 \\
+BM25 + source rerank & Top-k & 0.46 & 0.75 & 0.53 & 0.80 & 0.78 & 1311.80 \\
+BM25 + source rerank & Utility-only & 0.41 & 0.73 & 0.48 & 0.76 & 0.74 & 1163.78 \\
 BM25 + source rerank & Full EviGraph & 0.43 & 0.77 & 0.54 & 0.82 & 0.79 & 1185.57 \\
 \bottomrule
 \end{tabular}

@@ -28,6 +28,12 @@ class NumericReasoner:
             return None
 
         is_roi_query = "roi" in query_lower or "rate of return" in query_lower
+        answer = self._return_on_assets(query_lower, contexts)
+        if answer:
+            return answer
+        answer = self._rate_of_return_on_table_value(query_lower, contexts)
+        if answer:
+            return answer
         if (
             "percentage change" in query_lower
             or "percent change" in query_lower
@@ -62,6 +68,9 @@ class NumericReasoner:
                 answer = self._quarterly_cash_dividend_percent_change(query_lower, contexts)
                 if answer:
                     return answer
+                answer = self._cumulative_return_percent(query_lower, contexts)
+                if answer:
+                    return answer
                 if len(re.findall(r"\b(20\d{2})\b", query_lower)) < 2:
                     answer = self._percent_delta_phrase(query_lower, contexts)
                     if answer:
@@ -69,6 +78,9 @@ class NumericReasoner:
                     answer = self._percent_change_from_to_phrase(query_lower, contexts)
                     if answer:
                         return answer
+                answer = self._vertical_metric_percent_change(query_lower, contexts)
+                if answer:
+                    return answer
                 answer = self._percent_change(query_lower, contexts)
                 if answer:
                     return answer
@@ -121,6 +133,9 @@ class NumericReasoner:
             answer = self._facility_closing_charge_ratio(query_lower, contexts)
             if answer:
                 return answer
+            answer = self._cumulative_return_percent(query_lower, contexts)
+            if answer:
+                return answer
             answer = self._equity_plan_remaining_available_ratio(query_lower, contexts)
             if answer:
                 return answer
@@ -136,12 +151,20 @@ class NumericReasoner:
             if answer:
                 return answer
 
+        if " increase" in query_lower and len(re.findall(r"\b(20\d{2})\b", query_lower)) >= 2:
+            answer = self._implicit_percent_increase(query_lower, contexts)
+            if answer:
+                return answer
+
         if "after-tax" in query_lower or "after tax" in query_lower:
             answer = self._pretax_aftertax_difference(query_lower, contexts)
             if answer:
                 return answer
 
         if "change" in query_lower and len(re.findall(r"\b(20\d{2})\b", query_lower)) >= 2:
+            answer = self._respectively_prose_difference(query_lower, contexts)
+            if answer:
+                return answer
             answer = self._row_year_difference(query_lower, contexts)
             if answer:
                 return answer
@@ -163,7 +186,13 @@ class NumericReasoner:
                 return answer
 
         if "ratio" in query_lower:
+            answer = self._current_ratio(query_lower, contexts)
+            if answer:
+                return answer
             answer = self._acquisition_liabilities_to_assets_ratio(query_lower, contexts)
+            if answer:
+                return answer
+            answer = self._implied_tier2_capital_ratio(query_lower, contexts)
             if answer:
                 return answer
             answer = self._same_year_row_ratio(query_lower, contexts)
@@ -730,6 +759,217 @@ class NumericReasoner:
             )
         return None
 
+    def _respectively_prose_difference(
+        self, query_lower: str, contexts: list[tuple[str, str]]
+    ) -> NumericAnswer | None:
+        if "change" not in query_lower or "respectively" in query_lower:
+            return None
+        years = re.findall(r"\b(20\d{2})\b", query_lower)
+        if len(years) < 2:
+            return None
+        from_match = re.search(r"\bfrom\b.{0,80}?\b(20\d{2})\b", query_lower)
+        if from_match:
+            base_year = from_match.group(1)
+            target_year = next((year for year in years if year != base_year), years[0])
+        else:
+            base_year, target_year = sorted({years[0], years[-1]}, key=int)
+        query_terms = set(self._keywords(query_lower))
+        distinctive_terms = {
+            term
+            for term in query_terms
+            if term
+            not in {
+                "what",
+                "was",
+                "the",
+                "change",
+                "net",
+                "from",
+                "between",
+                "and",
+                "in",
+                "millions",
+                "billions",
+                "december",
+                "january",
+                "year",
+                "years",
+            }
+            and not re.fullmatch(r"(?:19|20)\d{2}", term)
+        }
+        amount_pattern = re.compile(
+            r"\$\s*(?P<amount>[+-]?(?:\d+(?:\.\d+)?|\.\d+))\s*(?P<scale>billion|million|thousand)?",
+            flags=re.IGNORECASE,
+        )
+        for node_id, text in contexts:
+            best: tuple[int, str] | None = None
+            for sentence in self._prose_sentences(text):
+                sentence_lower = sentence.lower()
+                if "respectively" not in sentence_lower:
+                    continue
+                if target_year not in sentence_lower or base_year not in sentence_lower:
+                    continue
+                sentence_terms = set(self._keywords(sentence_lower))
+                if len(distinctive_terms & sentence_terms) < min(2, len(distinctive_terms)):
+                    continue
+                score = len(query_terms & sentence_terms)
+                if best is None or score > best[0]:
+                    best = (score, sentence)
+            if best is None:
+                continue
+            sentence = best[1]
+            scoped = sentence[: sentence.lower().find("respectively")]
+            sentence_years = re.findall(r"\b(20\d{2})\b", scoped)
+            amounts = []
+            for match in amount_pattern.finditer(scoped):
+                amount = self._to_float(match.group("amount"))
+                scale = (match.group("scale") or "").lower()
+                if scale and f"in {scale}s" not in query_lower and f"in {scale}" not in query_lower:
+                    amount = self._scaled_number(match.group("amount"), scale)
+                amounts.append(amount)
+            if len(sentence_years) < 2 or len(amounts) < len(sentence_years):
+                continue
+            aligned = dict(zip(sentence_years[-len(amounts) :], amounts[-len(sentence_years) :]))
+            if target_year not in aligned or base_year not in aligned:
+                continue
+            operation = self.executor.difference(aligned[target_year], aligned[base_year])
+            if operation is None:
+                continue
+            return NumericAnswer(
+                text=self._format_number(operation.value),
+                calculation=(
+                    f"respectively_prose_difference years={target_year}-{base_year}: "
+                    f"{operation.expression}"
+                ),
+                cited_node_ids=[node_id],
+            )
+        return None
+
+    def _rate_of_return_on_table_value(
+        self, query_lower: str, contexts: list[tuple[str, str]]
+    ) -> NumericAnswer | None:
+        if "rate of return" not in query_lower or " on " not in query_lower:
+            return None
+        percent_match = re.search(r"\b(\d+(?:\.\d+)?)\s*%", query_lower)
+        year_match = re.search(r"\bon\s+(20\d{2})\s+(.+?)(?:\?|$)", query_lower)
+        if percent_match is None or year_match is None:
+            return None
+        rate = self._to_float(percent_match.group(1)) / 100.0
+        query_year = year_match.group(1)
+        terms = self._keywords(year_match.group(2))
+        if not terms:
+            return None
+        for node_id, text in contexts:
+            value, metadata = self._table_value_for_terms_year_with_label(
+                text, terms, query_year, allow_partial=False
+            )
+            if value is None:
+                continue
+            raw_result = value * rate
+            result = round(raw_result)
+            return NumericAnswer(
+                text=f"{result:g}",
+                calculation=(
+                    f"rate_of_return_on_table_value row={metadata.get('row_label', '')} "
+                    f"year={query_year}: round({value:g} * {rate:g}) = {result:g}"
+                ),
+                cited_node_ids=[node_id],
+            )
+        return None
+
+    def _return_on_assets(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
+        if "return on" not in query_lower or "asset" not in query_lower:
+            return None
+        years = re.findall(r"\b(20\d{2})\b", query_lower)
+        if not years:
+            return None
+        query_year = years[-1]
+        numerator_term_sets = (
+            ["net", "earnings"],
+            ["net", "income"],
+        )
+        denominator_terms = ["total", "assets"]
+        for node_id, text in contexts:
+            denominator, denominator_meta = self._table_value_for_terms_year_with_label(
+                text, denominator_terms, query_year, allow_partial=False
+            )
+            if denominator in {None, 0}:
+                continue
+            numerator = None
+            numerator_meta: dict[str, str] = {}
+            for terms in numerator_term_sets:
+                numerator, numerator_meta = self._table_value_for_terms_year_with_label(
+                    text, terms, query_year, allow_partial=False
+                )
+                if numerator is not None:
+                    break
+            if numerator is None:
+                continue
+            operation = self.executor.ratio(numerator, denominator)
+            if operation is None:
+                continue
+            result = operation.value * 100.0
+            return NumericAnswer(
+                text=self._format_percent(result),
+                calculation=(
+                    f"return_on_assets numerator_row={numerator_meta.get('row_label', '')} "
+                    f"denominator_row={denominator_meta.get('row_label', '')} year={query_year}: "
+                    f"{operation.expression} * 100 = {result:.1f}%"
+                ),
+                cited_node_ids=[node_id],
+            )
+        return None
+
+    def _cumulative_return_percent(
+        self, query_lower: str, contexts: list[tuple[str, str]]
+    ) -> NumericAnswer | None:
+        if "return" not in query_lower or not ("percent" in query_lower or "percentage" in query_lower):
+            return None
+        years = re.findall(r"\b(20\d{2})\b", query_lower)
+        if len(years) < 2:
+            return None
+        base_year, target_year = years[0], years[-1]
+        target_terms = [
+            term
+            for term in self._keywords(query_lower)
+            if term not in {"what", "was", "percent", "percentage", "return", "from", "common", "stock"}
+            and not re.fullmatch(r"(?:19|20)\d{2}", term)
+        ]
+        if not target_terms:
+            return None
+        for node_id, text in contexts:
+            for headers, rows in self._markdown_tables(text):
+                base_index = self._month_year_header_index(headers, base_year)
+                target_index = self._month_year_header_index(headers, target_year)
+                if base_index is None or target_index is None:
+                    continue
+                row = self._best_table_value_row(rows, target_terms, target_index, require_all=False)
+                if row is None or max(base_index, target_index) >= len(row):
+                    continue
+                base_value = self._first_number(row[base_index])
+                target_value = self._first_number(row[target_index])
+                if base_value in {None, 0} or target_value is None:
+                    continue
+                operation = self.executor.difference(target_value, base_value)
+                if operation is None:
+                    continue
+                return NumericAnswer(
+                    text=self._format_percent(operation.value),
+                    calculation=(
+                        f"cumulative_return_percent row={row[0]} years={base_year}->{target_year}: "
+                        f"{target_value:g} - {base_value:g} = {operation.value:.1f}%"
+                    ),
+                    cited_node_ids=[node_id],
+                )
+        return None
+
+    def _month_year_header_index(self, headers: list[str], year: str) -> int | None:
+        two_digit = year[-2:]
+        for index, header in enumerate(headers):
+            if re.search(rf"\b(?:{year}|{two_digit})\b", header):
+                return index
+        return None
+
     def _roi_from_table(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
         if "roi" not in query_lower and "rate of return" not in query_lower:
             return None
@@ -803,6 +1043,111 @@ class NumericReasoner:
             return NumericAnswer(
                 text=f"{operation.value:.1f}%",
                 calculation=f"percent_change row={row[0]} roi years={base_year}->{target_year}: {operation.expression}",
+                cited_node_ids=[node_id],
+            )
+        return None
+
+    def _vertical_metric_percent_change(
+        self, query_lower: str, contexts: list[tuple[str, str]]
+    ) -> NumericAnswer | None:
+        years = re.findall(r"\b(20\d{2})\b", query_lower)
+        if len(years) < 2:
+            return None
+        base_year, target_year = self._percent_change_years(query_lower, years)
+        metric_terms = [
+            term
+            for term in self._keywords(query_lower)
+            if term
+            not in {
+                "what",
+                "was",
+                "the",
+                "percentage",
+                "percent",
+                "change",
+                "from",
+                "to",
+                "at",
+                "december",
+                "january",
+                "year",
+                "years",
+            }
+            and not re.fullmatch(r"(?:19|20)\d{2}", term)
+            and not re.fullmatch(r"\d{1,2}", term)
+        ]
+        if not metric_terms:
+            return None
+        for node_id, text in contexts:
+            for headers, rows in self._markdown_tables(text):
+                row_by_year = {
+                    row[0].strip(): row
+                    for row in rows
+                    if row and re.fullmatch(r"(?:19|20)\d{2}", row[0].strip())
+                }
+                if base_year not in row_by_year or target_year not in row_by_year:
+                    continue
+                best_column: tuple[int, int, int] | None = None
+                for index, header in enumerate(headers[1:], start=1):
+                    header_lower = header.lower()
+                    header_terms = set(self._keywords(header_lower))
+                    matched = [term for term in metric_terms if term in header_terms or term in header_lower]
+                    if len(matched) < min(2, len(metric_terms)):
+                        continue
+                    candidate = (len(matched), sum(len(term) for term in matched), index)
+                    if best_column is None or candidate > best_column:
+                        best_column = candidate
+                if best_column is None:
+                    continue
+                column_index = best_column[2]
+                base_row = row_by_year[base_year]
+                target_row = row_by_year[target_year]
+                if column_index >= len(base_row) or column_index >= len(target_row):
+                    continue
+                base_value = self._first_number(base_row[column_index])
+                target_value = self._first_number(target_row[column_index])
+                if base_value in {None, 0} or target_value is None:
+                    continue
+                operation = self.executor.percent_change(target_value, base_value)
+                if operation is None:
+                    continue
+                if abs(operation.value) < 0.05:
+                    continue
+                return NumericAnswer(
+                    text=self._format_percent(operation.value),
+                    calculation=(
+                        f"vertical_metric_percent_change column={headers[column_index]} "
+                        f"years={base_year}->{target_year}: {operation.expression}"
+                    ),
+                    cited_node_ids=[node_id],
+                )
+        return None
+
+    def _implicit_percent_increase(
+        self, query_lower: str, contexts: list[tuple[str, str]]
+    ) -> NumericAnswer | None:
+        if not (
+            ("increase from" in query_lower and ("by how much did" in query_lower or "percentage" in query_lower or "percent" in query_lower))
+            or ("increase observed" in query_lower and "during" in query_lower)
+        ):
+            return None
+        years = re.findall(r"\b(20\d{2})\b", query_lower)
+        if len(years) < 2:
+            return None
+        base_year, target_year = self._percent_change_years(query_lower, years)
+        for node_id, text in contexts:
+            values = self._table_year_values(query_lower, text, base_year, target_year)
+            if not values or base_year not in values or target_year not in values:
+                continue
+            operation = self.executor.percent_change(values[target_year], values[base_year])
+            if operation is None:
+                continue
+            return NumericAnswer(
+                text=self._format_percent(operation.value),
+                calculation=(
+                    f"implicit_percent_increase row={values.get('__row_label__', '')} "
+                    f"years={base_year}->{target_year}: {operation.expression}"
+                ),
                 cited_node_ids=[node_id],
             )
         return None
@@ -1436,6 +1781,92 @@ class NumericReasoner:
             ),
             cited_node_ids=[node_id],
         )
+
+    def _implied_tier2_capital_ratio(
+        self, query_lower: str, contexts: list[tuple[str, str]]
+    ) -> NumericAnswer | None:
+        if "tier 2" not in query_lower or "capital" not in query_lower:
+            return None
+        years = re.findall(r"\b(20\d{2})\b", query_lower)
+        if len(years) < 2:
+            return None
+        numerator_year, denominator_year = years[0], years[-1]
+        for node_id, text in contexts:
+            for headers, rows in self._markdown_tables(text):
+                numerator_index = self._header_year_index(headers, numerator_year)
+                denominator_index = self._header_year_index(headers, denominator_year)
+                if numerator_index is None or denominator_index is None:
+                    continue
+                tier1_row = self._row_by_label(rows, ["tier", "1", "capital"])
+                total_row = self._row_by_label(rows, ["total", "capital", "tier", "1", "tier", "2"])
+                if tier1_row is None or total_row is None:
+                    continue
+                if max(numerator_index, denominator_index) >= min(len(tier1_row), len(total_row)):
+                    continue
+                numerator_tier1 = self._first_number(tier1_row[numerator_index])
+                denominator_tier1 = self._first_number(tier1_row[denominator_index])
+                numerator_total = self._first_number(total_row[numerator_index])
+                denominator_total = self._first_number(total_row[denominator_index])
+                if None in {numerator_tier1, denominator_tier1, numerator_total, denominator_total}:
+                    continue
+                numerator_tier2 = numerator_total - numerator_tier1
+                denominator_tier2 = denominator_total - denominator_tier1
+                operation = self.executor.ratio(numerator_tier2, denominator_tier2)
+                if operation is None:
+                    continue
+                return NumericAnswer(
+                    text=self._format_number(operation.value),
+                    calculation=(
+                        "implied_tier2_capital_ratio "
+                        f"years={numerator_year}/{denominator_year}: "
+                        f"({numerator_total:g} - {numerator_tier1:g}) / "
+                        f"({denominator_total:g} - {denominator_tier1:g}) = {operation.value:.2f}"
+                    ),
+                    cited_node_ids=[node_id],
+                )
+        return None
+
+    def _current_ratio(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
+        if "current ratio" not in query_lower:
+            return None
+        for node_id, text in contexts:
+            for _headers, rows in self._markdown_tables(text):
+                assets_row = self._row_by_label(rows, ["current", "assets"])
+                liabilities_row = self._row_by_label(rows, ["current", "liabilities"])
+                if assets_row is None or liabilities_row is None:
+                    continue
+                assets = self._row_first_numeric_value(assets_row)
+                liabilities = self._row_first_numeric_value(liabilities_row)
+                if assets is None or liabilities in {None, 0}:
+                    continue
+                operation = self.executor.ratio(assets, liabilities)
+                if operation is None:
+                    continue
+                return NumericAnswer(
+                    text=f"{operation.value:.1f}",
+                    calculation=(
+                        f"current_ratio row=current assets denominator_row=current liabilities: "
+                        f"{operation.expression}"
+                    ),
+                    cited_node_ids=[node_id],
+                )
+            label_values = self._label_value_rows(text)
+            assets = self._matching_value(label_values, ["current", "assets"])
+            liabilities = self._matching_value(label_values, ["current", "liabilities"])
+            if assets is None or liabilities in {None, 0}:
+                continue
+            operation = self.executor.ratio(assets, liabilities)
+            if operation is None:
+                continue
+            return NumericAnswer(
+                text=f"{operation.value:.1f}",
+                calculation=(
+                    f"current_ratio row=current assets denominator_row=current liabilities: "
+                    f"{operation.expression}"
+                ),
+                cited_node_ids=[node_id],
+            )
+        return None
 
     def _value_for_row_terms_year(
         self,

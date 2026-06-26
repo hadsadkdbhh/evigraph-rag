@@ -3007,6 +3007,239 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "114")
         self.assertIn("pretax_aftertax_difference", answer.calculations[0])
 
+    def test_rate_of_return_multiplies_year_anchored_asset_value(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| december 31 ( in millions ) | 2008 | 2007 |\n"
+                    "| --- | --- | --- |\n"
+                    "| total adjusted average assets | 1966895 | 1473541 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "assuming a 5% ( 5 % ) rate of return , what would the earnings be ( in millions ) on 2008 total adjusted average assets?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "98345")
+        self.assertIn("rate_of_return_on_table_value", answer.calculations[0])
+
+    def test_return_on_assets_uses_net_earnings_over_total_assets(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| ( $ in millions ) | year ended december 31 2017 | year ended december 31 2013 |\n"
+                    "| --- | --- | --- |\n"
+                    "| net earnings ( loss ) | 479 | 261 |\n"
+                    "| total assets | 6374 | 6190 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the return on total assets during 2013?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "4.2%")
+        self.assertIn("return_on_assets", answer.calculations[0])
+
+    def test_cumulative_stock_return_uses_terminal_minus_initial_value(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "|  | 12/09 | 12/10 | 12/14 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| e*trade financial corporation | 100.00 | 90.91 | 137.81 |\n"
+                    "| s&p 500 index | 100.00 | 115.06 | 205.14 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the percent of the return on the e*trade financial corporation common stock from 2009 to 2014",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "37.8%")
+        self.assertIn("cumulative_return_percent", answer.calculations[0])
+
+    def test_implied_tier2_capital_ratio_derives_from_total_minus_tier1(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| in billions of dollars at year end | 2008 | 2007 |\n"
+                    "| --- | --- | --- |\n"
+                    "| tier 1 capital | $ 71.0 | $ 82.0 |\n"
+                    "| total capital ( tier 1 and tier 2 ) | 108.4 | 121.6 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "at december 31 , 2008 what was the ratio of the tier 2 capital compared to 2007",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "0.94")
+        self.assertIn("implied_tier2_capital_ratio", answer.calculations[0])
+
+    def test_net_change_uses_respectively_ordered_prose_amounts(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "at december 31 , 2015 and december 31 , 2014 , the alll on total purchased "
+                    "impaired loans was $ .3 billion and $ .9 billion , respectively ."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "at december 31 , 2015 what was the net change from december 31 , 2014 on alll on total purchased impaired loans in billions?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "-0.6")
+        self.assertIn("respectively_prose_difference", answer.calculations[0])
+
+    def test_between_years_respectively_difference_uses_newer_minus_older(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "the estimated sensitivity to a one basis point increase in credit spreads "
+                    "on derivatives was a gain of $ 3 million and $ 2 million "
+                    "( including hedges ) as of december 2017 and december 2016 , respectively ."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was change in millions for the estimated sensitivity to a one basis point increase in credit spreads on derivatives ( including hedges ) between 2017 and 2016?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "1")
+        self.assertIn("respectively_prose_difference", answer.calculations[0])
+
+    def test_current_ratio_uses_current_assets_over_current_liabilities(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| current assets | $ 513782 |\n"
+                    "| --- | --- |\n"
+                    "| current liabilities | 310919 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the current ratio of robert mondavi?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "1.7")
+        self.assertIn("current_ratio", answer.calculations[0])
+
+    def test_vertical_metric_percent_change_uses_metric_column_not_year_row_label(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| ( dollars in millions ) | december 31 , average investments | december 31 , pre-tax investment income |\n"
+                    "| --- | --- | --- |\n"
+                    "| 2012 | 16220.9 | 600.2 |\n"
+                    "| 2011 | 15680.9 | 620.0 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "at december 31 , what was the percentage change in investment income from 2011 to 2012",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "-3.2%")
+        self.assertIn("vertical_metric_percent_change", answer.calculations[0])
+
+    def test_implicit_percent_increase_from_years_prefers_percent_change_for_weighted_average_price(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "|  | 2007 | 2006 | 2005 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| weighted average exercise price per share | $ 60.94 | $ 37.84 | $ 25.14 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "by how much did the weighted average exercise price per share increase from 2005 to 2007?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "142.4%")
+        self.assertIn("implicit_percent_increase", answer.calculations[0])
+
+    def test_implicit_percent_increase_observed_during_years(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| years ended december 31 | 2011 | 2010 | 2009 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| total revenue | $ 11287 | $ 8512 | $ 7595 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the increase observed in the total revenue during 2010 and 2011?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "32.6%")
+        self.assertIn("implicit_percent_increase", answer.calculations[0])
+
     def test_percentage_exact_match_allows_rounding(self) -> None:
         self.assertEqual(numeric_exact_match("86.8%", "87%"), 1.0)
 

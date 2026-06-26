@@ -58,9 +58,28 @@ FINQA_300_LOCAL_RESULT_SPECS = (
     ),
 )
 
+FINQA_300_LOCAL_ABLATION_RESULT_SPECS = (
+    ResultSpec(
+        "Oracle-doc",
+        "finqa_300_subset_oracle_doc_ablation.csv",
+        ("topk", "utility_only", "evigraph_wo_risk", "evigraph_wo_verifier", "evigraph_wo_support", "full_evigraph"),
+    ),
+    ResultSpec(
+        "Open BM25",
+        "finqa_300_subset_open_bm25_ablation.csv",
+        ("topk", "utility_only", "full_evigraph"),
+    ),
+    ResultSpec(
+        "BM25 + source rerank",
+        "finqa_300_subset_source_rerank_ablation.csv",
+        ("topk", "utility_only", "full_evigraph"),
+    ),
+)
+
 RESULT_SPEC_PRESETS = {
     "finqa": DEFAULT_RESULT_SPECS,
     "finqa_300_local": FINQA_300_LOCAL_RESULT_SPECS,
+    "finqa_300_local_ablation": FINQA_300_LOCAL_ABLATION_RESULT_SPECS,
 }
 
 
@@ -129,7 +148,7 @@ class PaperAssetBuilder:
             [
                 "\\bottomrule",
                 "\\end{tabular}",
-                "\\caption{FinQA diagnostic results. EM is numeric exact match. Ans., Calc., OpSem, and Row are verifier diagnostics for answer support, calculation-result support, operation-semantics checking, and row grounding. Open hybrid is a deterministic lexical/numeric reranker; source rerank uses the provided source document and is an analysis setting rather than a deployable open-retrieval claim.}",
+                "\\caption{FinQA diagnostic results. EM is numeric exact match. Ans., Calc., OpSem, and Row are verifier diagnostics for answer support, calculation-result support, operation-semantics checking, and row grounding. Source rerank uses the provided source document and is an analysis setting rather than a deployable open-retrieval claim.}",
                 "\\label{tab:finqa-diagnostic-results}",
                 "\\end{table}",
                 "",
