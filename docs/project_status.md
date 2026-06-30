@@ -21,9 +21,10 @@ Last updated from the checked-in FinQA MVP0 run.
 - Next phase goals are fixed in `docs/next_phase_goals.md`: Oracle-doc has
   reached the `0.50+` target at `0.510`, source-rerank has cleared the `0.45+`
   target at `0.510`, and open BM25 has cleared the `0.35+` target at `0.403`.
-  Local-planner baselines/ablations have been added; the remaining paper work
-  is stronger external baselines and a method narrative centered on operation
-  planner, verifier, and evidence graph rather than rule patches.
+  Local-planner baselines/ablations have been added and run on the 300-example
+  subset; the remaining paper work is stronger external baselines and a method
+  narrative centered on operation planner, verifier, and evidence graph rather
+  than rule patches.
 
 ## Reproducibility Gates
 
@@ -58,11 +59,12 @@ three 300-row evaluation CSVs, failure reports, row/operation diagnostics,
 dataset inspection/gate artifacts, experiment card, and generated paper tables.
 
 The 2026-06-30 repair refresh passed the targeted dataset run and unit tests
-(`241 tests OK`). The refreshed
-FinQA-300 local-planner exact-match results are 0.510 oracle-doc, 0.403 open
-BM25, and 0.510 BM25 plus source rerank. The local-planner ablation manifest
-now runs 4500 baseline/ablation examples, including a no-operation-planner
-condition, and generated paper tables under
+(`241 tests OK`). The refreshed FinQA-300 local-planner exact-match results are
+0.510 oracle-doc, 0.403 open BM25, and 0.510 BM25 plus source rerank. The
+local-planner ablation manifest now runs 7200 baseline/ablation examples: Top-k
+Program, Full context, Utility-only, no-risk, no-operation-planner,
+no-verifier, no-support-graph, and Full EviGraph across oracle-doc, open BM25,
+and source-rerank. It generated paper tables under
 `paper/generated/finqa_300_local_planner_ablation/`.
 The manifest runner now honors `retrieval.top_k` from the config when running
 batch and Pareto experiments; this closes a pipeline-control bug where changing

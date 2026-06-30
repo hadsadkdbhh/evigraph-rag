@@ -21,22 +21,22 @@ DEFAULT_RESULT_SPECS = (
     ResultSpec(
         "Oracle-doc",
         "finqa_subset_oracle_doc_ablation.csv",
-        ("topk", "utility_only", "full_evigraph"),
+        ("topk", "full_context", "utility_only", "full_evigraph"),
     ),
     ResultSpec(
         "Open BM25",
         "finqa_subset_open_bm25_ablation.csv",
-        ("topk", "utility_only", "full_evigraph"),
+        ("topk", "full_context", "utility_only", "full_evigraph"),
     ),
     ResultSpec(
         "Open hybrid",
         "finqa_subset_open_hybrid_ablation.csv",
-        ("topk", "utility_only", "full_evigraph"),
+        ("topk", "full_context", "utility_only", "full_evigraph"),
     ),
     ResultSpec(
         "BM25 + source rerank",
         "finqa_subset_source_rerank_ablation.csv",
-        ("topk", "utility_only", "full_evigraph"),
+        ("topk", "full_context", "utility_only", "full_evigraph"),
     ),
 )
 
@@ -64,6 +64,7 @@ FINQA_300_LOCAL_ABLATION_RESULT_SPECS = (
         "finqa_300_subset_oracle_doc_ablation.csv",
         (
             "topk",
+            "full_context",
             "utility_only",
             "evigraph_wo_risk",
             "evigraph_wo_operation_planner",
@@ -75,12 +76,30 @@ FINQA_300_LOCAL_ABLATION_RESULT_SPECS = (
     ResultSpec(
         "Open BM25",
         "finqa_300_subset_open_bm25_ablation.csv",
-        ("topk", "utility_only", "evigraph_wo_operation_planner", "full_evigraph"),
+        (
+            "topk",
+            "full_context",
+            "utility_only",
+            "evigraph_wo_risk",
+            "evigraph_wo_operation_planner",
+            "evigraph_wo_verifier",
+            "evigraph_wo_support",
+            "full_evigraph",
+        ),
     ),
     ResultSpec(
         "BM25 + source rerank",
         "finqa_300_subset_source_rerank_ablation.csv",
-        ("topk", "utility_only", "evigraph_wo_operation_planner", "full_evigraph"),
+        (
+            "topk",
+            "full_context",
+            "utility_only",
+            "evigraph_wo_risk",
+            "evigraph_wo_operation_planner",
+            "evigraph_wo_verifier",
+            "evigraph_wo_support",
+            "full_evigraph",
+        ),
     ),
 )
 
@@ -174,9 +193,9 @@ class PaperAssetBuilder:
                 "\\begin{table}[t]",
                 "\\centering",
                 "\\small",
-                "\\begin{tabular}{lrrrr}",
+                "\\begin{tabular}{lrrrrrrr}",
                 "\\toprule",
-                "Setting & Planner $\\Delta$EM & Graph vs. Top-k & Graph vs. Utility & Verifier Ans. \\\\",
+                "Setting & Planner $\\Delta$EM & Verifier $\\Delta$EM & Support $\\Delta$EM & Risk $\\Delta$EM & Graph vs. Top-k & Graph vs. Utility & Ans. \\\\",
                 "\\midrule",
             ]
         )
@@ -186,6 +205,9 @@ class PaperAssetBuilder:
                     [
                         self._latex_escape(row["setting"]),
                         self._signed_fmt(row["planner_delta_em"]),
+                        self._signed_fmt(row["verifier_delta_em"]),
+                        self._signed_fmt(row["support_delta_em"]),
+                        self._signed_fmt(row["risk_delta_em"]),
                         self._signed_fmt(row["graph_vs_topk_em"]),
                         self._signed_fmt(row["graph_vs_utility_em"]),
                         self._fmt(row["verifier_answer_supported"]),
@@ -197,7 +219,7 @@ class PaperAssetBuilder:
             [
                 "\\bottomrule",
                 "\\end{tabular}",
-                "\\caption{Component contribution diagnostics. Planner $\\Delta$EM compares full EviGraph with the no-operation-planner ablation. Graph deltas compare full EviGraph with retrieval-order Top-k and utility-only selection. Verifier Ans. is the full model's answer-support rate.}",
+                "\\caption{Component contribution diagnostics. Component deltas compare full EviGraph with the corresponding ablation. Graph deltas compare full EviGraph with retrieval-order Top-k and utility-only selection. Ans. is the full model's answer-support rate.}",
                 "\\label{tab:finqa-component-contributions}",
                 "\\end{table}",
                 "",
@@ -309,8 +331,8 @@ class PaperAssetBuilder:
                 "",
                 "## Component Contribution Diagnostics",
                 "",
-                "| setting | planner delta EM | graph vs top-k EM | graph vs utility-only EM | full verifier answer support |",
-                "| --- | ---: | ---: | ---: | ---: |",
+                "| setting | planner delta EM | verifier delta EM | support delta EM | risk delta EM | graph vs top-k EM | graph vs utility-only EM | full answer support |",
+                "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
             ]
         )
         for row in contribution_rows:
@@ -320,6 +342,9 @@ class PaperAssetBuilder:
                     [
                         row["setting"],
                         self._signed_fmt(row["planner_delta_em"]),
+                        self._signed_fmt(row["verifier_delta_em"]),
+                        self._signed_fmt(row["support_delta_em"]),
+                        self._signed_fmt(row["risk_delta_em"]),
                         self._signed_fmt(row["graph_vs_topk_em"]),
                         self._signed_fmt(row["graph_vs_utility_em"]),
                         self._fmt(row["verifier_answer_supported"]),
@@ -435,12 +460,18 @@ class PaperAssetBuilder:
             if not full:
                 continue
             no_planner = by_setting_method.get((setting, "evigraph_wo_operation_planner"))
+            no_verifier = by_setting_method.get((setting, "evigraph_wo_verifier"))
+            no_support = by_setting_method.get((setting, "evigraph_wo_support"))
+            no_risk = by_setting_method.get((setting, "evigraph_wo_risk"))
             topk = by_setting_method.get((setting, "topk"))
             utility = by_setting_method.get((setting, "utility_only"))
             rows.append(
                 {
                     "setting": setting,
                     "planner_delta_em": self._delta(full, no_planner, "accuracy"),
+                    "verifier_delta_em": self._delta(full, no_verifier, "accuracy"),
+                    "support_delta_em": self._delta(full, no_support, "accuracy"),
+                    "risk_delta_em": self._delta(full, no_risk, "accuracy"),
                     "graph_vs_topk_em": self._delta(full, topk, "accuracy"),
                     "graph_vs_utility_em": self._delta(full, utility, "accuracy"),
                     "verifier_answer_supported": float(full.get("answer_supported", 0.0)),
@@ -526,7 +557,8 @@ class PaperAssetBuilder:
 
     def _method_label(self, method: str) -> str:
         labels = {
-            "topk": "Top-k",
+            "topk": "Top-k Program",
+            "full_context": "Full context",
             "utility_only": "Utility-only",
             "evigraph_wo_risk": "No risk",
             "evigraph_wo_operation_planner": "No planner",

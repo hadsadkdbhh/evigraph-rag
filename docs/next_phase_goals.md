@@ -48,15 +48,15 @@ Interpretation:
 Current local-planner baselines and ablations have been added in
 `configs/experiments.finqa_300.local_planner_ablation.json` and generated under
 `paper/generated/finqa_300_local_planner_ablation/`.
-They cover top-k, utility-only, no-risk, no-operation-planner, no-verifier, no-support, and full
-EviGraph for the applicable retrieval settings.
+They cover Top-k Program, Full context, Utility-only, no-risk,
+no-operation-planner, no-verifier, no-support, and Full EviGraph across
+oracle-doc, open BM25, and source-rerank.
 Before making a paper-level empirical claim, still add external baselines:
 
-- BM25 top-k reader baseline.
 - Dense retrieval baseline.
 - LLM direct RAG baseline with the same retrieved context budget.
-- Retrieve-then-program baseline without evidence graph control.
-- Top-k plus local numeric executor baseline.
+- Retrieve-then-program baseline without evidence graph control if we want a
+  separately named baseline beyond the current Top-k Program implementation.
 
 Each baseline must write CSVs, summary tables, failure reports where applicable,
 and be included in the experiment closure contract or a separate baseline
@@ -107,8 +107,7 @@ executor, or verifier mechanisms.
    can answer "stronger than what?"
 2. Continue improving Oracle-doc beyond the exact `0.50` floor while monitoring
    source-rerank and open BM25 for regressions.
-3. Add no-operation-planner and planner-without-verifier-grounded-rejection
-   ablations.
-4. Add dense retrieval and retrieve-then-read baselines.
+3. Add planner-without-verifier-grounded-rejection ablations.
+4. Add dense retrieval and LLM direct RAG baselines.
 5. Rewrite the methodology section around operation planner, verifier, and
    evidence graph rather than rule patches.

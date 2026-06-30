@@ -12,11 +12,11 @@ Generated from `outputs\eval\finqa_300_local_planner` after the latest manifest 
 
 ## Component Contribution Diagnostics
 
-| setting | planner delta EM | graph vs top-k EM | graph vs utility-only EM | full verifier answer support |
-| --- | ---: | ---: | ---: | ---: |
-| Oracle-doc | +0.00 | +0.00 | +0.00 | 0.78 |
-| Open BM25 | +0.00 | +0.00 | +0.00 | 0.79 |
-| BM25 + source rerank | +0.00 | +0.00 | +0.00 | 0.78 |
+| setting | planner delta EM | verifier delta EM | support delta EM | risk delta EM | graph vs top-k EM | graph vs utility-only EM | full answer support |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Oracle-doc | +0.00 | +0.00 | +0.00 | +0.00 | +0.00 | +0.00 | 0.78 |
+| Open BM25 | +0.00 | +0.00 | +0.00 | +0.00 | +0.00 | +0.00 | 0.79 |
+| BM25 + source rerank | +0.00 | +0.00 | +0.00 | +0.00 | +0.00 | +0.00 | 0.78 |
 
 ## Full EviGraph Failure Categories
 

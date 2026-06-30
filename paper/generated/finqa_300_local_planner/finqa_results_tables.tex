@@ -19,16 +19,16 @@ BM25 + source rerank & Full EviGraph & 0.51 & 0.78 & 0.59 & 0.81 & 0.81 & 983.22
 \begin{table}[t]
 \centering
 \small
-\begin{tabular}{lrrrr}
+\begin{tabular}{lrrrrrrr}
 \toprule
-Setting & Planner $\Delta$EM & Graph vs. Top-k & Graph vs. Utility & Verifier Ans. \\
+Setting & Planner $\Delta$EM & Verifier $\Delta$EM & Support $\Delta$EM & Risk $\Delta$EM & Graph vs. Top-k & Graph vs. Utility & Ans. \\
 \midrule
-Oracle-doc & +0.00 & +0.00 & +0.00 & 0.78 \\
-Open BM25 & +0.00 & +0.00 & +0.00 & 0.79 \\
-BM25 + source rerank & +0.00 & +0.00 & +0.00 & 0.78 \\
+Oracle-doc & +0.00 & +0.00 & +0.00 & +0.00 & +0.00 & +0.00 & 0.78 \\
+Open BM25 & +0.00 & +0.00 & +0.00 & +0.00 & +0.00 & +0.00 & 0.79 \\
+BM25 + source rerank & +0.00 & +0.00 & +0.00 & +0.00 & +0.00 & +0.00 & 0.78 \\
 \bottomrule
 \end{tabular}
-\caption{Component contribution diagnostics. Planner $\Delta$EM compares full EviGraph with the no-operation-planner ablation. Graph deltas compare full EviGraph with retrieval-order Top-k and utility-only selection. Verifier Ans. is the full model's answer-support rate.}
+\caption{Component contribution diagnostics. Component deltas compare full EviGraph with the corresponding ablation. Graph deltas compare full EviGraph with retrieval-order Top-k and utility-only selection. Ans. is the full model's answer-support rate.}
 \label{tab:finqa-component-contributions}
 \end{table}
 

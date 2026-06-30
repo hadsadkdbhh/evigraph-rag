@@ -124,6 +124,16 @@ The latest full refresh passed:
 - Ablation summary: `paper/generated/finqa_300_local_planner_ablation/finqa_results_summary.md`
 - Ablation LaTeX tables: `paper/generated/finqa_300_local_planner_ablation/finqa_results_tables.tex`
 
+The latest local-planner ablation manifest also passed on 2026-06-30:
+
+- Manifest: `configs/experiments.finqa_300.local_planner_ablation.json`
+- Workload: 300 FinQA examples x 8 methods x 3 retrieval settings = 7200 runs
+- Internal baselines: Top-k Program, Full context, Utility-only
+- Component ablations: no risk, no operation planner, no verifier, no support graph
+- Artifact directory: `outputs/eval/finqa_300_local_planner_ablation`
+- Paper assets: `paper/generated/finqa_300_local_planner_ablation/`
+- Contribution table now reports planner, verifier, support-graph, risk, Top-k, and utility-only deltas.
+
 Use `scripts/run_pipeline.py --refresh-results` as the default reproducibility
 gate before reporting new FinQA-300 numbers.
 
@@ -148,11 +158,14 @@ story:
 
 Required additions for the next paper-quality phase:
 
-- Baselines: BM25 top-k reader, dense retrieval, LLM direct RAG,
-  retrieve-then-program, and top-k plus local numeric executor.
-- Ablations: no risk scoring, no verifier, no evidence-graph selection, no
-  operation planner, planner without verifier-grounded rejection, and top-k with
-  the same answer generator.
+- Baselines: internal Top-k Program, Full context, Utility-only, and top-k plus
+  local numeric executor are now wired into the FinQA-300 ablation manifest.
+  External dense retrieval and LLM direct RAG baselines are still required before
+  making paper-level benchmark claims.
+- Ablations: no risk scoring, no verifier, no evidence-graph support selection,
+  and no operation planner are now wired into the FinQA-300 ablation manifest.
+  Planner without verifier-grounded rejection and open-retrieval-safe repair
+  ablations are still required.
 - Paper narrative: weaken rule-patch language and foreground operation planner,
   verifier, and evidence graph.
 

@@ -33,6 +33,7 @@
       "retrieval_mode": "oracle_doc",
       "methods": [
         "topk",
+        "full_context",
         "utility_only",
         "evigraph_wo_risk",
         "evigraph_wo_operation_planner",
@@ -47,8 +48,12 @@
       "retrieval_mode": "open",
       "methods": [
         "topk",
+        "full_context",
         "utility_only",
+        "evigraph_wo_risk",
         "evigraph_wo_operation_planner",
+        "evigraph_wo_verifier",
+        "evigraph_wo_support",
         "full_evigraph"
       ]
     },
@@ -58,16 +63,20 @@
       "retrieval_mode": "source_rerank",
       "methods": [
         "topk",
+        "full_context",
         "utility_only",
+        "evigraph_wo_risk",
         "evigraph_wo_operation_planner",
+        "evigraph_wo_verifier",
+        "evigraph_wo_support",
         "full_evigraph"
       ]
     }
   ],
   "limitations": [
     "This manifest uses the local heuristic program planner and does not require LLM API credentials.",
-    "Top-k and utility-only are retrieval/selection baselines with the same local numeric generator.",
+    "Top-k, full-context, and utility-only are retrieval/selection baselines with the same local numeric generator.",
     "No-operation-planner keeps the same retrieval, evidence graph, support extraction, and verifier but disables the local program planner fallback.",
-    "Oracle-doc no-risk, no-verifier, and no-support ablations isolate graph scoring, verification, and support-subgraph extraction."
+    "No-risk, no-verifier, and no-support ablations isolate graph scoring, verification, and support-subgraph extraction in each retrieval setting."
   ]
 }
