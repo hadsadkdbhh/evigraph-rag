@@ -21,6 +21,7 @@ METHODS = [
     "full_context",
     "utility_only",
     "evigraph_wo_risk",
+    "evigraph_wo_operation_planner",
     "evigraph_wo_verifier",
     "evigraph_wo_support",
     "full_evigraph",
@@ -44,6 +45,7 @@ class MethodRunner:
         self.generator = SupportOnlyGenerator(
             planner_fallback=NumericPlannerFallback.from_config(config.get("numeric_planner", {}))
         )
+        self.generator_without_planner = SupportOnlyGenerator(planner_fallback=None)
         self.verifier = ClaimVerifier()
 
     def run(
@@ -75,7 +77,8 @@ class MethodRunner:
         self._trace(logger, "score", {"scores": {node_id: score.to_dict() for node_id, score in scores.items()}})
 
         selected, actions, support_graph, verification = self._run_method(query, method, nodes, graph, scores)
-        answer = self.generator.generate(query, support_graph)
+        generator = self.generator_without_planner if method == "evigraph_wo_operation_planner" else self.generator
+        answer = generator.generate(query, support_graph)
         if method == "evigraph_wo_verifier":
             verification = self._skipped_verification(answer)
         else:

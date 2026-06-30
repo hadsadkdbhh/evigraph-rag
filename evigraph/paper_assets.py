@@ -62,17 +62,25 @@ FINQA_300_LOCAL_ABLATION_RESULT_SPECS = (
     ResultSpec(
         "Oracle-doc",
         "finqa_300_subset_oracle_doc_ablation.csv",
-        ("topk", "utility_only", "evigraph_wo_risk", "evigraph_wo_verifier", "evigraph_wo_support", "full_evigraph"),
+        (
+            "topk",
+            "utility_only",
+            "evigraph_wo_risk",
+            "evigraph_wo_operation_planner",
+            "evigraph_wo_verifier",
+            "evigraph_wo_support",
+            "full_evigraph",
+        ),
     ),
     ResultSpec(
         "Open BM25",
         "finqa_300_subset_open_bm25_ablation.csv",
-        ("topk", "utility_only", "full_evigraph"),
+        ("topk", "utility_only", "evigraph_wo_operation_planner", "full_evigraph"),
     ),
     ResultSpec(
         "BM25 + source rerank",
         "finqa_300_subset_source_rerank_ablation.csv",
-        ("topk", "utility_only", "full_evigraph"),
+        ("topk", "utility_only", "evigraph_wo_operation_planner", "full_evigraph"),
     ),
 )
 
@@ -98,15 +106,25 @@ class PaperAssetBuilder:
         specs = self._result_specs(preset)
 
         result_rows = self._result_rows(eval_path, specs)
+        contribution_rows = self._contribution_rows(result_rows)
         failure_rows = self._failure_rows(eval_path, specs)
         diagnostic_rows = self._diagnostic_rows(eval_path, specs)
         paths = {
             "latex": str(output_path / "finqa_results_tables.tex"),
             "markdown": str(output_path / "finqa_results_summary.md"),
         }
-        Path(paths["latex"]).write_text(self.render_latex(result_rows, failure_rows, diagnostic_rows), encoding="utf-8")
+        Path(paths["latex"]).write_text(
+            self.render_latex(result_rows, contribution_rows, failure_rows, diagnostic_rows),
+            encoding="utf-8",
+        )
         Path(paths["markdown"]).write_text(
-            self.render_markdown(result_rows, failure_rows, diagnostic_rows, source_label=self._display_path(eval_path)),
+            self.render_markdown(
+                result_rows,
+                contribution_rows,
+                failure_rows,
+                diagnostic_rows,
+                source_label=self._display_path(eval_path),
+            ),
             encoding="utf-8",
         )
         return paths
@@ -114,6 +132,7 @@ class PaperAssetBuilder:
     def render_latex(
         self,
         result_rows: list[dict[str, Any]],
+        contribution_rows: list[dict[str, Any]],
         failure_rows: list[dict[str, Any]],
         diagnostic_rows: list[dict[str, Any]],
     ) -> str:
@@ -150,6 +169,36 @@ class PaperAssetBuilder:
                 "\\end{tabular}",
                 "\\caption{FinQA diagnostic results. EM is numeric exact match. Ans., Calc., OpSem, and Row are verifier diagnostics for answer support, calculation-result support, operation-semantics checking, and row grounding. Source rerank uses the provided source document and is an analysis setting rather than a deployable open-retrieval claim.}",
                 "\\label{tab:finqa-diagnostic-results}",
+                "\\end{table}",
+                "",
+                "\\begin{table}[t]",
+                "\\centering",
+                "\\small",
+                "\\begin{tabular}{lrrrr}",
+                "\\toprule",
+                "Setting & Planner $\\Delta$EM & Graph vs. Top-k & Graph vs. Utility & Verifier Ans. \\\\",
+                "\\midrule",
+            ]
+        )
+        for row in contribution_rows:
+            lines.append(
+                " & ".join(
+                    [
+                        self._latex_escape(row["setting"]),
+                        self._signed_fmt(row["planner_delta_em"]),
+                        self._signed_fmt(row["graph_vs_topk_em"]),
+                        self._signed_fmt(row["graph_vs_utility_em"]),
+                        self._fmt(row["verifier_answer_supported"]),
+                    ]
+                )
+                + " \\\\"
+            )
+        lines.extend(
+            [
+                "\\bottomrule",
+                "\\end{tabular}",
+                "\\caption{Component contribution diagnostics. Planner $\\Delta$EM compares full EviGraph with the no-operation-planner ablation. Graph deltas compare full EviGraph with retrieval-order Top-k and utility-only selection. Verifier Ans. is the full model's answer-support rate.}",
+                "\\label{tab:finqa-component-contributions}",
                 "\\end{table}",
                 "",
                 "\\begin{table}[t]",
@@ -223,6 +272,7 @@ class PaperAssetBuilder:
     def render_markdown(
         self,
         result_rows: list[dict[str, Any]],
+        contribution_rows: list[dict[str, Any]],
         failure_rows: list[dict[str, Any]],
         diagnostic_rows: list[dict[str, Any]],
         source_label: str = "outputs/eval/finqa",
@@ -243,13 +293,36 @@ class PaperAssetBuilder:
                 + " | ".join(
                     [
                         row["setting"],
-                        row["method"],
+                        self._plain_method_label(row["method"]),
                         self._fmt(row["accuracy"]),
                         self._fmt(row["answer_supported"]),
                         self._fmt(row["calculation_supported"]),
                         self._fmt(row["operation_semantics_checked"]),
                         self._fmt(row["row_operation_grounded"]),
                         self._fmt(row["input_tokens"]),
+                    ]
+                )
+                + " |"
+            )
+        lines.extend(
+            [
+                "",
+                "## Component Contribution Diagnostics",
+                "",
+                "| setting | planner delta EM | graph vs top-k EM | graph vs utility-only EM | full verifier answer support |",
+                "| --- | ---: | ---: | ---: | ---: |",
+            ]
+        )
+        for row in contribution_rows:
+            lines.append(
+                "| "
+                + " | ".join(
+                    [
+                        row["setting"],
+                        self._signed_fmt(row["planner_delta_em"]),
+                        self._signed_fmt(row["graph_vs_topk_em"]),
+                        self._signed_fmt(row["graph_vs_utility_em"]),
+                        self._fmt(row["verifier_answer_supported"]),
                     ]
                 )
                 + " |"
@@ -347,6 +420,34 @@ class PaperAssetBuilder:
                 )
         return rows
 
+    def _contribution_rows(self, result_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        by_setting_method = {(row["setting"], row["method"]): row for row in result_rows}
+        settings = []
+        seen = set()
+        for row in result_rows:
+            if row["setting"] not in seen:
+                settings.append(row["setting"])
+                seen.add(row["setting"])
+
+        rows = []
+        for setting in settings:
+            full = by_setting_method.get((setting, "full_evigraph"))
+            if not full:
+                continue
+            no_planner = by_setting_method.get((setting, "evigraph_wo_operation_planner"))
+            topk = by_setting_method.get((setting, "topk"))
+            utility = by_setting_method.get((setting, "utility_only"))
+            rows.append(
+                {
+                    "setting": setting,
+                    "planner_delta_em": self._delta(full, no_planner, "accuracy"),
+                    "graph_vs_topk_em": self._delta(full, topk, "accuracy"),
+                    "graph_vs_utility_em": self._delta(full, utility, "accuracy"),
+                    "verifier_answer_supported": float(full.get("answer_supported", 0.0)),
+                }
+            )
+        return rows
+
     def _failure_rows(self, eval_dir: Path, specs: tuple[ResultSpec, ...]) -> list[dict[str, Any]]:
         rows = []
         analyzer = FailureAnalyzer()
@@ -415,13 +516,28 @@ class PaperAssetBuilder:
     def _fmt(self, value: float) -> str:
         return f"{value:.2f}"
 
+    def _signed_fmt(self, value: float) -> str:
+        return f"{value:+.2f}"
+
+    def _delta(self, row: dict[str, Any], baseline: dict[str, Any] | None, metric: str) -> float:
+        if baseline is None:
+            return 0.0
+        return float(row.get(metric, 0.0)) - float(baseline.get(metric, 0.0))
+
     def _method_label(self, method: str) -> str:
         labels = {
             "topk": "Top-k",
             "utility_only": "Utility-only",
+            "evigraph_wo_risk": "No risk",
+            "evigraph_wo_operation_planner": "No planner",
+            "evigraph_wo_verifier": "No verifier",
+            "evigraph_wo_support": "No support graph",
             "full_evigraph": "Full EviGraph",
         }
         return labels.get(method, self._latex_escape(method))
+
+    def _plain_method_label(self, method: str) -> str:
+        return self._method_label(method).replace("\\_", "_").replace("\\&", "&")
 
     def _latex_escape(self, text: str) -> str:
         return text.replace("&", "\\&").replace("_", "\\_")

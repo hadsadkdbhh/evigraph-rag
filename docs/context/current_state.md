@@ -1,6 +1,6 @@
 # EviGraph-RAG Working Context
 
-Last updated: 2026-06-26
+Last updated: 2026-06-30
 
 This file is the durable context checkpoint for Codex. Read it before continuing
 project work after chat compaction or a new session. Keep it short, factual,
@@ -37,27 +37,27 @@ Latest documented FinQA-300 local planner exact match:
 | --- | ---: |
 | Oracle-doc full EviGraph | 0.500 |
 | Open BM25 full EviGraph | 0.403 |
-| BM25 + source-rerank full EviGraph | 0.477 |
+| BM25 + source-rerank full EviGraph | 0.500 |
 
 Latest source-rerank diagnostic counts:
 
 | Failure class | Count |
 | --- | ---: |
-| wrong_numeric_operation_or_row | 42 |
+| wrong_numeric_operation_or_row | 37 |
 | no_numeric_answer_other | 29 |
 | no_numeric_answer_percent | 34 |
-| no_numeric_answer_additive_or_lookup | 22 |
+| no_numeric_answer_additive_or_lookup | 23 |
 | no_numeric_answer_ratio | 17 |
-| unsupported_textual_prediction | 12 |
+| unsupported_textual_prediction | 10 |
 
 Latest row/operation diagnostic split for source-rerank:
 
 | Label | Count |
 | --- | ---: |
-| ambiguous_supported_wrong_number | 26 |
-| wrong_operation_type | 5 |
-| wrong_row_label | 4 |
-| wrong_year_or_period | 5 |
+| ambiguous_supported_wrong_number | 23 |
+| wrong_operation_type | 6 |
+| wrong_row_label | 2 |
+| wrong_year_or_period | 3 |
 | wrong_denominator | 1 |
 | wrong_numerator | 4 |
 
@@ -86,7 +86,7 @@ experiment card, generated paper Markdown, and generated LaTeX tables.
 
 The latest full refresh passed:
 
-- Unit tests: `232 tests OK`
+- Unit tests: `233 tests OK`
 - Manifest: `configs/experiments.finqa_300.local_planner.json`
 - Result directory: `outputs/eval/finqa_300_local_planner`
 - Pipeline report: `outputs/pipeline/pipeline_report.md`
@@ -118,7 +118,7 @@ story:
 | Setting | Current | Target |
 | --- | ---: | ---: |
 | Oracle-doc full EviGraph | 0.500 | 0.50+ |
-| BM25 + source-rerank full EviGraph | 0.477 | 0.45+ |
+| BM25 + source-rerank full EviGraph | 0.500 | 0.45+ |
 | Open BM25 full EviGraph | 0.403 | 0.35+ |
 
 Required additions for the next paper-quality phase:

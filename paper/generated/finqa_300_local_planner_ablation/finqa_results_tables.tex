@@ -9,20 +9,39 @@ Setting & Method & EM & Ans. & Calc. & OpSem & Row & Tokens \\
 \midrule
 Oracle-doc & Top-k & 0.50 & 0.75 & 0.57 & 0.81 & 0.78 & 1414.75 \\
 Oracle-doc & Utility-only & 0.49 & 0.75 & 0.55 & 0.80 & 0.77 & 1265.82 \\
-Oracle-doc & evigraph\_wo\_risk & 0.50 & 0.75 & 0.57 & 0.81 & 0.78 & 1176.61 \\
-Oracle-doc & evigraph\_wo\_verifier & 0.51 & 0.00 & 0.00 & 0.00 & 0.00 & 1176.61 \\
-Oracle-doc & evigraph\_wo\_support & 0.50 & 0.75 & 0.57 & 0.81 & 0.78 & 1176.61 \\
+Oracle-doc & No risk & 0.50 & 0.75 & 0.57 & 0.81 & 0.78 & 1176.61 \\
+Oracle-doc & No planner & 0.45 & 0.70 & 0.48 & 0.75 & 0.72 & 1176.61 \\
+Oracle-doc & No verifier & 0.51 & 0.00 & 0.00 & 0.00 & 0.00 & 1176.61 \\
+Oracle-doc & No support graph & 0.50 & 0.75 & 0.57 & 0.81 & 0.78 & 1176.61 \\
 Oracle-doc & Full EviGraph & 0.50 & 0.75 & 0.57 & 0.81 & 0.78 & 1176.61 \\
 Open BM25 & Top-k & 0.39 & 0.77 & 0.54 & 0.79 & 0.78 & 858.12 \\
 Open BM25 & Utility-only & 0.33 & 0.75 & 0.49 & 0.76 & 0.75 & 857.23 \\
+Open BM25 & No planner & 0.37 & 0.74 & 0.48 & 0.77 & 0.74 & 852.98 \\
 Open BM25 & Full EviGraph & 0.40 & 0.79 & 0.56 & 0.83 & 0.80 & 852.98 \\
 BM25 + source rerank & Top-k & 0.50 & 0.75 & 0.56 & 0.80 & 0.78 & 1311.80 \\
 BM25 + source rerank & Utility-only & 0.45 & 0.73 & 0.52 & 0.76 & 0.74 & 1163.78 \\
-BM25 + source rerank & Full EviGraph & 0.48 & 0.77 & 0.57 & 0.82 & 0.78 & 1182.17 \\
+BM25 + source rerank & No planner & 0.45 & 0.70 & 0.48 & 0.75 & 0.72 & 983.22 \\
+BM25 + source rerank & Full EviGraph & 0.50 & 0.75 & 0.57 & 0.81 & 0.78 & 983.22 \\
 \bottomrule
 \end{tabular}
 \caption{FinQA diagnostic results. EM is numeric exact match. Ans., Calc., OpSem, and Row are verifier diagnostics for answer support, calculation-result support, operation-semantics checking, and row grounding. Source rerank uses the provided source document and is an analysis setting rather than a deployable open-retrieval claim.}
 \label{tab:finqa-diagnostic-results}
+\end{table}
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Setting & Planner $\Delta$EM & Graph vs. Top-k & Graph vs. Utility & Verifier Ans. \\
+\midrule
+Oracle-doc & +0.05 & +0.00 & +0.01 & 0.75 \\
+Open BM25 & +0.04 & +0.01 & +0.07 & 0.79 \\
+BM25 + source rerank & +0.05 & +0.00 & +0.05 & 0.75 \\
+\bottomrule
+\end{tabular}
+\caption{Component contribution diagnostics. Planner $\Delta$EM compares full EviGraph with the no-operation-planner ablation. Graph deltas compare full EviGraph with retrieval-order Top-k and utility-only selection. Verifier Ans. is the full model's answer-support rate.}
+\label{tab:finqa-component-contributions}
 \end{table}
 
 \begin{table}[t]
@@ -34,7 +53,7 @@ Setting & Wrong row/op & No numeric & No percent & Add./lookup & Ratio & Unsuppo
 \midrule
 Oracle-doc & 38 & 29 & 34 & 22 & 17 & 10 \\
 Open BM25 & 54 & 34 & 38 & 26 & 18 & 9 \\
-BM25 + source rerank & 42 & 30 & 33 & 23 & 17 & 12 \\
+BM25 + source rerank & 37 & 29 & 34 & 23 & 17 & 10 \\
 \bottomrule
 \end{tabular}
 \caption{Failure categories for full EviGraph on the FinQA diagnostic subset. The categories are generated directly from the manifest CSVs and should be used to drive the next engineering iteration.}
@@ -50,7 +69,7 @@ Setting & Num. & Den. & Year/period & Row label & Op. type & Ambig. \\
 \midrule
 Oracle-doc & 5 & 1 & 2 & 3 & 7 & 22 \\
 Open BM25 & 6 & 4 & 6 & 7 & 12 & 27 \\
-BM25 + source rerank & 4 & 1 & 5 & 4 & 5 & 26 \\
+BM25 + source rerank & 4 & 1 & 3 & 2 & 6 & 23 \\
 \bottomrule
 \end{tabular}
 \caption{Row/operation diagnostics for wrong numeric full EviGraph answers. Counts are multi-label: one failed example can expose more than one diagnostic signal.}

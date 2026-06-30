@@ -103,6 +103,40 @@ class ManifestRunnerTest(unittest.TestCase):
             self.assertEqual(result["answer"]["text"], "2024 is higher than 2023 by 15.5.")
             self.assertIn("calc_2024_minus_2023", result["selected_ids"])
 
+    def test_operation_planner_ablation_disables_planned_numeric_fallback_only(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            corpus_dir = root / "corpus"
+            corpus_dir.mkdir()
+            (corpus_dir / "report.md").write_text(
+                "# Report\n\n"
+                "| metric | amount |\n"
+                "| --- | ---: |\n"
+                "| average daily volume | 2.5 |\n"
+                "| average price | 4.0 |\n",
+                encoding="utf-8",
+            )
+            config = {
+                "run": {"output_dir": str(root / "runs")},
+                "numeric_planner": {
+                    "enabled": True,
+                    "llm_provider": "heuristic",
+                    "primary_enabled": False,
+                },
+            }
+            query = "compute the annualized traded value using 365 days"
+
+            full = MethodRunner(config).run(query, "full_evigraph", corpus_path=str(corpus_dir), log_run=False)
+            ablated = MethodRunner(config).run(
+                query,
+                "evigraph_wo_operation_planner",
+                corpus_path=str(corpus_dir),
+                log_run=False,
+            )
+
+            self.assertIn("planned_product", full["answer"]["calculations"][0])
+            self.assertNotIn("planned_", " ".join(ablated["answer"].get("calculations", [])))
+
     def test_default_llm_planner_config_parses_boolean_enabled(self) -> None:
         config = load_config("configs/default_llm_planner.yaml")
 

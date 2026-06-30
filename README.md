@@ -48,7 +48,7 @@ Expected current FinQA-300 exact-match results:
 | --- | ---: |
 | Oracle-doc | 0.500 |
 | Open BM25 | 0.403 |
-| BM25 + source rerank | 0.477 |
+| BM25 + source rerank | 0.500 |
 
 Main reproducibility artifacts:
 
@@ -194,11 +194,14 @@ evidence annotations from retrieval.
 The current FinQA-300 local-planner manifest uses the sample `source_doc` field
 to evaluate oracle-document reasoning before open retrieval. On this diagnostic
 subset, `full_evigraph` currently reaches 0.500 exact match in oracle-doc mode,
-0.403 in open BM25 mode, and 0.477 in BM25 + source-rerank mode. The CSVs also
+0.403 in open BM25 mode, and 0.500 in BM25 + source-rerank mode. The CSVs also
 report diagnostic verifier metrics including arithmetic support,
 calculation-result support, operation-semantics checking, row-operation
 grounding, and semantic grounding. These are diagnostic baselines, not final
 benchmark claims.
+The local-planner ablation manifest also includes a no-operation-planner
+condition that keeps retrieval, evidence graph selection, support extraction,
+executor, and verifier fixed while disabling the program-planner fallback.
 
 Run the local-planner baseline/ablation manifest:
 

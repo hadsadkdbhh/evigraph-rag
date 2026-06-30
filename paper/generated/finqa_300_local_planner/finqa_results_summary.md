@@ -6,9 +6,17 @@ Generated from `outputs\eval\finqa_300_local_planner` after the latest manifest 
 
 | setting | method | EM | answer supported | calculation supported | operation semantics | row grounded | tokens |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Oracle-doc | full_evigraph | 0.50 | 0.75 | 0.57 | 0.81 | 0.78 | 1176.61 |
-| Open BM25 | full_evigraph | 0.40 | 0.79 | 0.56 | 0.83 | 0.80 | 852.98 |
-| BM25 + source rerank | full_evigraph | 0.48 | 0.77 | 0.57 | 0.82 | 0.78 | 1182.17 |
+| Oracle-doc | Full EviGraph | 0.50 | 0.75 | 0.57 | 0.81 | 0.78 | 1176.61 |
+| Open BM25 | Full EviGraph | 0.40 | 0.79 | 0.56 | 0.83 | 0.80 | 852.98 |
+| BM25 + source rerank | Full EviGraph | 0.50 | 0.75 | 0.57 | 0.81 | 0.78 | 983.22 |
+
+## Component Contribution Diagnostics
+
+| setting | planner delta EM | graph vs top-k EM | graph vs utility-only EM | full verifier answer support |
+| --- | ---: | ---: | ---: | ---: |
+| Oracle-doc | +0.00 | +0.00 | +0.00 | 0.75 |
+| Open BM25 | +0.00 | +0.00 | +0.00 | 0.79 |
+| BM25 + source rerank | +0.00 | +0.00 | +0.00 | 0.75 |
 
 ## Full EviGraph Failure Categories
 
@@ -16,7 +24,7 @@ Generated from `outputs\eval\finqa_300_local_planner` after the latest manifest 
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Oracle-doc | 38 | 29 | 34 | 22 | 17 | 10 |
 | Open BM25 | 54 | 34 | 38 | 26 | 18 | 9 |
-| BM25 + source rerank | 42 | 30 | 33 | 23 | 17 | 12 |
+| BM25 + source rerank | 37 | 29 | 34 | 23 | 17 | 10 |
 
 ## Row/Operation Diagnostics
 
@@ -24,7 +32,7 @@ Generated from `outputs\eval\finqa_300_local_planner` after the latest manifest 
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Oracle-doc | 5 | 1 | 2 | 3 | 7 | 22 |
 | Open BM25 | 6 | 4 | 6 | 7 | 12 | 27 |
-| BM25 + source rerank | 4 | 1 | 5 | 4 | 5 | 26 |
+| BM25 + source rerank | 4 | 1 | 3 | 2 | 6 | 23 |
 
 ## Paper-Safe Claims
 

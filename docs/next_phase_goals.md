@@ -1,6 +1,6 @@
 # Next Phase Goals
 
-Last updated: 2026-06-26
+Last updated: 2026-06-30
 
 This file defines the next research phase after the FinQA-300 experiment loop
 was closed as a reproducible artifact workflow. These are target gates for a
@@ -14,7 +14,7 @@ Latest FinQA-300 local-planner exact match:
 | --- | ---: |
 | Oracle-doc full EviGraph | 0.500 |
 | Open BM25 full EviGraph | 0.403 |
-| BM25 + source-rerank full EviGraph | 0.477 |
+| BM25 + source-rerank full EviGraph | 0.500 |
 
 The engineering pipeline and experiment artifact closure are complete. The
 remaining work is research quality: stronger numerical reasoning, stronger
@@ -39,7 +39,7 @@ Interpretation:
   analysis.
 - Oracle-doc has reached the `0.50+` minimum gate at `0.500`; Open BM25 has
   exceeded the `0.35+` open-retrieval sanity target at `0.403`; and
-  source-rerank has cleared the `0.45+` analysis target at `0.477`. The next
+  source-rerank has cleared the `0.45+` analysis target at `0.500`. The next
   priority is no longer merely crossing these floors, but adding external
   baselines and increasing the margin so the empirical story is less fragile.
 
@@ -48,7 +48,7 @@ Interpretation:
 Current local-planner baselines and ablations have been added in
 `configs/experiments.finqa_300.local_planner_ablation.json` and generated under
 `paper/generated/finqa_300_local_planner_ablation/`.
-They cover top-k, utility-only, no-risk, no-verifier, no-support, and full
+They cover top-k, utility-only, no-risk, no-operation-planner, no-verifier, no-support, and full
 EviGraph for the applicable retrieval settings.
 Before making a paper-level empirical claim, still add external baselines:
 

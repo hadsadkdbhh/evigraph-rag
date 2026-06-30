@@ -20,7 +20,7 @@ Last updated from the checked-in FinQA MVP0 run.
 - AAAI readiness: early research prototype; the system is not yet at submission-quality benchmark performance.
 - Next phase goals are fixed in `docs/next_phase_goals.md`: Oracle-doc has
   reached the `0.50+` target at `0.500`, source-rerank has cleared the `0.45+`
-  target at `0.477`, and open BM25 has cleared the `0.35+` target at `0.403`.
+  target at `0.500`, and open BM25 has cleared the `0.35+` target at `0.403`.
   Local-planner baselines/ablations have been added; the remaining paper work
   is stronger external baselines and a method narrative centered on operation
   planner, verifier, and evidence graph rather than rule patches.
@@ -57,11 +57,12 @@ The pipeline now ends with an experiment-closure gate. That gate validates the
 three 300-row evaluation CSVs, failure reports, row/operation diagnostics,
 dataset inspection/gate artifacts, experiment card, and generated paper tables.
 
-The 2026-06-26 full refresh passed all three stages: unit tests
-(`232 tests OK`), FinQA-300 manifest, and paper-asset generation. The refreshed
+The 2026-06-30 ablation refresh passed the targeted dataset run and unit tests
+(`233 tests OK`). The refreshed
 FinQA-300 local-planner exact-match results are 0.500 oracle-doc, 0.403 open
-BM25, and 0.477 BM25 plus source rerank. The local-planner ablation manifest
-also ran 3600 baseline/ablation examples and generated paper tables under
+BM25, and 0.500 BM25 plus source rerank. The local-planner ablation manifest
+now runs 4500 baseline/ablation examples, including a no-operation-planner
+condition, and generated paper tables under
 `paper/generated/finqa_300_local_planner_ablation/`.
 
 Run the quick MVP0 acceptance suite:
@@ -470,6 +471,11 @@ component ratios, and two-year table-column increases. It fixes HII backlog
 conversion (`21 * 28% = 5.88`), HOLX acquisition stock price
 (`106500 / 4600 = 23.2`), LLY finished-products inventory share
 (`988.1 / 4111.8 = 24.03%`), and CME issued-and-outstanding stock increase
-(`339235 - 338240 = 995`). FinQA-300 now reaches 0.500 oracle-doc, 0.403 open
-BM25, and 0.477 BM25 plus source rerank. All current performance floors are
-met, but the paper still needs external baselines and more margin.
+(`339235 - 338240 = 995`). FinQA-300 reached 0.500 oracle-doc, 0.403 open
+BM25, and 0.477 BM25 plus source rerank.
+
+The source-rerank scoping pass prevents graph selection from reintroducing
+cross-document distractors once `source_doc`-matched candidates are available.
+It raises BM25 plus source rerank to 0.500 while keeping Oracle-doc at 0.500
+and Open BM25 at 0.403. All current performance floors are met, but the paper
+still needs external baselines and more margin.
