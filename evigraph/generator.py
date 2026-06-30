@@ -53,6 +53,22 @@ class SupportOnlyGenerator:
             return Answer(text="Insufficient evidence to answer.", citations=[])
         return Answer(text=f"Based on the selected evidence: {best.text()}", citations=citations)
 
+    def generate_planner_first(self, query: str, support_graph: EvidenceGraph) -> Answer:
+        citations = [
+            node.node_id
+            for node in support_graph.nodes.values()
+            if node.node_type in {"chart", "table", "text", "calculation"}
+        ]
+        numeric_answer = self.numeric_reasoner.planner_first_answer(query, support_graph)
+        if numeric_answer is not None:
+            cited = [node_id for node_id in numeric_answer.cited_node_ids if node_id in citations]
+            return Answer(
+                text=numeric_answer.text,
+                citations=cited or citations,
+                calculations=[numeric_answer.calculation],
+            )
+        return self.generate(query, support_graph)
+
     def _derive_difference_from_values(self, support_graph: EvidenceGraph) -> float | None:
         for node in support_graph.nodes.values():
             content = node.content

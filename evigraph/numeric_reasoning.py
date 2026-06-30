@@ -262,6 +262,15 @@ class NumericReasoner:
 
         return None
 
+    def planner_first_answer(self, query: str, support_graph: EvidenceGraph) -> NumericAnswer | None:
+        contexts = self._contexts(support_graph)
+        if not contexts:
+            return None
+        planned = self._planner_answer(query, contexts)
+        if planned:
+            return planned
+        return self.answer(query, support_graph)
+
     def _planner_answer(self, query: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
         if self.planner_fallback is None:
             return None

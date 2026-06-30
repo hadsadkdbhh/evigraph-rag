@@ -35,9 +35,9 @@ Latest documented FinQA-300 local planner exact match:
 
 | Setting | Accuracy |
 | --- | ---: |
-| Oracle-doc full EviGraph | 0.500 |
+| Oracle-doc full EviGraph | 0.510 |
 | Open BM25 full EviGraph | 0.403 |
-| BM25 + source-rerank full EviGraph | 0.500 |
+| BM25 + source-rerank full EviGraph | 0.510 |
 
 Latest Open BM25 failure counts after the 2026-06-30 selector/pipeline pass:
 
@@ -65,21 +65,21 @@ Latest source-rerank diagnostic counts:
 
 | Failure class | Count |
 | --- | ---: |
-| wrong_numeric_operation_or_row | 37 |
+| wrong_numeric_operation_or_row | 42 |
 | no_numeric_answer_other | 29 |
 | no_numeric_answer_percent | 34 |
 | no_numeric_answer_additive_or_lookup | 23 |
 | no_numeric_answer_ratio | 17 |
-| unsupported_textual_prediction | 10 |
+| unsupported_textual_prediction | 2 |
 
 Latest row/operation diagnostic split for source-rerank:
 
 | Label | Count |
 | --- | ---: |
-| ambiguous_supported_wrong_number | 23 |
-| wrong_operation_type | 6 |
+| ambiguous_supported_wrong_number | 25 |
+| wrong_operation_type | 9 |
 | wrong_row_label | 2 |
-| wrong_year_or_period | 3 |
+| wrong_year_or_period | 4 |
 | wrong_denominator | 1 |
 | wrong_numerator | 4 |
 
@@ -111,7 +111,7 @@ from the manifest config into `MethodRunner.run`. Before this fix, changing
 
 The latest full refresh passed:
 
-- Unit tests: `236 tests OK`
+- Unit tests: `241 tests OK`
 - Manifest: `configs/experiments.finqa_300.local_planner.json`
 - Result directory: `outputs/eval/finqa_300_local_planner`
 - Pipeline report: `outputs/pipeline/pipeline_report.md`
@@ -142,8 +142,8 @@ story:
 
 | Setting | Current | Target |
 | --- | ---: | ---: |
-| Oracle-doc full EviGraph | 0.500 | 0.50+ |
-| BM25 + source-rerank full EviGraph | 0.500 | 0.45+ |
+| Oracle-doc full EviGraph | 0.510 | 0.50+ |
+| BM25 + source-rerank full EviGraph | 0.510 | 0.45+ |
 | Open BM25 full EviGraph | 0.403 | 0.35+ |
 
 Required additions for the next paper-quality phase:
@@ -166,6 +166,15 @@ Required additions for the next paper-quality phase:
 - Period disambiguation for repeated year columns.
 - Adjacent chunk expansion for truncated ratio evidence.
 - Failure-driven row/operation diagnostics.
+- Verifier-guided symbolic repair, implemented as a bounded source-cluster
+  search rather than RL. The repair loop triggers only after verifier rejection
+  on row or operation grounding, tries planner-first generation inside
+  source-local candidate graphs, and accepts a replacement only if the verifier
+  supports it. It is enabled for oracle-doc and source-rerank, but deliberately
+  disabled for Open BM25 because an early probe showed open repair can accept
+  a self-consistent answer from the wrong document. The 2026-06-30 repair pass
+  applied 9 repairs in oracle-doc and 9 in source-rerank, moving both settings
+  from 0.500 to 0.510 while leaving Open BM25 at 0.403.
 - Several narrow semantic repairs for percent-change direction, respectively
   prose evidence, cash-paid acquisition ratios, compact year ranges, and
   interest-income decrease phrasing.

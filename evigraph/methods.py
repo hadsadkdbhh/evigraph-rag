@@ -8,6 +8,7 @@ from evigraph.evidence_graph import EvidenceGraph, EvidenceGraphBuilder
 from evigraph.generator import SupportOnlyGenerator
 from evigraph.logging_utils import RunLogger
 from evigraph.numeric_planner import NumericPlannerFallback
+from evigraph.repair import VerifierGuidedRepairer
 from evigraph.retrieval import CorpusRetriever
 from evigraph.schema import Action, Answer, EvidenceNode, EvidenceScore
 from evigraph.scorer import make_scorer
@@ -47,6 +48,7 @@ class MethodRunner:
         )
         self.generator_without_planner = SupportOnlyGenerator(planner_fallback=None)
         self.verifier = ClaimVerifier()
+        self.repairer = VerifierGuidedRepairer()
 
     def run(
         self,
@@ -83,6 +85,17 @@ class MethodRunner:
             verification = self._skipped_verification(answer)
         else:
             verification = self.verifier.verify(query, answer, support_graph)
+            if method == "full_evigraph" and retrieval_mode in {"oracle_doc", "source_rerank"}:
+                answer, verification, repair_action = self.repairer.repair(
+                    query,
+                    answer,
+                    verification,
+                    graph,
+                    generator,
+                    self.verifier,
+                )
+                if repair_action is not None:
+                    actions.append(repair_action)
             if verification.get("row_grounded") is False:
                 answer = Answer(
                     text="Insufficient evidence to answer.",

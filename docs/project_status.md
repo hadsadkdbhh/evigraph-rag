@@ -19,8 +19,8 @@ Last updated from the checked-in FinQA MVP0 run.
   quick path after generated CSVs exist.
 - AAAI readiness: early research prototype; the system is not yet at submission-quality benchmark performance.
 - Next phase goals are fixed in `docs/next_phase_goals.md`: Oracle-doc has
-  reached the `0.50+` target at `0.500`, source-rerank has cleared the `0.45+`
-  target at `0.500`, and open BM25 has cleared the `0.35+` target at `0.403`.
+  reached the `0.50+` target at `0.510`, source-rerank has cleared the `0.45+`
+  target at `0.510`, and open BM25 has cleared the `0.35+` target at `0.403`.
   Local-planner baselines/ablations have been added; the remaining paper work
   is stronger external baselines and a method narrative centered on operation
   planner, verifier, and evidence graph rather than rule patches.
@@ -57,10 +57,10 @@ The pipeline now ends with an experiment-closure gate. That gate validates the
 three 300-row evaluation CSVs, failure reports, row/operation diagnostics,
 dataset inspection/gate artifacts, experiment card, and generated paper tables.
 
-The 2026-06-30 ablation refresh passed the targeted dataset run and unit tests
-(`236 tests OK`). The refreshed
-FinQA-300 local-planner exact-match results are 0.500 oracle-doc, 0.403 open
-BM25, and 0.500 BM25 plus source rerank. The local-planner ablation manifest
+The 2026-06-30 repair refresh passed the targeted dataset run and unit tests
+(`241 tests OK`). The refreshed
+FinQA-300 local-planner exact-match results are 0.510 oracle-doc, 0.403 open
+BM25, and 0.510 BM25 plus source rerank. The local-planner ablation manifest
 now runs 4500 baseline/ablation examples, including a no-operation-planner
 condition, and generated paper tables under
 `paper/generated/finqa_300_local_planner_ablation/`.
@@ -149,6 +149,16 @@ some retrieve it but fail selection, and many select a plausible source but
 choose the wrong operation or operand. The next high-yield work should therefore
 be verifier-guided repair or planner reranking over candidate evidence, not
 more broad arithmetic rules.
+
+The first verifier-guided symbolic repair loop is now implemented. It is not
+RL: after verifier rejection for row or operation grounding, the system searches
+bounded source-local candidate graphs, runs planner-first generation, and
+accepts only verifier-supported replacements. The loop is enabled for oracle-doc
+and source-rerank, where source constraints make the repair auditable, and
+disabled for Open BM25 after a probe showed open repair can accept a
+self-consistent answer from the wrong document. On FinQA-300, the loop applied
+9 repairs in oracle-doc and 9 in source-rerank, moving both settings from
+0.500 to 0.510 while keeping Open BM25 unchanged at 0.403.
 
 The row/operation diagnostic now splits wrong numeric full EviGraph answers into
 multi-label causes. On the current 100-example FinQA smoke subset, open hybrid

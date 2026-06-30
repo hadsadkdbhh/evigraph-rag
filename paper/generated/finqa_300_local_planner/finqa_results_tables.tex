@@ -7,9 +7,9 @@
 \toprule
 Setting & Method & EM & Ans. & Calc. & OpSem & Row & Tokens \\
 \midrule
-Oracle-doc & Full EviGraph & 0.50 & 0.75 & 0.57 & 0.81 & 0.78 & 1176.61 \\
+Oracle-doc & Full EviGraph & 0.51 & 0.78 & 0.60 & 0.81 & 0.81 & 1176.61 \\
 Open BM25 & Full EviGraph & 0.40 & 0.79 & 0.55 & 0.82 & 0.79 & 859.50 \\
-BM25 + source rerank & Full EviGraph & 0.50 & 0.75 & 0.57 & 0.81 & 0.78 & 983.22 \\
+BM25 + source rerank & Full EviGraph & 0.51 & 0.78 & 0.59 & 0.81 & 0.81 & 983.22 \\
 \bottomrule
 \end{tabular}
 \caption{FinQA diagnostic results. EM is numeric exact match. Ans., Calc., OpSem, and Row are verifier diagnostics for answer support, calculation-result support, operation-semantics checking, and row grounding. Source rerank uses the provided source document and is an analysis setting rather than a deployable open-retrieval claim.}
@@ -23,9 +23,9 @@ BM25 + source rerank & Full EviGraph & 0.50 & 0.75 & 0.57 & 0.81 & 0.78 & 983.22
 \toprule
 Setting & Planner $\Delta$EM & Graph vs. Top-k & Graph vs. Utility & Verifier Ans. \\
 \midrule
-Oracle-doc & +0.00 & +0.00 & +0.00 & 0.75 \\
+Oracle-doc & +0.00 & +0.00 & +0.00 & 0.78 \\
 Open BM25 & +0.00 & +0.00 & +0.00 & 0.79 \\
-BM25 + source rerank & +0.00 & +0.00 & +0.00 & 0.75 \\
+BM25 + source rerank & +0.00 & +0.00 & +0.00 & 0.78 \\
 \bottomrule
 \end{tabular}
 \caption{Component contribution diagnostics. Planner $\Delta$EM compares full EviGraph with the no-operation-planner ablation. Graph deltas compare full EviGraph with retrieval-order Top-k and utility-only selection. Verifier Ans. is the full model's answer-support rate.}
@@ -39,9 +39,9 @@ BM25 + source rerank & +0.00 & +0.00 & +0.00 & 0.75 \\
 \toprule
 Setting & Wrong row/op & No numeric & No percent & Add./lookup & Ratio & Unsupported \\
 \midrule
-Oracle-doc & 38 & 29 & 34 & 22 & 17 & 10 \\
+Oracle-doc & 43 & 29 & 34 & 22 & 17 & 2 \\
 Open BM25 & 52 & 34 & 39 & 27 & 18 & 9 \\
-BM25 + source rerank & 37 & 29 & 34 & 23 & 17 & 10 \\
+BM25 + source rerank & 42 & 29 & 34 & 23 & 17 & 2 \\
 \bottomrule
 \end{tabular}
 \caption{Failure categories for full EviGraph on the FinQA diagnostic subset. The categories are generated directly from the manifest CSVs and should be used to drive the next engineering iteration.}
@@ -55,9 +55,9 @@ BM25 + source rerank & 37 & 29 & 34 & 23 & 17 & 10 \\
 \toprule
 Setting & Num. & Den. & Year/period & Row label & Op. type & Ambig. \\
 \midrule
-Oracle-doc & 5 & 1 & 2 & 3 & 7 & 22 \\
+Oracle-doc & 5 & 1 & 3 & 3 & 10 & 24 \\
 Open BM25 & 5 & 4 & 5 & 6 & 13 & 26 \\
-BM25 + source rerank & 4 & 1 & 3 & 2 & 6 & 23 \\
+BM25 + source rerank & 4 & 1 & 4 & 2 & 9 & 25 \\
 \bottomrule
 \end{tabular}
 \caption{Row/operation diagnostics for wrong numeric full EviGraph answers. Counts are multi-label: one failed example can expose more than one diagnostic signal.}

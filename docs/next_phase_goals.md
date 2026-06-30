@@ -12,9 +12,9 @@ Latest FinQA-300 local-planner exact match:
 
 | setting | current EM |
 | --- | ---: |
-| Oracle-doc full EviGraph | 0.500 |
+| Oracle-doc full EviGraph | 0.510 |
 | Open BM25 full EviGraph | 0.403 |
-| BM25 + source-rerank full EviGraph | 0.500 |
+| BM25 + source-rerank full EviGraph | 0.510 |
 
 The engineering pipeline and experiment artifact closure are complete. The
 remaining work is research quality: stronger numerical reasoning, stronger
@@ -37,9 +37,9 @@ Interpretation:
 - Source-rerank `0.45+` means the evidence-state machinery remains useful when
   realistic retrieval noise is present but source metadata is available for
   analysis.
-- Oracle-doc has reached the `0.50+` minimum gate at `0.500`; Open BM25 has
+- Oracle-doc has reached the `0.50+` minimum gate at `0.510`; Open BM25 has
   exceeded the `0.35+` open-retrieval sanity target at `0.403`; and
-  source-rerank has cleared the `0.45+` analysis target at `0.500`. The next
+  source-rerank has cleared the `0.45+` analysis target at `0.510`. The next
   priority is no longer merely crossing these floors, but adding external
   baselines and increasing the margin so the empirical story is less fragile.
 
@@ -77,6 +77,9 @@ Current ablations:
 Still required:
 
 - Planner without verifier-grounded rejection.
+- Open-retrieval-safe verifier-guided repair; the first repair loop is enabled
+  only for oracle-doc and source-rerank because open retrieval can otherwise
+  accept self-consistent repairs from the wrong document.
 - Dense retrieval and retrieve-then-read baselines.
 
 The paper should report exact match separately from support diagnostics:
