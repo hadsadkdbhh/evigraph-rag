@@ -115,7 +115,7 @@ class EvidenceSetSelector:
         node_terms = self._terms(node_text)
         for existing in selected:
             existing_text = existing.text().lower()
-            if node_text and node_text in existing_text:
+            if node.source_doc == existing.source_doc and node_text and node_text in existing_text:
                 return True
             if (
                 node.source_doc == existing.source_doc

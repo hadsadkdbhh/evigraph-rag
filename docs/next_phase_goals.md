@@ -72,10 +72,10 @@ Current ablations:
 - No evidence-graph support selection.
 - Retrieval-only top-k context with the same answer generator.
 - Utility-only selection with the same answer generator.
+- No operation planner, using the existing generator without planner fallback.
 
 Still required:
 
-- No operation planner, using existing heuristic/generator path only.
 - Planner without verifier-grounded rejection.
 - Dense retrieval and retrieve-then-read baselines.
 

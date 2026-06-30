@@ -177,6 +177,35 @@ class RetrievalSelectionTest(unittest.TestCase):
 
         self.assertEqual([node.node_id for node in selected], ["chunk_1", "chunk_2"])
 
+    def test_selector_keeps_cross_source_duplicate_text_candidates(self) -> None:
+        graph = EvidenceGraph()
+        first = EvidenceNode(
+            node_id="source_a",
+            node_type="text",
+            content="same retrieved paragraph whose adjacent table differs",
+            source_doc="page_table_a.md",
+            modality="text",
+            metadata={"retrieval_rank": 1},
+        )
+        second = EvidenceNode(
+            node_id="source_b",
+            node_type="text",
+            content="same retrieved paragraph whose adjacent table differs",
+            source_doc="page_table_b.md",
+            modality="text",
+            metadata={"retrieval_rank": 2},
+        )
+        graph.add_node(first)
+        graph.add_node(second)
+        scores = {
+            first.node_id: self._score(2.0),
+            second.node_id: self._score(1.9),
+        }
+
+        selected = EvidenceSetSelector(max_nodes=2).select("same retrieved paragraph", graph, scores)
+
+        self.assertEqual([node.node_id for node in selected], ["source_a", "source_b"])
+
     def test_selector_keeps_safe_retrieval_rank_one_anchor(self) -> None:
         graph = EvidenceGraph()
         rank_one = EvidenceNode(

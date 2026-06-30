@@ -7,7 +7,7 @@ Generated from `outputs\eval\finqa_300_local_planner` after the latest manifest 
 | setting | method | EM | answer supported | calculation supported | operation semantics | row grounded | tokens |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Oracle-doc | Full EviGraph | 0.50 | 0.75 | 0.57 | 0.81 | 0.78 | 1176.61 |
-| Open BM25 | Full EviGraph | 0.40 | 0.79 | 0.56 | 0.83 | 0.80 | 852.98 |
+| Open BM25 | Full EviGraph | 0.40 | 0.79 | 0.55 | 0.82 | 0.79 | 859.50 |
 | BM25 + source rerank | Full EviGraph | 0.50 | 0.75 | 0.57 | 0.81 | 0.78 | 983.22 |
 
 ## Component Contribution Diagnostics
@@ -23,7 +23,7 @@ Generated from `outputs\eval\finqa_300_local_planner` after the latest manifest 
 | setting | wrong row/op | no numeric | no percent | additive/lookup | ratio | unsupported |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Oracle-doc | 38 | 29 | 34 | 22 | 17 | 10 |
-| Open BM25 | 54 | 34 | 38 | 26 | 18 | 9 |
+| Open BM25 | 52 | 34 | 39 | 27 | 18 | 9 |
 | BM25 + source rerank | 37 | 29 | 34 | 23 | 17 | 10 |
 
 ## Row/Operation Diagnostics
@@ -31,7 +31,7 @@ Generated from `outputs\eval\finqa_300_local_planner` after the latest manifest 
 | setting | wrong numerator | wrong denominator | wrong year/period | wrong row label | wrong operation type | ambiguous |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Oracle-doc | 5 | 1 | 2 | 3 | 7 | 22 |
-| Open BM25 | 6 | 4 | 6 | 7 | 12 | 27 |
+| Open BM25 | 5 | 4 | 5 | 6 | 13 | 26 |
 | BM25 + source rerank | 4 | 1 | 3 | 2 | 6 | 23 |
 
 ## Paper-Safe Claims

@@ -39,6 +39,28 @@ Latest documented FinQA-300 local planner exact match:
 | Open BM25 full EviGraph | 0.403 |
 | BM25 + source-rerank full EviGraph | 0.500 |
 
+Latest Open BM25 failure counts after the 2026-06-30 selector/pipeline pass:
+
+| Failure class | Count |
+| --- | ---: |
+| wrong_numeric_operation_or_row | 52 |
+| no_numeric_answer_percent | 39 |
+| no_numeric_answer_other | 34 |
+| no_numeric_answer_additive_or_lookup | 27 |
+| no_numeric_answer_ratio | 18 |
+| unsupported_textual_prediction | 9 |
+
+Latest Open BM25 row/operation diagnostic split:
+
+| Label | Count |
+| --- | ---: |
+| ambiguous_supported_wrong_number | 26 |
+| wrong_operation_type | 13 |
+| wrong_row_label | 6 |
+| wrong_year_or_period | 5 |
+| wrong_denominator | 4 |
+| wrong_numerator | 5 |
+
 Latest source-rerank diagnostic counts:
 
 | Failure class | Count |
@@ -83,10 +105,13 @@ failing later during paper-asset generation. It also has an experiment-closure
 gate that checks the full artifact contract: three 300-row evaluation CSVs,
 failure reports, row/operation diagnostics, dataset inspection/gate artifacts,
 experiment card, generated paper Markdown, and generated LaTeX tables.
+As of the 2026-06-30 pipeline fix, `ManifestRunner` passes `retrieval.top_k`
+from the manifest config into `MethodRunner.run`. Before this fix, changing
+`retrieval.top_k` in YAML did not affect manifest evaluation.
 
 The latest full refresh passed:
 
-- Unit tests: `233 tests OK`
+- Unit tests: `236 tests OK`
 - Manifest: `configs/experiments.finqa_300.local_planner.json`
 - Result directory: `outputs/eval/finqa_300_local_planner`
 - Pipeline report: `outputs/pipeline/pipeline_report.md`

@@ -162,6 +162,7 @@ class ManifestRunner:
                         corpus_path=str(corpus_path) if corpus_path else None,
                         source_doc=sample.get("source_doc"),
                         retrieval_mode=retrieval_mode,
+                        top_k=self._top_k(base_config),
                     )
                     metrics = summarize_result(result, sample.get("answer"))
                     writer.writerow(
@@ -241,6 +242,7 @@ class ManifestRunner:
                         corpus_path=str(corpus_path) if corpus_path else None,
                         source_doc=sample.get("source_doc"),
                         retrieval_mode=retrieval_mode,
+                        top_k=self._top_k(config),
                     )
                     metrics = summarize_result(result, sample.get("answer"))
                     writer.writerow(
@@ -327,6 +329,12 @@ class ManifestRunner:
         from scripts.run_query import load_config
 
         return load_config(str(self._resolve(path)))
+
+    def _top_k(self, config: dict[str, Any]) -> int:
+        try:
+            return int(config.get("retrieval", {}).get("top_k", 8))
+        except (TypeError, ValueError):
+            return 8
 
     def _resolve(self, path: str | Path) -> Path:
         candidate = Path(path)

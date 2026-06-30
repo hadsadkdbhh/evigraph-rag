@@ -58,12 +58,17 @@ three 300-row evaluation CSVs, failure reports, row/operation diagnostics,
 dataset inspection/gate artifacts, experiment card, and generated paper tables.
 
 The 2026-06-30 ablation refresh passed the targeted dataset run and unit tests
-(`233 tests OK`). The refreshed
+(`236 tests OK`). The refreshed
 FinQA-300 local-planner exact-match results are 0.500 oracle-doc, 0.403 open
 BM25, and 0.500 BM25 plus source rerank. The local-planner ablation manifest
 now runs 4500 baseline/ablation examples, including a no-operation-planner
 condition, and generated paper tables under
 `paper/generated/finqa_300_local_planner_ablation/`.
+The manifest runner now honors `retrieval.top_k` from the config when running
+batch and Pareto experiments; this closes a pipeline-control bug where changing
+the YAML top-k value did not actually affect manifest evaluation. A controlled
+Open BM25 top-k probe showed that increasing top-k alone did not improve exact
+match, so the main config remains at top-k 8.
 
 Run the quick MVP0 acceptance suite:
 
@@ -136,6 +141,14 @@ operation overlap features, but it remains slightly below open BM25 on exact
 match while improving some verifier diagnostics. This indicates that the next
 push should focus on row/operation intent and operand selection inside retrieved
 evidence rather than simple lexical reranking.
+The latest Open BM25 pass confirms that the largest wrong-row/operation issue
+is not solved by simply adding more retrieved candidates: exact match remains
+0.403, while wrong numeric operation/row is 52 cases. A retrieval-coverage
+diagnostic shows a mixed failure surface: some cases miss the gold source,
+some retrieve it but fail selection, and many select a plausible source but
+choose the wrong operation or operand. The next high-yield work should therefore
+be verifier-guided repair or planner reranking over candidate evidence, not
+more broad arithmetic rules.
 
 The row/operation diagnostic now splits wrong numeric full EviGraph answers into
 multi-label causes. On the current 100-example FinQA smoke subset, open hybrid
