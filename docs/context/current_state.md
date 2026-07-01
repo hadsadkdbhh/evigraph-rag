@@ -129,9 +129,9 @@ The latest full refresh passed:
 The latest local-planner ablation manifest also passed on 2026-06-30:
 
 - Manifest: `configs/experiments.finqa_300.local_planner_ablation.json`
-- Workload: 300 FinQA examples x 8 methods x 3 retrieval settings = 7200 runs
-- Internal baselines: Top-k Program, Full context, Utility-only
-- Component ablations: no risk, no operation planner, no verifier, no support graph
+- Workload: 300 FinQA examples x 11 methods x 3 retrieval settings = 9900 runs
+- Internal baselines: Direct RAG, Top-k Program, Retrieve-then-program, Full context, Utility-only
+- Component ablations: no risk, no operation planner, no verifier-grounded rejection, no verifier, no support graph
 - Artifact directory: `outputs/eval/finqa_300_local_planner_ablation`
 - Paper assets: `paper/generated/finqa_300_local_planner_ablation/`
 - Contribution table now reports planner, verifier, support-graph, risk, Top-k, and utility-only deltas.
@@ -139,9 +139,9 @@ The latest local-planner ablation manifest also passed on 2026-06-30:
 The latest retrieval-baseline manifest passed on 2026-07-01:
 
 - Manifest: `configs/experiments.finqa_300.local_planner_retrieval_baselines.json`
-- Workload: 300 FinQA examples x 4 methods x 3 open retrieval settings = 3600 runs
+- Workload: 300 FinQA examples x 6 methods x 3 open retrieval settings = 5400 runs
 - Retrieval settings: Open BM25, Open dense, Open hybrid
-- Methods: Top-k Program, Full context, Utility-only, Full EviGraph
+- Methods: Direct RAG, Top-k Program, Retrieve-then-program, Full context, Utility-only, Full EviGraph
 - Artifact directory: `outputs/eval/finqa_300_local_planner_retrieval_baselines`
 - Paper assets: `paper/generated/finqa_300_local_planner_retrieval_baselines/`
 - Full EviGraph EM: BM25 `0.403`, local hashed dense `0.133`, hybrid `0.400`
@@ -172,15 +172,15 @@ story:
 
 Required additions for the next paper-quality phase:
 
-- Baselines: internal Top-k Program, Full context, Utility-only, top-k plus
-  local numeric executor, local hashed dense retrieval, and open hybrid
-  retrieval are now wired into FinQA-300 manifests. LLM direct RAG and a true
-  neural dense retriever are still required before making paper-level benchmark
-  claims.
+- Baselines: Direct RAG, internal Top-k Program, Retrieve-then-program, Full
+  context, Utility-only, top-k plus local numeric executor, local hashed dense
+  retrieval, and open hybrid retrieval are now wired into FinQA-300 manifests.
+  LLM direct RAG and a true neural dense retriever are still required before
+  making paper-level benchmark claims.
 - Ablations: no risk scoring, no verifier, no evidence-graph support selection,
-  and no operation planner are now wired into the FinQA-300 ablation manifest.
-  Planner without verifier-grounded rejection and open-retrieval-safe repair
-  ablations are still required.
+  no operation planner, and no verifier-grounded rejection are now wired into
+  the FinQA-300 ablation manifest. Open-retrieval-safe repair ablations are
+  still required.
 - Paper narrative: weaken rule-patch language and foreground operation planner,
   verifier, and evidence graph.
 
@@ -203,6 +203,14 @@ Required additions for the next paper-quality phase:
   a self-consistent answer from the wrong document. The 2026-06-30 repair pass
   applied 9 repairs in oracle-doc and 9 in source-rerank, moving both settings
   from 0.500 to 0.510 while leaving Open BM25 at 0.403.
+- Stronger baseline and storytelling pass on 2026-07-01. The method set now
+  includes `direct_rag`, `retrieve_then_program`, and
+  `evigraph_wo_verifier_grounded_rejection`. Direct RAG disables the local
+  program planner; retrieve-then-program uses retrieval-order evidence with the
+  local program planner; no-verifier-grounded-rejection preserves verifier
+  diagnostics but does not replace row-ungrounded numeric answers. The paper
+  draft now includes a baseline-ladder table and an open-retrieval baseline
+  stress-test narrative.
 - Several narrow semantic repairs for percent-change direction, respectively
   prose evidence, cash-paid acquisition ratios, compact year ranges, and
   interest-income decrease phrasing.

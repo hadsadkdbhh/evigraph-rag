@@ -32,11 +32,14 @@
       "type": "batch",
       "retrieval_mode": "oracle_doc",
       "methods": [
+        "direct_rag",
         "topk",
+        "retrieve_then_program",
         "full_context",
         "utility_only",
         "evigraph_wo_risk",
         "evigraph_wo_operation_planner",
+        "evigraph_wo_verifier_grounded_rejection",
         "evigraph_wo_verifier",
         "evigraph_wo_support",
         "full_evigraph"
@@ -47,11 +50,14 @@
       "type": "batch",
       "retrieval_mode": "open",
       "methods": [
+        "direct_rag",
         "topk",
+        "retrieve_then_program",
         "full_context",
         "utility_only",
         "evigraph_wo_risk",
         "evigraph_wo_operation_planner",
+        "evigraph_wo_verifier_grounded_rejection",
         "evigraph_wo_verifier",
         "evigraph_wo_support",
         "full_evigraph"
@@ -62,11 +68,14 @@
       "type": "batch",
       "retrieval_mode": "source_rerank",
       "methods": [
+        "direct_rag",
         "topk",
+        "retrieve_then_program",
         "full_context",
         "utility_only",
         "evigraph_wo_risk",
         "evigraph_wo_operation_planner",
+        "evigraph_wo_verifier_grounded_rejection",
         "evigraph_wo_verifier",
         "evigraph_wo_support",
         "full_evigraph"
@@ -75,8 +84,9 @@
   ],
   "limitations": [
     "This manifest uses the local heuristic program planner and does not require LLM API credentials.",
-    "Top-k, full-context, and utility-only are retrieval/selection baselines with the same local numeric generator.",
+    "Direct RAG, top-k, retrieve-then-program, full-context, and utility-only are retrieval/selection baselines.",
     "No-operation-planner keeps the same retrieval, evidence graph, support extraction, and verifier but disables the local program planner fallback.",
+    "No-verifier-grounded-rejection keeps verifier diagnostics but does not replace failed row-grounded numeric answers with insufficient-evidence responses.",
     "No-risk, no-verifier, and no-support ablations isolate graph scoring, verification, and support-subgraph extraction in each retrieval setting."
   ]
 }

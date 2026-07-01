@@ -51,12 +51,16 @@ Current local-planner baselines and ablations have been added in
 They cover Top-k Program, Full context, Utility-only, no-risk,
 no-operation-planner, no-verifier, no-support, and Full EviGraph across
 oracle-doc, open BM25, and source-rerank.
+They now also include Direct RAG, retrieve-then-program, and
+no-verifier-grounded-rejection.
 Retrieval baselines have also been added in
 `configs/experiments.finqa_300.local_planner_retrieval_baselines.json` and
 generated under `paper/generated/finqa_300_local_planner_retrieval_baselines/`.
 They compare Open BM25, local hashed dense, and open hybrid retrieval using the
 same local planner and verifier. Current Full EviGraph EM is `0.403` for BM25,
-`0.133` for local hashed dense, and `0.400` for hybrid.
+`0.133` for local hashed dense, and `0.400` for hybrid. Under Open BM25,
+Direct RAG reaches `0.370`, retrieve-then-program reaches `0.393`, and Full
+EviGraph reaches `0.403`.
 Before making a paper-level empirical claim, still add external baselines:
 
 - LLM direct RAG baseline with the same retrieved context budget.
@@ -75,8 +79,11 @@ closure report.
 Current ablations:
 
 - Full EviGraph.
+- Direct RAG.
+- Retrieve-then-program.
 - No risk scoring.
 - No verifier.
+- No verifier-grounded rejection.
 - No evidence-graph support selection.
 - Retrieval-only top-k context with the same answer generator.
 - Utility-only selection with the same answer generator.
@@ -84,7 +91,6 @@ Current ablations:
 
 Still required:
 
-- Planner without verifier-grounded rejection.
 - Open-retrieval-safe verifier-guided repair; the first repair loop is enabled
   only for oracle-doc and source-rerank because open retrieval can otherwise
   accept self-consistent repairs from the wrong document.

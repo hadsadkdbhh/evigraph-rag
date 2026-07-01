@@ -213,6 +213,57 @@ class VerifierGuidedRepairerTest(unittest.TestCase):
 
             self.assertEqual(len(calls), 1)
 
+    def test_verifier_grounded_rejection_ablation_keeps_failed_numeric_answer(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            corpus = root / "corpus"
+            corpus.mkdir()
+            (corpus / "report.md").write_text(
+                "| metric | 2022 | 2023 |\n| --- | ---: | ---: |\n| revenue | 10 | 12 |\n",
+                encoding="utf-8",
+            )
+            runner = MethodRunner({"run": {"output_dir": str(root / "runs")}})
+
+            class FakeGenerator:
+                def generate(self, query, support_graph):
+                    return Answer(
+                        text="20.0%",
+                        citations=[next(iter(support_graph.nodes))],
+                        calculations=["ratio_percent row=wrong row: 2 / 10 * 100 = 20.0%"],
+                    )
+
+            class FakeVerifier:
+                def verify(self, query, answer, support_graph):
+                    return {
+                        "answer_supported": False,
+                        "unsupported_claims": [],
+                        "contradictions": [],
+                        "missing_evidence": [],
+                        "citation_correct": True,
+                        "confidence": 0.2,
+                        "context_utilization": "test",
+                        "checked_citations": list(answer.citations),
+                        "arithmetically_supported": True,
+                        "calculation_supported": True,
+                        "operation_semantics_checked": True,
+                        "row_operation_grounded": False,
+                        "semantically_grounded": False,
+                        "row_grounded": False,
+                    }
+
+            runner.generator = FakeGenerator()
+            runner.verifier = FakeVerifier()
+
+            result = runner.run(
+                "what percent did revenue increase?",
+                "evigraph_wo_verifier_grounded_rejection",
+                corpus_path=str(corpus),
+                log_run=False,
+            )
+
+            self.assertEqual(result["answer"]["text"], "20.0%")
+            self.assertNotEqual(result["answer"]["text"], "Insufficient evidence to answer.")
+
 
 if __name__ == "__main__":
     unittest.main()

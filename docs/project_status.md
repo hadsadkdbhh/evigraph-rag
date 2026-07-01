@@ -22,11 +22,12 @@ Last updated: 2026-07-01
   reached the `0.50+` target at `0.510`, source-rerank has cleared the `0.45+`
   target at `0.510`, and open BM25 has cleared the `0.35+` target at `0.403`.
   Local-planner baselines/ablations have been added and run on the 300-example
-  subset. Open retrieval baselines have also been run for BM25, local hashed
+  subset, including Direct RAG, retrieve-then-program, and no-verifier-grounded
+  rejection. Open retrieval baselines have also been run for BM25, local hashed
   dense, and numeric hybrid retrieval. The remaining paper work is a stronger
-  external LLM direct RAG baseline, ideally a true neural dense retriever, and a
-  method narrative centered on operation planner, verifier, and evidence graph
-  rather than rule patches.
+  external LLM direct RAG baseline and ideally a true neural dense retriever.
+  The paper narrative now centers on operation planner, verifier, and evidence
+  graph rather than rule patches.
 
 ## Reproducibility Gates
 
@@ -63,10 +64,11 @@ dataset inspection/gate artifacts, experiment card, and generated paper tables.
 The 2026-06-30 repair refresh passed the targeted dataset run and unit tests
 (`241 tests OK`). The refreshed FinQA-300 local-planner exact-match results are
 0.510 oracle-doc, 0.403 open BM25, and 0.510 BM25 plus source rerank. The
-local-planner ablation manifest now runs 7200 baseline/ablation examples: Top-k
-Program, Full context, Utility-only, no-risk, no-operation-planner,
-no-verifier, no-support-graph, and Full EviGraph across oracle-doc, open BM25,
-and source-rerank. It generated paper tables under
+local-planner ablation manifest now runs 9900 baseline/ablation examples:
+Direct RAG, Top-k Program, retrieve-then-program, Full context, Utility-only,
+no-risk, no-operation-planner, no-verifier-grounded-rejection, no-verifier,
+no-support-graph, and Full EviGraph across oracle-doc, open BM25, and
+source-rerank. It generated paper tables under
 `paper/generated/finqa_300_local_planner_ablation/`.
 The manifest runner now honors `retrieval.top_k` from the config when running
 batch and Pareto experiments; this closes a pipeline-control bug where changing
@@ -77,13 +79,14 @@ The manifest runner now also resumes incomplete batch CSVs by skipping existing
 `(id, method)` rows. This was added after an interrupted retrieval-baseline
 run, and it is now the recommended path for long baseline and ablation jobs.
 
-The 2026-07-01 retrieval-baseline manifest runs 3600 examples across Open BM25,
-Open dense, and Open hybrid retrieval, using Top-k Program, Full context,
-Utility-only, and Full EviGraph methods. Full EviGraph exact match is `0.403`
-for BM25, `0.133` for local hashed dense, and `0.400` for hybrid. The dense
-setting is a deterministic local hashed-vector baseline, not a trained neural
-embedding retriever; use it as a reproducibility baseline, not as a SOTA dense
-retrieval claim.
+The 2026-07-01 retrieval-baseline manifest runs 5400 examples across Open BM25,
+Open dense, and Open hybrid retrieval, using Direct RAG, Top-k Program,
+retrieve-then-program, Full context, Utility-only, and Full EviGraph methods.
+Full EviGraph exact match is `0.403` for BM25, `0.133` for local hashed dense,
+and `0.400` for hybrid. Direct RAG reaches `0.370` under Open BM25, while
+retrieve-then-program reaches `0.393`. The dense setting is a deterministic
+local hashed-vector baseline, not a trained neural embedding retriever; use it
+as a reproducibility baseline, not as a SOTA dense retrieval claim.
 
 Run the quick MVP0 acceptance suite:
 

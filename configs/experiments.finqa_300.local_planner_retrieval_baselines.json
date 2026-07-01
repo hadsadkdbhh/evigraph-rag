@@ -32,7 +32,9 @@
       "type": "batch",
       "retrieval_mode": "open",
       "methods": [
+        "direct_rag",
         "topk",
+        "retrieve_then_program",
         "full_context",
         "utility_only",
         "full_evigraph"
@@ -43,7 +45,9 @@
       "type": "batch",
       "retrieval_mode": "open_dense",
       "methods": [
+        "direct_rag",
         "topk",
+        "retrieve_then_program",
         "full_context",
         "utility_only",
         "full_evigraph"
@@ -54,7 +58,9 @@
       "type": "batch",
       "retrieval_mode": "open_hybrid",
       "methods": [
+        "direct_rag",
         "topk",
+        "retrieve_then_program",
         "full_context",
         "utility_only",
         "full_evigraph"
@@ -63,7 +69,8 @@
   ],
   "limitations": [
     "The dense retriever is a deterministic local hashed-vector baseline, not a trained neural retriever.",
-    "All retrieval baselines use the same local program planner and verifier so retrieval effects are easier to compare.",
+    "Direct RAG disables the local program planner; retrieve-then-program uses retrieval-order evidence with the local program planner.",
+    "Full EviGraph uses the same local program planner and verifier across retrieval settings so retrieval effects are easier to compare.",
     "These results are diagnostic FinQA-300 subset results and should not be reported as final benchmark claims."
   ]
 }

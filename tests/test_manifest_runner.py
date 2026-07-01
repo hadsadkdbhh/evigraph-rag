@@ -139,6 +139,40 @@ class ManifestRunnerTest(unittest.TestCase):
             self.assertIn("planned_product", full["answer"]["calculations"][0])
             self.assertNotIn("planned_", " ".join(ablated["answer"].get("calculations", [])))
 
+    def test_direct_rag_and_retrieve_then_program_split_planner_use(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            corpus_dir = root / "corpus"
+            corpus_dir.mkdir()
+            (corpus_dir / "report.md").write_text(
+                "# Report\n\n"
+                "| metric | amount |\n"
+                "| --- | ---: |\n"
+                "| average daily volume | 2.5 |\n"
+                "| average price | 4.0 |\n",
+                encoding="utf-8",
+            )
+            config = {
+                "run": {"output_dir": str(root / "runs")},
+                "numeric_planner": {
+                    "enabled": True,
+                    "llm_provider": "heuristic",
+                    "primary_enabled": False,
+                },
+            }
+            query = "compute the annualized traded value using 365 days"
+
+            direct = MethodRunner(config).run(query, "direct_rag", corpus_path=str(corpus_dir), log_run=False)
+            programmed = MethodRunner(config).run(
+                query,
+                "retrieve_then_program",
+                corpus_path=str(corpus_dir),
+                log_run=False,
+            )
+
+            self.assertNotIn("planned_", " ".join(direct["answer"].get("calculations", [])))
+            self.assertIn("planned_product", programmed["answer"]["calculations"][0])
+
     def test_manifest_passes_configured_retrieval_top_k_to_runner(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

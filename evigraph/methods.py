@@ -18,11 +18,14 @@ from evigraph.verifier import ClaimVerifier
 
 
 METHODS = [
+    "direct_rag",
     "topk",
+    "retrieve_then_program",
     "full_context",
     "utility_only",
     "evigraph_wo_risk",
     "evigraph_wo_operation_planner",
+    "evigraph_wo_verifier_grounded_rejection",
     "evigraph_wo_verifier",
     "evigraph_wo_support",
     "full_evigraph",
@@ -79,7 +82,7 @@ class MethodRunner:
         self._trace(logger, "score", {"scores": {node_id: score.to_dict() for node_id, score in scores.items()}})
 
         selected, actions, support_graph, verification = self._run_method(query, method, nodes, graph, scores)
-        generator = self.generator_without_planner if method == "evigraph_wo_operation_planner" else self.generator
+        generator = self.generator_without_planner if method in {"direct_rag", "evigraph_wo_operation_planner"} else self.generator
         answer = generator.generate(query, support_graph)
         if method == "evigraph_wo_verifier":
             verification = self._skipped_verification(answer)
@@ -96,7 +99,11 @@ class MethodRunner:
                 )
                 if repair_action is not None:
                     actions.append(repair_action)
-            if verification.get("row_grounded") is False:
+            verifier_grounded_rejection_enabled = method not in {
+                "direct_rag",
+                "evigraph_wo_verifier_grounded_rejection",
+            }
+            if verifier_grounded_rejection_enabled and verification.get("row_grounded") is False:
                 answer = Answer(
                     text="Insufficient evidence to answer.",
                     citations=[],
@@ -143,10 +150,22 @@ class MethodRunner:
         actions: list[Action] = []
         verification: dict[str, Any] = {}
 
+        if method == "direct_rag":
+            selected = nodes[: self.max_nodes]
+            support_graph = self._selected_graph(graph, selected)
+            actions = [Action("STOP", [], reason="Direct RAG baseline uses retrieval-order context without operation planner.")]
+            return selected, actions, support_graph, verification
+
         if method == "topk":
             selected = nodes[: self.max_nodes]
             support_graph = self._selected_graph(graph, selected)
             actions = [Action("STOP", [], reason="Top-k baseline uses retrieval order only.")]
+            return selected, actions, support_graph, verification
+
+        if method == "retrieve_then_program":
+            selected = nodes[: self.max_nodes]
+            support_graph = self._selected_graph(graph, selected)
+            actions = [Action("STOP", [], reason="Retrieve-then-program baseline uses retrieval-order context and local planner.")]
             return selected, actions, support_graph, verification
 
         if method == "full_context":
