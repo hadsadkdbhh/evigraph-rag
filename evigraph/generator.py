@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from typing import Any
+
+from evigraph.clients import LLMClient, make_llm_client
 from evigraph.evidence_graph import EvidenceGraph
 from evigraph.numeric_planner import NumericPlannerFallback
 from evigraph.numeric_reasoning import NumericReasoner
@@ -80,3 +83,97 @@ class SupportOnlyGenerator:
             if values and "2022" in values and "2023" in values:
                 return float(values["2023"]) - float(values["2022"])
         return None
+
+
+class LLMDirectRAGGenerator:
+    """External LLM baseline over retrieved context, without EviGraph planning."""
+
+    def __init__(self, config: dict[str, Any] | None = None, llm_client: LLMClient | None = None) -> None:
+        config = config or {}
+        self.config = config
+        self.llm_client = llm_client or make_llm_client(config)
+        self.max_context_chars = int(config.get("max_context_chars", 12000))
+        self.temperature = float(config.get("temperature", 0.0))
+
+    def generate(self, query: str, support_graph: EvidenceGraph) -> Answer:
+        valid_citations = [
+            node.node_id
+            for node in support_graph.nodes.values()
+            if node.node_type in {"chart", "table", "text", "calculation"}
+        ]
+        payload = self.llm_client.chat_json(
+            self._messages(query, support_graph, valid_citations),
+            temperature=self.temperature,
+        )
+        answer_text = str(payload.get("answer") or payload.get("text") or "").strip()
+        if not answer_text:
+            answer_text = "Insufficient evidence to answer."
+        citations = self._valid_citations(payload.get("citations"), valid_citations)
+        calculations = self._calculations(payload.get("calculation") or payload.get("calculations"))
+        return Answer(text=answer_text, citations=citations, calculations=calculations)
+
+    def _messages(
+        self,
+        query: str,
+        support_graph: EvidenceGraph,
+        valid_citations: list[str],
+    ) -> list[dict[str, str]]:
+        context = self._context_text(support_graph, valid_citations)
+        return [
+            {
+                "role": "system",
+                "content": (
+                    "You are a direct RAG baseline for financial question answering. "
+                    "Answer only from the supplied retrieved context. "
+                    "Return strict JSON with keys: answer, citations, calculation. "
+                    "Use citations from the supplied node ids only. "
+                    "If the answer is not supported, set answer to 'Insufficient evidence to answer.' "
+                    "and citations to an empty list."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Question:\n{query}\n\n"
+                    f"Retrieved context:\n{context}\n\n"
+                    "Return JSON only, for example: "
+                    '{"answer":"4.4%","citations":["node_id"],"calculation":"11800 / 267100 * 100 = 4.4%"}'
+                ),
+            },
+        ]
+
+    def _context_text(self, support_graph: EvidenceGraph, valid_citations: list[str]) -> str:
+        blocks = []
+        used_chars = 0
+        for node_id in valid_citations:
+            node = support_graph.nodes[node_id]
+            text = node.text()
+            source = node.source_doc or node.metadata.get("source_doc") or "unknown_source"
+            block = f"[{node.node_id}] source={source} page={node.page_number}\n{text}"
+            remaining = self.max_context_chars - used_chars
+            if remaining <= 0:
+                break
+            if len(block) > remaining:
+                block = block[:remaining]
+            blocks.append(block)
+            used_chars += len(block)
+        return "\n\n".join(blocks)
+
+    def _valid_citations(self, raw_citations: Any, valid_citations: list[str]) -> list[str]:
+        valid = set(valid_citations)
+        if isinstance(raw_citations, str):
+            raw_values = [raw_citations]
+        elif isinstance(raw_citations, list):
+            raw_values = [str(value) for value in raw_citations]
+        else:
+            raw_values = []
+        filtered = [citation for citation in raw_values if citation in valid]
+        return filtered
+
+    def _calculations(self, raw_calculations: Any) -> list[str]:
+        if isinstance(raw_calculations, str):
+            calculation = raw_calculations.strip()
+            return [calculation] if calculation else []
+        if isinstance(raw_calculations, list):
+            return [str(value).strip() for value in raw_calculations if str(value).strip()]
+        return []

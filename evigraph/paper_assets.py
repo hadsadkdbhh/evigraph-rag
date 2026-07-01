@@ -130,11 +130,30 @@ FINQA_300_LOCAL_RETRIEVAL_BASELINE_RESULT_SPECS = (
     ),
 )
 
+FINQA_300_LLM_DIRECT_RAG_RESULT_SPECS = (
+    ResultSpec(
+        "Oracle-doc",
+        "finqa_300_subset_oracle_doc_llm_direct_rag.csv",
+        ("llm_direct_rag",),
+    ),
+    ResultSpec(
+        "Open BM25",
+        "finqa_300_subset_open_bm25_llm_direct_rag.csv",
+        ("llm_direct_rag",),
+    ),
+    ResultSpec(
+        "BM25 + source rerank",
+        "finqa_300_subset_source_rerank_llm_direct_rag.csv",
+        ("llm_direct_rag",),
+    ),
+)
+
 RESULT_SPEC_PRESETS = {
     "finqa": DEFAULT_RESULT_SPECS,
     "finqa_300_local": FINQA_300_LOCAL_RESULT_SPECS,
     "finqa_300_local_ablation": FINQA_300_LOCAL_ABLATION_RESULT_SPECS,
     "finqa_300_local_retrieval_baselines": FINQA_300_LOCAL_RETRIEVAL_BASELINE_RESULT_SPECS,
+    "finqa_300_llm_direct_rag": FINQA_300_LLM_DIRECT_RAG_RESULT_SPECS,
 }
 
 
@@ -589,6 +608,7 @@ class PaperAssetBuilder:
 
     def _method_label(self, method: str) -> str:
         labels = {
+            "llm_direct_rag": "LLM Direct RAG",
             "direct_rag": "Direct RAG",
             "topk": "Top-k Program",
             "retrieve_then_program": "Retrieve-then-program",

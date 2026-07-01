@@ -28,6 +28,8 @@ Use the 300-example FinQA validation subset as the current reality check.
 - Local-planner ablation artifacts: `paper/generated/finqa_300_local_planner_ablation/`
 - Local-planner retrieval-baseline manifest: `configs/experiments.finqa_300.local_planner_retrieval_baselines.json`
 - Local-planner retrieval-baseline artifacts: `paper/generated/finqa_300_local_planner_retrieval_baselines/`
+- LLM Direct RAG manifest: `configs/experiments.finqa_300.llm_direct_rag.json`
+- LLM Direct RAG config: `configs/default_llm_direct_rag.yaml`
 - Next phase goals: `docs/next_phase_goals.md`
 - Main diagnostics:
   - `outputs/eval/finqa_300_local_planner/finqa_300_subset_source_rerank_full_local_planner_failures.md`
@@ -148,6 +150,19 @@ The latest retrieval-baseline manifest passed on 2026-07-01:
 - Caveat: `open_dense` is a deterministic local hashed-vector baseline, not a trained neural dense retriever. It is useful as a reproducible retrieval baseline but should not be described as a modern embedding model.
 - Manifest batch runs now resume from existing `(id, method)` rows, which allowed the interrupted hybrid run to continue from `362/1200` rather than overwriting the finished BM25 and dense CSVs.
 
+The LLM Direct RAG external baseline is now wired but not yet run:
+
+- Method: `llm_direct_rag`
+- Config: `configs/default_llm_direct_rag.yaml`
+- Manifest: `configs/experiments.finqa_300.llm_direct_rag.json`
+- Output directory: `outputs/eval/finqa_300_llm_direct_rag`
+- Paper-asset preset: `finqa_300_llm_direct_rag`
+- Required environment: `LLM_PROVIDER=openai_compatible`, `LLM_BASE_URL`,
+  `LLM_API_KEY`, and `LLM_MODEL`
+- Caveat: this is separate from local `direct_rag`. Local `direct_rag` uses the
+  local generator with no operation planner; `llm_direct_rag` sends the same
+  retrieval-order evidence budget to an external chat-completions model.
+
 Use `scripts/run_pipeline.py --refresh-results` as the default reproducibility
 gate before reporting new FinQA-300 numbers.
 
@@ -174,9 +189,10 @@ Required additions for the next paper-quality phase:
 
 - Baselines: Direct RAG, internal Top-k Program, Retrieve-then-program, Full
   context, Utility-only, top-k plus local numeric executor, local hashed dense
-  retrieval, and open hybrid retrieval are now wired into FinQA-300 manifests.
-  LLM direct RAG and a true neural dense retriever are still required before
-  making paper-level benchmark claims.
+  retrieval, open hybrid retrieval, and LLM Direct RAG are now wired into
+  FinQA-300 manifests. LLM Direct RAG still needs an API-backed run, and a true
+  neural dense retriever is still required before making paper-level benchmark
+  claims.
 - Ablations: no risk scoring, no verifier, no evidence-graph support selection,
   no operation planner, and no verifier-grounded rejection are now wired into
   the FinQA-300 ablation manifest. Open-retrieval-safe repair ablations are
@@ -211,6 +227,12 @@ Required additions for the next paper-quality phase:
   diagnostics but does not replace row-ungrounded numeric answers. The paper
   draft now includes a baseline-ladder table and an open-retrieval baseline
   stress-test narrative.
+- LLM Direct RAG baseline hook on 2026-07-01. The new `llm_direct_rag` method
+  uses an OpenAI-compatible chat-completions client over the selected
+  retrieval-order evidence and asks for strict JSON with answer, citations, and
+  optional calculation. The method is intentionally isolated in its own
+  manifest so API quota failures do not break the local reproducibility
+  pipeline.
 - Several narrow semantic repairs for percent-change direction, respectively
   prose evidence, cash-paid acquisition ratios, compact year ranges, and
   interest-income decrease phrasing.

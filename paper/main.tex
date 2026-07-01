@@ -194,6 +194,7 @@ This suite is used for mechanism debugging, not public benchmark claims.
 
 We report a baseline ladder designed to answer the main reviewer question: whether EviGraph-RAG improves over simpler RAG and tool-use alternatives.
 \textbf{Direct RAG} uses retrieval-order evidence without the local operation planner.
+\textbf{LLM Direct RAG}, now included as an external baseline hook, sends the same retrieval-order evidence budget directly to a named chat-completions model and asks for an answer, citations, and optional calculation without EviGraph planning or support selection.
 \textbf{Retrieve-then-program} uses the same retrieval-order evidence with the local program planner but without evidence-graph selection.
 \textbf{Full context} passes all retrieved candidates to the same answer generator.
 \textbf{Utility-only} selects evidence using utility without risk-aware graph control.
@@ -242,7 +243,7 @@ Table~\ref{tab:finqa-failure-categories} reports the current full EviGraph failu
 Table~\ref{tab:finqa-row-operation-diagnostics} further decomposes wrong numeric answers into operand, year/period, row-label, operation-type, and ambiguous supported wrong-number signals.
 The latest failure-driven planner repairs add grounded operation templates for rate-of-return multiplication, return-on-assets ratios, cumulative return tables, implied tier-2 capital, current ratio, respectively ordered prose differences, implicit percent-increase queries, source-aware support ordering, row-year sums, per-unit costs, implied ownership-value calculations, stated-amount percentage products, per-share acquisition value, inventory-component ratios, and two-year table-column differences.
 These repairs move exact match to 0.510 under oracle-document retrieval, 0.403 under open BM25, and 0.510 under BM25 plus source reranking.
-The largest remaining actionable categories are still operand selection and unresolved numeric-answer extraction, especially percent and row/operation failures; the next phase must add LLM direct RAG and true neural dense retrieval baselines before claiming benchmark-level gains.
+The largest remaining actionable categories are still operand selection and unresolved numeric-answer extraction, especially percent and row/operation failures; the next phase must run the LLM Direct RAG hook with a named model and add true neural dense retrieval baselines before claiming benchmark-level gains.
 
 \section{Conclusion}
 

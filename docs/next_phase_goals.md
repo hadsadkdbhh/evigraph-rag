@@ -63,7 +63,10 @@ Direct RAG reaches `0.370`, retrieve-then-program reaches `0.393`, and Full
 EviGraph reaches `0.403`.
 Before making a paper-level empirical claim, still add external baselines:
 
-- LLM direct RAG baseline with the same retrieved context budget.
+- Run the newly added LLM direct RAG baseline with the same retrieved context
+  budget. The method is `llm_direct_rag`, the config is
+  `configs/default_llm_direct_rag.yaml`, and the manifest is
+  `configs/experiments.finqa_300.llm_direct_rag.json`.
 - A true neural dense retrieval baseline if environment and dependencies allow;
   the current `open_dense` setting is only a deterministic local hashed-vector
   baseline.
@@ -94,7 +97,10 @@ Still required:
 - Open-retrieval-safe verifier-guided repair; the first repair loop is enabled
   only for oracle-doc and source-rerank because open retrieval can otherwise
   accept self-consistent repairs from the wrong document.
-- LLM direct RAG and retrieve-then-read baselines.
+- Run the LLM Direct RAG manifest and generate paper tables under a dedicated
+  output directory.
+- Add a stronger retrieve-then-read baseline if the direct LLM baseline is not
+  enough for reviewer comparison.
 
 The paper should report exact match separately from support diagnostics:
 answer support, calculation support, operation-semantics checking, row grounding,
@@ -117,11 +123,11 @@ executor, or verifier mechanisms.
 
 ## Immediate Work Order
 
-1. Add external baselines and no-operation-planner style ablations so the paper
-   can answer "stronger than what?"
+1. Run `configs/experiments.finqa_300.llm_direct_rag.json` with a named model
+   and record the model, provider, temperature, and context budget.
 2. Continue improving Oracle-doc beyond the exact `0.50` floor while monitoring
    source-rerank and open BM25 for regressions.
 3. Add planner-without-verifier-grounded-rejection ablations.
-4. Add LLM direct RAG and, if feasible, a true neural dense retrieval baseline.
+4. Add, if feasible, a true neural dense retrieval baseline.
 5. Rewrite the methodology section around operation planner, verifier, and
    evidence graph rather than rule patches.

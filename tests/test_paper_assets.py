@@ -135,6 +135,32 @@ class PaperAssetBuilderTest(unittest.TestCase):
         self.assertIn("Full context", markdown)
         self.assertIn("Top-k Program", markdown)
 
+    def test_builds_tables_from_finqa_300_llm_direct_rag_preset(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            eval_dir = root / "eval"
+            output_dir = root / "paper"
+            eval_dir.mkdir()
+            for suffix in [
+                "oracle_doc_llm_direct_rag",
+                "open_bm25_llm_direct_rag",
+                "source_rerank_llm_direct_rag",
+            ]:
+                self._write_eval_csv(
+                    eval_dir / f"finqa_300_subset_{suffix}.csv",
+                    [("llm_direct_rag", "0.42", "7")],
+                )
+
+            paths = PaperAssetBuilder().build(
+                eval_dir,
+                output_dir,
+                preset="finqa_300_llm_direct_rag",
+            )
+            markdown = Path(paths["markdown"]).read_text(encoding="utf-8")
+
+        self.assertIn("LLM Direct RAG", markdown)
+        self.assertIn("BM25 + source rerank", markdown)
+
     def _write_eval_csv(self, path: Path, rows: list[tuple[str, str, str]]) -> None:
         fieldnames = [
             "dataset",

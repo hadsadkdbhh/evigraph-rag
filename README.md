@@ -193,8 +193,8 @@ evidence annotations from retrieval.
 
 The current FinQA-300 local-planner manifest uses the sample `source_doc` field
 to evaluate oracle-document reasoning before open retrieval. On this diagnostic
-subset, `full_evigraph` currently reaches 0.500 exact match in oracle-doc mode,
-0.403 in open BM25 mode, and 0.500 in BM25 + source-rerank mode. The CSVs also
+subset, `full_evigraph` currently reaches 0.510 exact match in oracle-doc mode,
+0.403 in open BM25 mode, and 0.510 in BM25 + source-rerank mode. The CSVs also
 report diagnostic verifier metrics including arithmetic support,
 calculation-result support, operation-semantics checking, row-operation
 grounding, and semantic grounding. These are diagnostic baselines, not final
@@ -208,6 +208,18 @@ Run the local-planner baseline/ablation manifest:
 ```powershell
 python scripts/run_manifest.py --manifest configs/experiments.finqa_300.local_planner_ablation.json
 python scripts/build_paper_assets.py --eval-dir outputs/eval/finqa_300_local_planner_ablation --output-dir paper/generated/finqa_300_local_planner_ablation --preset finqa_300_local_ablation
+```
+
+Run the external LLM Direct RAG baseline after setting an OpenAI-compatible
+chat-completions endpoint:
+
+```powershell
+$env:LLM_PROVIDER="openai_compatible"
+$env:LLM_BASE_URL="https://api.openai.com/v1"
+$env:LLM_API_KEY="YOUR_KEY"
+$env:LLM_MODEL="YOUR_MODEL"
+python scripts/run_manifest.py --manifest configs/experiments.finqa_300.llm_direct_rag.json
+python scripts/build_paper_assets.py --eval-dir outputs/eval/finqa_300_llm_direct_rag --output-dir paper/generated/finqa_300_llm_direct_rag --preset finqa_300_llm_direct_rag
 ```
 
 Generate a failure report for the FinQA ablation output:

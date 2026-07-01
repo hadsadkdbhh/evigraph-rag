@@ -1,0 +1,21 @@
+run:
+  output_dir: outputs/runs
+retrieval:
+  top_k: 8
+selection:
+  max_nodes: 4
+  risk_threshold: 0.65
+scoring:
+  provider: rule
+  lambda_cost: 0.4
+  lambda_risk: 1.0
+  lambda_uncertainty: 0.7
+numeric_planner:
+  enabled: false
+llm_direct_rag:
+  provider: openai_compatible
+  timeout: 120
+  max_context_chars: 12000
+  temperature: 0.0
+actions:
+  enable_mock_actions: true

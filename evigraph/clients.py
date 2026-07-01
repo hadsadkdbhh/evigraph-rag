@@ -11,8 +11,13 @@ class LLMClient:
     def chat_text(self, messages: list[dict[str, str]], temperature: float = 0.0) -> str:
         raise NotImplementedError
 
-    def chat_json(self, messages: list[dict[str, str]], schema: dict[str, Any] | None = None) -> dict[str, Any]:
-        text = self.chat_text(messages, temperature=0.0)
+    def chat_json(
+        self,
+        messages: list[dict[str, str]],
+        schema: dict[str, Any] | None = None,
+        temperature: float = 0.0,
+    ) -> dict[str, Any]:
+        text = self.chat_text(messages, temperature=temperature)
         return _extract_json(text)
 
 

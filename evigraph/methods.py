@@ -5,7 +5,7 @@ from typing import Any
 from evigraph.actions import EvidenceActionController
 from evigraph.evidence_converter import EvidenceConverter
 from evigraph.evidence_graph import EvidenceGraph, EvidenceGraphBuilder
-from evigraph.generator import SupportOnlyGenerator
+from evigraph.generator import LLMDirectRAGGenerator, SupportOnlyGenerator
 from evigraph.logging_utils import RunLogger
 from evigraph.numeric_planner import NumericPlannerFallback
 from evigraph.repair import VerifierGuidedRepairer
@@ -18,6 +18,7 @@ from evigraph.verifier import ClaimVerifier
 
 
 METHODS = [
+    "llm_direct_rag",
     "direct_rag",
     "topk",
     "retrieve_then_program",
@@ -50,6 +51,7 @@ class MethodRunner:
             planner_fallback=NumericPlannerFallback.from_config(config.get("numeric_planner", {}))
         )
         self.generator_without_planner = SupportOnlyGenerator(planner_fallback=None)
+        self.llm_direct_generator: LLMDirectRAGGenerator | None = None
         self.verifier = ClaimVerifier()
         self.repairer = VerifierGuidedRepairer()
 
@@ -82,7 +84,12 @@ class MethodRunner:
         self._trace(logger, "score", {"scores": {node_id: score.to_dict() for node_id, score in scores.items()}})
 
         selected, actions, support_graph, verification = self._run_method(query, method, nodes, graph, scores)
-        generator = self.generator_without_planner if method in {"direct_rag", "evigraph_wo_operation_planner"} else self.generator
+        if method == "llm_direct_rag":
+            generator = self._llm_direct_generator()
+        elif method in {"direct_rag", "evigraph_wo_operation_planner"}:
+            generator = self.generator_without_planner
+        else:
+            generator = self.generator
         answer = generator.generate(query, support_graph)
         if method == "evigraph_wo_verifier":
             verification = self._skipped_verification(answer)
@@ -100,6 +107,7 @@ class MethodRunner:
                 if repair_action is not None:
                     actions.append(repair_action)
             verifier_grounded_rejection_enabled = method not in {
+                "llm_direct_rag",
                 "direct_rag",
                 "evigraph_wo_verifier_grounded_rejection",
             }
@@ -156,6 +164,12 @@ class MethodRunner:
             actions = [Action("STOP", [], reason="Direct RAG baseline uses retrieval-order context without operation planner.")]
             return selected, actions, support_graph, verification
 
+        if method == "llm_direct_rag":
+            selected = nodes[: self.max_nodes]
+            support_graph = self._selected_graph(graph, selected)
+            actions = [Action("STOP", [], reason="LLM Direct RAG baseline sends retrieval-order context directly to an external LLM.")]
+            return selected, actions, support_graph, verification
+
         if method == "topk":
             selected = nodes[: self.max_nodes]
             support_graph = self._selected_graph(graph, selected)
@@ -198,6 +212,11 @@ class MethodRunner:
             if edge.source in selected_ids and edge.target in selected_ids:
                 support_graph.edges.append(edge)
         return support_graph
+
+    def _llm_direct_generator(self) -> LLMDirectRAGGenerator:
+        if self.llm_direct_generator is None:
+            self.llm_direct_generator = LLMDirectRAGGenerator(self.config.get("llm_direct_rag", {}))
+        return self.llm_direct_generator
 
     def _cost(self, selected: list[EvidenceNode], actions: list[Action]) -> dict[str, float]:
         return {

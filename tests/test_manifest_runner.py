@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -172,6 +173,50 @@ class ManifestRunnerTest(unittest.TestCase):
 
             self.assertNotIn("planned_", " ".join(direct["answer"].get("calculations", [])))
             self.assertIn("planned_product", programmed["answer"]["calculations"][0])
+
+    def test_llm_direct_rag_uses_external_llm_context_baseline(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            corpus_dir = root / "corpus"
+            corpus_dir.mkdir()
+            (corpus_dir / "report.md").write_text(
+                "# Report\n\n"
+                "Cash paid was 6.9 and estimated purchase price was 220.6.\n",
+                encoding="utf-8",
+            )
+
+            class FakeLLM:
+                def __init__(self) -> None:
+                    self.messages: list[dict[str, str]] = []
+
+                def chat_json(self, messages, schema=None, temperature=0.0):
+                    self.messages = messages
+                    citation = re.search(r"\[(retrieved_[^\]]+)\]", messages[1]["content"]).group(1)
+                    return {
+                        "answer": "3.1%",
+                        "citations": [citation],
+                        "calculation": "6.9 / 220.6 * 100 = 3.1%",
+                    }
+
+            fake_llm = FakeLLM()
+            config = {
+                "run": {"output_dir": str(root / "runs")},
+                "selection": {"max_nodes": 4},
+                "llm_direct_rag": {"provider": "openai_compatible"},
+            }
+            with patch("evigraph.generator.make_llm_client", return_value=fake_llm):
+                result = MethodRunner(config).run(
+                    "What percentage of the estimated purchase price was paid in cash?",
+                    "llm_direct_rag",
+                    corpus_path=str(corpus_dir),
+                    log_run=False,
+            )
+
+            self.assertEqual(result["answer"]["text"], "3.1%")
+            self.assertEqual(result["answer"]["citations"], result["selected_ids"][:1])
+            self.assertIn("6.9 / 220.6", result["answer"]["calculations"][0])
+            self.assertIn("Retrieved context", fake_llm.messages[1]["content"])
+            self.assertNotIn("planned_", " ".join(result["answer"].get("calculations", [])))
 
     def test_manifest_passes_configured_retrieval_top_k_to_runner(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -362,6 +407,13 @@ class ManifestRunnerTest(unittest.TestCase):
 
         self.assertIs(config["numeric_planner"]["enabled"], True)
         self.assertEqual(config["numeric_planner"]["llm_provider"], "openai_compatible")
+
+    def test_default_llm_direct_rag_config_parses(self) -> None:
+        config = load_config("configs/default_llm_direct_rag.yaml")
+
+        self.assertIs(config["numeric_planner"]["enabled"], False)
+        self.assertEqual(config["llm_direct_rag"]["provider"], "openai_compatible")
+        self.assertEqual(config["llm_direct_rag"]["max_context_chars"], 12000)
 
 
 if __name__ == "__main__":

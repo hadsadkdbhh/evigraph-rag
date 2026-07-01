@@ -24,8 +24,11 @@ Last updated: 2026-07-01
   Local-planner baselines/ablations have been added and run on the 300-example
   subset, including Direct RAG, retrieve-then-program, and no-verifier-grounded
   rejection. Open retrieval baselines have also been run for BM25, local hashed
-  dense, and numeric hybrid retrieval. The remaining paper work is a stronger
-  external LLM direct RAG baseline and ideally a true neural dense retriever.
+  dense, and numeric hybrid retrieval. The external LLM Direct RAG baseline is
+  now implemented as `llm_direct_rag` with a dedicated manifest at
+  `configs/experiments.finqa_300.llm_direct_rag.json`; it still needs to be run
+  with a named API model and reported separately. The remaining paper work is
+  ideally a true neural dense retriever.
   The paper narrative now centers on operation planner, verifier, and evidence
   graph rather than rule patches.
 
@@ -87,6 +90,15 @@ and `0.400` for hybrid. Direct RAG reaches `0.370` under Open BM25, while
 retrieve-then-program reaches `0.393`. The dense setting is a deterministic
 local hashed-vector baseline, not a trained neural embedding retriever; use it
 as a reproducibility baseline, not as a SOTA dense retrieval claim.
+
+The 2026-07-01 LLM Direct RAG baseline hook adds an external LLM reader over the
+same retrieval-order context budget. It is intentionally separate from the local
+`direct_rag` method: `direct_rag` uses the local answer generator without the
+operation planner, while `llm_direct_rag` sends the selected retrieved nodes to
+an OpenAI-compatible chat-completions endpoint and expects JSON with answer,
+citations, and optional calculation. Run it only after setting
+`LLM_PROVIDER=openai_compatible`, `LLM_BASE_URL`, `LLM_API_KEY`, and
+`LLM_MODEL`.
 
 Run the quick MVP0 acceptance suite:
 
