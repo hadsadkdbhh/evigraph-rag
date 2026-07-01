@@ -817,14 +817,17 @@ class NumericReasoner:
         if "change" not in query_lower or "respectively" in query_lower:
             return None
         years = re.findall(r"\b(20\d{2})\b", query_lower)
-        if len(years) < 2:
+        unique_years = sorted(set(years), key=int)
+        if len(unique_years) < 2:
             return None
         from_match = re.search(r"\bfrom\b.{0,80}?\b(20\d{2})\b", query_lower)
         if from_match:
             base_year = from_match.group(1)
-            target_year = next((year for year in years if year != base_year), years[0])
+            target_year = next((year for year in years if year != base_year), "")
+            if not target_year:
+                return None
         else:
-            base_year, target_year = sorted({years[0], years[-1]}, key=int)
+            base_year, target_year = unique_years[0], unique_years[-1]
         query_terms = set(self._keywords(query_lower))
         distinctive_terms = {
             term

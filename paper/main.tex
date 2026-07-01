@@ -28,7 +28,7 @@ Anonymous Authors
 \begin{abstract}
 Retrieval-augmented generation systems often treat retrieved passages as usable evidence, even when the retrieved context is incomplete, noisy, or numerically under-specified.
 We study evidence-state control: a pipeline that converts retrieved candidates into an explicit evidence graph, scores their utility and risk, selects a compact support subgraph, executes table-oriented numerical operations, and verifies generated claims against cited support.
-On a deterministic 300-example FinQA validation subset, we evaluate EviGraph-RAG against direct RAG, retrieve-then-program, full-context, utility-only, retrieval-baseline, and component-ablation controls.
+On a deterministic 300-example FinQA validation subset, we evaluate EviGraph-RAG against direct RAG, retrieve-then-program, full-context, utility-only, retrieval-baseline, and component-ablation controls; we also add a 600-example FinQA stress subset to test whether the diagnostic story survives a larger sample.
 The current results support a conservative mechanism claim: operation planning and evidence-graph selection improve exact match over direct RAG while verifier diagnostics expose when higher exact match is not accompanied by stronger support.
 \end{abstract}
 
@@ -51,6 +51,8 @@ First, direct RAG without the operation planner is a meaningful but weaker basel
 Second, retrieve-then-program improves the same retrieval prefix to 0.393, showing that local program execution matters even before graph selection.
 Third, full EviGraph reaches 0.403 under open BM25 and 0.510 under oracle-document and source-rerank settings, while using far fewer tokens than full-context reading.
 The margins are still modest, but the decomposition makes the next research bottleneck visible: operand selection and open-retrieval evidence quality, not generic answer fluency.
+On the larger FinQA-600 stress subset, the same local-planner configuration reaches 0.403 under oracle-document retrieval, 0.295 under open BM25, and 0.400 under BM25 plus source reranking.
+We therefore treat FinQA-300 as the mechanism table and FinQA-600 as a pressure test that exposes remaining generalization gaps.
 
 \section{Related Work}
 
@@ -232,6 +234,11 @@ We additionally compare open retrieval variants while keeping the local program 
 Open BM25 remains the strongest current retrieval baseline for this subset: full EviGraph obtains 0.403 exact match with BM25, 0.400 with deterministic numeric hybrid retrieval, and 0.133 with the local hashed-vector dense baseline.
 The dense baseline is intentionally labeled as local hashed dense rather than neural dense retrieval; it is useful as a reproducible control, but it is not a substitute for a trained embedding retriever.
 This result prevents an overbroad claim: the current system's main empirical story is not that retrieval is solved, but that evidence-state control improves the use of retrieved evidence once candidates are available.
+
+\paragraph{FinQA-600 stress subset.}
+To avoid overfitting the narrative to the 300-example diagnostic subset, we also construct a deterministic 600-example FinQA validation subset using the same seed and a larger sampling pool.
+Full EviGraph obtains 0.403 exact match under oracle-document retrieval, 0.295 under open BM25, and 0.400 under source reranking.
+The drop relative to FinQA-300 is useful rather than embarrassing: it shows that the present system has a real mechanism, but not yet a benchmark-level performance claim.
 
 \input{generated/finqa_300_local_planner_ablation/finqa_results_tables}
 

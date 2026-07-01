@@ -30,6 +30,11 @@ Use the 300-example FinQA validation subset as the current reality check.
 - Local-planner retrieval-baseline artifacts: `paper/generated/finqa_300_local_planner_retrieval_baselines/`
 - LLM Direct RAG manifest: `configs/experiments.finqa_300.llm_direct_rag.json`
 - LLM Direct RAG config: `configs/default_llm_direct_rag.yaml`
+- Strong subset raw data: `data/raw/finqa_600_subset.jsonl`
+- Strong subset corpus: `data/finqa_600_corpus`
+- FinQA-600 local-planner manifest: `configs/experiments.finqa_600.local_planner.json`
+- FinQA-600 LLM Direct RAG manifest: `configs/experiments.finqa_600.llm_direct_rag.json`
+- FinQA-600 status: `docs/finqa_600_status.md`
 - Next phase goals: `docs/next_phase_goals.md`
 - Main diagnostics:
   - `outputs/eval/finqa_300_local_planner/finqa_300_subset_source_rerank_full_local_planner_failures.md`
@@ -42,6 +47,14 @@ Latest documented FinQA-300 local planner exact match:
 | Oracle-doc full EviGraph | 0.510 |
 | Open BM25 full EviGraph | 0.403 |
 | BM25 + source-rerank full EviGraph | 0.510 |
+
+Latest documented FinQA-600 local planner exact match:
+
+| Setting | Accuracy |
+| --- | ---: |
+| Oracle-doc full EviGraph | 0.403 |
+| Open BM25 full EviGraph | 0.295 |
+| BM25 + source-rerank full EviGraph | 0.400 |
 
 Latest Open BM25 failure counts after the 2026-06-30 selector/pipeline pass:
 
@@ -163,6 +176,17 @@ The LLM Direct RAG external baseline is now wired but not yet run:
   local generator with no operation planner; `llm_direct_rag` sends the same
   retrieval-order evidence budget to an external chat-completions model.
 
+The FinQA-600 strong subset is now wired and locally run:
+
+- Dataset: `data/raw/finqa_600_subset.jsonl`
+- Corpus: `data/finqa_600_corpus`
+- Local manifest: `configs/experiments.finqa_600.local_planner.json`
+- LLM Direct RAG manifest: `configs/experiments.finqa_600.llm_direct_rag.json`
+- Local results: Oracle-doc `0.403`, Open BM25 `0.295`, Source-rerank `0.400`
+- Paper assets: `paper/generated/finqa_600_local_planner/`
+- Important interpretation: FinQA-600 is harsher than FinQA-300; use it as a
+  stress test and do not merge its numbers into the FinQA-300 baseline ladder.
+
 Use `scripts/run_pipeline.py --refresh-results` as the default reproducibility
 gate before reporting new FinQA-300 numbers.
 
@@ -233,6 +257,13 @@ Required additions for the next paper-quality phase:
   optional calculation. The method is intentionally isolated in its own
   manifest so API quota failures do not break the local reproducibility
   pipeline.
+- FinQA-600 strong-subset pass on 2026-07-01. Downloaded 600 answerable
+  validation examples from a 1000-row pool with seed 13, generated 600 corpus
+  files, added local and LLM Direct RAG manifests, fixed a duplicate-single-year
+  crash in `_respectively_prose_difference`, and completed the local planner
+  manifest. The larger sample drops EM to `0.403/0.295/0.400`, which is useful
+  evidence that the current FinQA-300 result is still a mechanism diagnostic,
+  not a final benchmark claim.
 - Several narrow semantic repairs for percent-change direction, respectively
   prose evidence, cash-paid acquisition ratios, compact year ranges, and
   interest-income decrease phrasing.

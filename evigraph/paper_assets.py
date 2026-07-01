@@ -148,12 +148,50 @@ FINQA_300_LLM_DIRECT_RAG_RESULT_SPECS = (
     ),
 )
 
+FINQA_600_LOCAL_RESULT_SPECS = (
+    ResultSpec(
+        "Oracle-doc",
+        "finqa_600_subset_oracle_doc_full_local_planner.csv",
+        ("full_evigraph",),
+    ),
+    ResultSpec(
+        "Open BM25",
+        "finqa_600_subset_open_bm25_full_local_planner.csv",
+        ("full_evigraph",),
+    ),
+    ResultSpec(
+        "BM25 + source rerank",
+        "finqa_600_subset_source_rerank_full_local_planner.csv",
+        ("full_evigraph",),
+    ),
+)
+
+FINQA_600_LLM_DIRECT_RAG_RESULT_SPECS = (
+    ResultSpec(
+        "Oracle-doc",
+        "finqa_600_subset_oracle_doc_llm_direct_rag.csv",
+        ("llm_direct_rag",),
+    ),
+    ResultSpec(
+        "Open BM25",
+        "finqa_600_subset_open_bm25_llm_direct_rag.csv",
+        ("llm_direct_rag",),
+    ),
+    ResultSpec(
+        "BM25 + source rerank",
+        "finqa_600_subset_source_rerank_llm_direct_rag.csv",
+        ("llm_direct_rag",),
+    ),
+)
+
 RESULT_SPEC_PRESETS = {
     "finqa": DEFAULT_RESULT_SPECS,
     "finqa_300_local": FINQA_300_LOCAL_RESULT_SPECS,
     "finqa_300_local_ablation": FINQA_300_LOCAL_ABLATION_RESULT_SPECS,
     "finqa_300_local_retrieval_baselines": FINQA_300_LOCAL_RETRIEVAL_BASELINE_RESULT_SPECS,
     "finqa_300_llm_direct_rag": FINQA_300_LLM_DIRECT_RAG_RESULT_SPECS,
+    "finqa_600_local": FINQA_600_LOCAL_RESULT_SPECS,
+    "finqa_600_llm_direct_rag": FINQA_600_LLM_DIRECT_RAG_RESULT_SPECS,
 }
 
 

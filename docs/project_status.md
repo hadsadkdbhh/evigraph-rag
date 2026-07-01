@@ -31,6 +31,11 @@ Last updated: 2026-07-01
   ideally a true neural dense retriever.
   The paper narrative now centers on operation planner, verifier, and evidence
   graph rather than rule patches.
+- A stronger FinQA-600 validation-scale subset is now checked in and wired with
+  local-planner and LLM Direct RAG manifests. The local-planner run completed:
+  Oracle-doc `0.403`, Open BM25 `0.295`, and BM25 plus source-rerank `0.400`.
+  This larger subset is a harsher stress test and should be reported separately
+  from the FinQA-300 mechanism table.
 
 ## Reproducibility Gates
 
@@ -99,6 +104,17 @@ an OpenAI-compatible chat-completions endpoint and expects JSON with answer,
 citations, and optional calculation. Run it only after setting
 `LLM_PROVIDER=openai_compatible`, `LLM_BASE_URL`, `LLM_API_KEY`, and
 `LLM_MODEL`.
+
+The 2026-07-01 FinQA-600 strong-subset run doubles the FinQA-300 diagnostic
+sample. It uses `data/raw/finqa_600_subset.jsonl`, `data/finqa_600_corpus`,
+`configs/experiments.finqa_600.local_planner.json`, and
+`configs/experiments.finqa_600.llm_direct_rag.json`. The local-planner manifest
+completed all three 600-row settings and generated paper assets under
+`paper/generated/finqa_600_local_planner/`. Full EviGraph exact match is
+`0.403` oracle-doc, `0.295` open BM25, and `0.400` source-rerank. The larger
+subset exposes the fragility of the FinQA-300 result: support diagnostics remain
+strong, but raw exact match drops, so the AAAI story must treat FinQA-600 as a
+stress test and avoid overclaiming benchmark superiority.
 
 Run the quick MVP0 acceptance suite:
 

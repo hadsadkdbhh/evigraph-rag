@@ -3184,6 +3184,24 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "1")
         self.assertIn("respectively_prose_difference", answer.calculations[0])
 
+    def test_respectively_prose_difference_ignores_duplicate_single_year_query(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content="the balances were $ 10.0 and $ 8.0 as of december 2012 and december 2011 , respectively .",
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the change in the balance from 2012 to 2012?",
+            graph,
+        )
+
+        self.assertNotIn("respectively_prose_difference", " ".join(answer.calculations))
+
     def test_current_ratio_uses_current_assets_over_current_liabilities(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

@@ -1,0 +1,28 @@
+# FinQA Evidence APD/2016/page_96.pdf-2
+
+- Source dataset: dreamerdeo/finqa
+- Split: validation
+
+## Pre Text
+
+15 .
+debt the tables below summarize our outstanding debt at 30 september 2016 and 2015 : total debt .
+
+## Table
+
+| 30 september | 2016 | 2015 |
+| --- | --- | --- |
+| short-term borrowings | $ 935.8 | $ 1494.3 |
+| current portion of long-term debt | 371.3 | 435.6 |
+| long-term debt | 4918.1 | 3949.1 |
+| total debt | $ 6225.2 | $ 5879.0 |
+| short-term borrowings |  |  |
+| 30 september | 2016 | 2015 |
+| bank obligations | $ 133.1 | $ 234.3 |
+| commercial paper | 802.7 | 1260.0 |
+| total short-term borrowings | $ 935.8 | $ 1494.3 |
+
+## Post Text
+
+the weighted average interest rate of short-term borrowings outstanding at 30 september 2016 and 2015 was 1.1% ( 1.1 % ) and .8% ( .8 % ) , respectively .
+cash paid for interest , net of amounts capitalized , was $ 121.1 in 2016 , $ 97.5 in 2015 , and $ 132.4 in 2014. .

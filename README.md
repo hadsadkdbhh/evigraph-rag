@@ -46,9 +46,18 @@ Expected current FinQA-300 exact-match results:
 
 | setting | full EviGraph EM |
 | --- | ---: |
-| Oracle-doc | 0.500 |
+| Oracle-doc | 0.510 |
 | Open BM25 | 0.403 |
-| BM25 + source rerank | 0.500 |
+| BM25 + source rerank | 0.510 |
+
+FinQA-600 is also checked in as a stronger validation-scale stress subset.
+Current local-planner Full EviGraph exact-match results are:
+
+| setting | full EviGraph EM |
+| --- | ---: |
+| Oracle-doc | 0.403 |
+| Open BM25 | 0.295 |
+| BM25 + source rerank | 0.400 |
 
 Main reproducibility artifacts:
 
@@ -62,6 +71,8 @@ Main reproducibility artifacts:
 - `paper/generated/finqa_300_local_planner/finqa_results_tables.tex`
 - `paper/generated/finqa_300_local_planner_ablation/finqa_results_summary.md`
 - `paper/generated/finqa_300_local_planner_ablation/finqa_results_tables.tex`
+- `paper/generated/finqa_600_local_planner/finqa_results_summary.md`
+- `paper/generated/finqa_600_local_planner/finqa_results_tables.tex`
 
 These are diagnostic subset results, not final benchmark claims.
 
@@ -220,6 +231,20 @@ $env:LLM_API_KEY="YOUR_KEY"
 $env:LLM_MODEL="YOUR_MODEL"
 python scripts/run_manifest.py --manifest configs/experiments.finqa_300.llm_direct_rag.json
 python scripts/build_paper_assets.py --eval-dir outputs/eval/finqa_300_llm_direct_rag --output-dir paper/generated/finqa_300_llm_direct_rag --preset finqa_300_llm_direct_rag
+```
+
+Run the stronger FinQA-600 local-planner stress subset:
+
+```powershell
+python scripts/run_manifest.py --manifest configs/experiments.finqa_600.local_planner.json
+python scripts/build_paper_assets.py --eval-dir outputs/eval/finqa_600_local_planner --output-dir paper/generated/finqa_600_local_planner --preset finqa_600_local
+```
+
+Run the FinQA-600 LLM Direct RAG baseline with the same API variables:
+
+```powershell
+python scripts/run_manifest.py --manifest configs/experiments.finqa_600.llm_direct_rag.json
+python scripts/build_paper_assets.py --eval-dir outputs/eval/finqa_600_llm_direct_rag --output-dir paper/generated/finqa_600_llm_direct_rag --preset finqa_600_llm_direct_rag
 ```
 
 Generate a failure report for the FinQA ablation output:
