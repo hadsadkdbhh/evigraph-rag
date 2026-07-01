@@ -122,6 +122,19 @@ failing later during paper-asset generation. It also has an experiment-closure
 gate that checks the full artifact contract: three 300-row evaluation CSVs,
 failure reports, row/operation diagnostics, dataset inspection/gate artifacts,
 experiment card, generated paper Markdown, and generated LaTeX tables.
+As of 2026-07-01, the broader submission experiment suite is also registered in
+the same entrypoint:
+
+```powershell
+python .\scripts\run_pipeline.py --suite submission --skip-llm-direct-rag
+```
+
+This suite checks FinQA-300 main results, FinQA-300 component ablations,
+FinQA-300 retrieval baselines, and the FinQA-600 local stress run. The
+API-backed LLM Direct RAG manifests are part of the suite but should be skipped
+with `--skip-llm-direct-rag` until `LLM_PROVIDER`, `LLM_BASE_URL`,
+`LLM_API_KEY`, and `LLM_MODEL` are set. Without that flag, missing LLM variables
+are reported explicitly.
 As of the 2026-06-30 pipeline fix, `ManifestRunner` passes `retrieval.top_k`
 from the manifest config into `MethodRunner.run`. Before this fix, changing
 `retrieval.top_k` in YAML did not affect manifest evaluation.

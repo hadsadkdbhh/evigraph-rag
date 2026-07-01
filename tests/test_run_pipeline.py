@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from argparse import Namespace
 from pathlib import Path
 
-from scripts.run_pipeline import run_preflight
+from scripts.run_pipeline import experiment_pipelines, run_llm_preflight, run_preflight
 
 
 class RunPipelinePreflightTest(unittest.TestCase):
@@ -43,6 +44,29 @@ class RunPipelinePreflightTest(unittest.TestCase):
         self.assertTrue(result.ok, result.stderr_tail)
         self.assertIn("evaluation CSV", result.stdout_tail)
 
+    def test_submission_suite_registers_baselines_ablations_and_llm_direct_rag(self) -> None:
+        args = self._args(Path(tempfile.mkdtemp()), refresh_results=True)
+        args.suite = "submission"
+
+        names = [experiment.name for experiment in experiment_pipelines(args)]
+
+        self.assertIn("finqa_300_local_ablation", names)
+        self.assertIn("finqa_300_retrieval_baselines", names)
+        self.assertIn("finqa_300_llm_direct_rag", names)
+        self.assertIn("finqa_600_llm_direct_rag", names)
+
+    def test_llm_preflight_reports_missing_api_environment(self) -> None:
+        old_values = {key: os.environ.pop(key, None) for key in ("LLM_PROVIDER", "LLM_BASE_URL", "LLM_API_KEY", "LLM_MODEL")}
+        try:
+            result = run_llm_preflight("finqa_300_llm_direct_rag")
+        finally:
+            for key, value in old_values.items():
+                if value is not None:
+                    os.environ[key] = value
+
+        self.assertFalse(result.ok)
+        self.assertIn("LLM_API_KEY", result.stderr_tail)
+
     def _args(self, root: Path, refresh_results: bool, eval_dir: Path | None = None) -> Namespace:
         corpus = root / "corpus"
         corpus.mkdir()
@@ -71,9 +95,11 @@ class RunPipelinePreflightTest(unittest.TestCase):
             eval_dir=str(eval_dir or root / "missing_eval"),
             paper_output_dir=str(root / "paper"),
             report_dir=str(root / "pipeline"),
+            suite="main",
             refresh_results=refresh_results,
             skip_tests=False,
             skip_paper_assets=False,
+            skip_llm_direct_rag=False,
         )
 
 

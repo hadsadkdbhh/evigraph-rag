@@ -42,6 +42,24 @@ The quick path reuses the generated evaluation CSVs under `outputs/eval/` and
 only reruns tests plus paper-table generation. Because `outputs/` is ignored by
 Git, a fresh clone should use `--refresh-results` first.
 
+For the broader paper-submission experiment suite, run:
+
+```powershell
+python scripts/run_pipeline.py --suite submission --skip-llm-direct-rag
+```
+
+This checks the FinQA-300 main result, component ablations, retrieval baselines,
+and the FinQA-600 stress subset. Remove `--skip-llm-direct-rag` only after
+setting `LLM_PROVIDER`, `LLM_BASE_URL`, `LLM_API_KEY`, and `LLM_MODEL`; the LLM
+Direct RAG baselines are intentionally API-backed and are not treated as
+complete without those variables.
+
+To refresh all local submission-suite results, run:
+
+```powershell
+python scripts/run_pipeline.py --suite submission --refresh-results --skip-llm-direct-rag
+```
+
 Expected current FinQA-300 exact-match results:
 
 | setting | full EviGraph EM |

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from argparse import Namespace
@@ -29,12 +30,84 @@ class StepResult:
         return self.returncode == 0
 
 
+@dataclass(frozen=True)
+class ExperimentPipeline:
+    name: str
+    manifest: str
+    eval_dir: str
+    paper_output_dir: str
+    preset: str
+    requires_llm: bool = False
+
+
+MAIN_PIPELINE = (
+    ExperimentPipeline(
+        name="finqa_300_local",
+        manifest="configs/experiments.finqa_300.local_planner.json",
+        eval_dir="outputs/eval/finqa_300_local_planner",
+        paper_output_dir="paper/generated/finqa_300_local_planner",
+        preset="finqa_300_local",
+    ),
+)
+
+
+SUBMISSION_PIPELINE = (
+    *MAIN_PIPELINE,
+    ExperimentPipeline(
+        name="finqa_300_local_ablation",
+        manifest="configs/experiments.finqa_300.local_planner_ablation.json",
+        eval_dir="outputs/eval/finqa_300_local_planner_ablation",
+        paper_output_dir="paper/generated/finqa_300_local_planner_ablation",
+        preset="finqa_300_local_ablation",
+    ),
+    ExperimentPipeline(
+        name="finqa_300_retrieval_baselines",
+        manifest="configs/experiments.finqa_300.local_planner_retrieval_baselines.json",
+        eval_dir="outputs/eval/finqa_300_local_planner_retrieval_baselines",
+        paper_output_dir="paper/generated/finqa_300_local_planner_retrieval_baselines",
+        preset="finqa_300_local_retrieval_baselines",
+    ),
+    ExperimentPipeline(
+        name="finqa_600_local",
+        manifest="configs/experiments.finqa_600.local_planner.json",
+        eval_dir="outputs/eval/finqa_600_local_planner",
+        paper_output_dir="paper/generated/finqa_600_local_planner",
+        preset="finqa_600_local",
+    ),
+    ExperimentPipeline(
+        name="finqa_300_llm_direct_rag",
+        manifest="configs/experiments.finqa_300.llm_direct_rag.json",
+        eval_dir="outputs/eval/finqa_300_llm_direct_rag",
+        paper_output_dir="paper/generated/finqa_300_llm_direct_rag",
+        preset="finqa_300_llm_direct_rag",
+        requires_llm=True,
+    ),
+    ExperimentPipeline(
+        name="finqa_600_llm_direct_rag",
+        manifest="configs/experiments.finqa_600.llm_direct_rag.json",
+        eval_dir="outputs/eval/finqa_600_llm_direct_rag",
+        paper_output_dir="paper/generated/finqa_600_llm_direct_rag",
+        preset="finqa_600_llm_direct_rag",
+        requires_llm=True,
+    ),
+)
+
+
+LLM_ENV_VARS = ("LLM_PROVIDER", "LLM_BASE_URL", "LLM_API_KEY", "LLM_MODEL")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run the local EviGraph-RAG reproducibility pipeline.")
     parser.add_argument(
+        "--suite",
+        choices=("main", "submission"),
+        default="main",
+        help="Run the main FinQA-300 closure or the full submission experiment suite.",
+    )
+    parser.add_argument(
         "--manifest",
         default=str(ROOT / "configs" / "experiments.finqa_300.local_planner.json"),
-        help="Manifest to refresh when --refresh-results is set.",
+        help="Manifest to refresh when --refresh-results is set and --suite=main.",
     )
     parser.add_argument(
         "--eval-dir",
@@ -55,6 +128,11 @@ def main() -> int:
     parser.add_argument("--skip-tests", action="store_true", help="Skip unittest discovery.")
     parser.add_argument("--skip-paper-assets", action="store_true", help="Skip paper asset generation.")
     parser.add_argument("--skip-closure", action="store_true", help="Skip experiment artifact closure checks.")
+    parser.add_argument(
+        "--skip-llm-direct-rag",
+        action="store_true",
+        help="Skip API-backed LLM Direct RAG baselines in the submission suite.",
+    )
     args = parser.parse_args()
 
     report_dir = Path(args.report_dir)
@@ -68,28 +146,42 @@ def main() -> int:
     if not args.skip_tests:
         steps.append(run_step("unit_tests", [sys.executable, "-m", "unittest", "discover", "-s", "tests"]))
 
-    if args.refresh_results:
-        steps.append(run_step("finqa_300_manifest", [sys.executable, "scripts/run_manifest.py", "--manifest", args.manifest]))
+    for experiment in experiment_pipelines(args):
+        if experiment.requires_llm:
+            if args.skip_llm_direct_rag:
+                steps.append(skipped_step(f"{experiment.name}_llm_preflight", "LLM Direct RAG skipped by flag."))
+                continue
+            steps.append(run_llm_preflight(experiment.name))
+            if not steps[-1].ok:
+                continue
 
-    if not args.skip_paper_assets:
-        steps.append(
-            run_step(
-                "paper_assets",
-                [
-                    sys.executable,
-                    "scripts/build_paper_assets.py",
-                    "--eval-dir",
-                    args.eval_dir,
-                    "--output-dir",
-                    args.paper_output_dir,
-                    "--preset",
-                    "finqa_300_local",
-                ],
+        if args.refresh_results:
+            steps.append(
+                run_step(
+                    f"{experiment.name}_manifest",
+                    [sys.executable, "scripts/run_manifest.py", "--manifest", str(ROOT / experiment.manifest)],
+                )
             )
-        )
 
-    if not args.skip_closure:
-        steps.append(run_experiment_closure(args, report_dir))
+        if not args.skip_paper_assets:
+            steps.append(
+                run_step(
+                    f"{experiment.name}_paper_assets",
+                    [
+                        sys.executable,
+                        "scripts/build_paper_assets.py",
+                        "--eval-dir",
+                        str(ROOT / experiment.eval_dir),
+                        "--output-dir",
+                        str(ROOT / experiment.paper_output_dir),
+                        "--preset",
+                        experiment.preset,
+                    ],
+                )
+            )
+
+        if not args.skip_closure:
+            steps.append(run_experiment_closure_for(experiment, report_dir / experiment.name))
 
     return write_report(args, report_dir, steps)
 
@@ -98,6 +190,7 @@ def write_report(args: Namespace, report_dir: Path, steps: list[StepResult]) -> 
     report = {
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "root": str(ROOT),
+        "suite": args.suite,
         "refresh_results": args.refresh_results,
         "steps": [step.__dict__ | {"ok": step.ok} for step in steps],
         "ok": all(step.ok for step in steps),
@@ -124,37 +217,31 @@ def write_report(args: Namespace, report_dir: Path, steps: list[StepResult]) -> 
 def run_preflight(args: Namespace) -> StepResult:
     errors: list[str] = []
     notes: list[str] = []
-    manifest_path = resolve_path(args.manifest)
-    eval_dir = resolve_path(args.eval_dir)
+    for experiment in experiment_pipelines(args):
+        if experiment.requires_llm and getattr(args, "skip_llm_direct_rag", False):
+            notes.append(f"{experiment.name}: skipped LLM Direct RAG by flag")
+            continue
+        _validate_manifest_inputs(resolve_path(experiment.manifest), errors)
 
-    if not manifest_path.exists():
-        errors.append(f"manifest not found: {display_path(str(manifest_path))}")
-    else:
-        try:
-            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            errors.append(f"manifest is not valid JSON: {display_path(str(manifest_path))}: {exc}")
-        else:
-            config_path = manifest.get("config")
-            if config_path and not resolve_path(str(config_path)).exists():
-                errors.append(f"config not found: {config_path}")
-            for dataset in manifest.get("datasets", []):
-                raw_questions = dataset.get("raw_questions")
-                corpus = dataset.get("corpus")
-                if raw_questions and not resolve_path(str(raw_questions)).exists():
-                    errors.append(f"raw questions not found: {raw_questions}")
-                if corpus and not resolve_path(str(corpus)).exists():
-                    errors.append(f"corpus not found: {corpus}")
-
-    if not args.refresh_results and not args.skip_paper_assets:
-        csvs = list(eval_dir.glob("*.csv")) if eval_dir.exists() else []
-        if not csvs:
-            errors.append(
-                "evaluation CSVs are missing; run `python scripts/run_pipeline.py --refresh-results` "
-                "once on a clean checkout before using the quick pipeline"
-            )
-        else:
-            notes.append(f"found {len(csvs)} evaluation CSV files in {display_path(str(eval_dir))}")
+        if not args.refresh_results and not args.skip_paper_assets and not experiment.requires_llm:
+            eval_dir = resolve_path(experiment.eval_dir)
+            csvs = list(eval_dir.glob("*.csv")) if eval_dir.exists() else []
+            if not csvs:
+                if getattr(args, "suite", "main") == "submission":
+                    errors.append(
+                        f"{experiment.name}: evaluation CSVs are missing; run "
+                        "`python scripts/run_pipeline.py --suite submission --refresh-results` "
+                        "once before using the quick submission pipeline"
+                    )
+                else:
+                    errors.append(
+                        "evaluation CSVs are missing; run `python scripts/run_pipeline.py --refresh-results` "
+                        "once on a clean checkout before using the quick pipeline"
+                    )
+            else:
+                notes.append(
+                    f"{experiment.name}: found {len(csvs)} evaluation CSV files in {display_path(str(eval_dir))}"
+                )
 
     if args.refresh_results:
         notes.append("refresh mode will rebuild index, evaluation CSVs, diagnostics, and paper assets")
@@ -170,11 +257,44 @@ def run_preflight(args: Namespace) -> StepResult:
     )
 
 
+def _validate_manifest_inputs(manifest_path: Path, errors: list[str]) -> None:
+    if not manifest_path.exists():
+        errors.append(f"manifest not found: {display_path(str(manifest_path))}")
+        return
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        errors.append(f"manifest is not valid JSON: {display_path(str(manifest_path))}: {exc}")
+        return
+
+    config_path = manifest.get("config")
+    if config_path and not resolve_path(str(config_path)).exists():
+        errors.append(f"config not found: {config_path}")
+    for dataset in manifest.get("datasets", []):
+        raw_questions = dataset.get("raw_questions")
+        corpus = dataset.get("corpus")
+        if raw_questions and not resolve_path(str(raw_questions)).exists():
+            errors.append(f"raw questions not found: {raw_questions}")
+        if corpus and not resolve_path(str(corpus)).exists():
+            errors.append(f"corpus not found: {corpus}")
+
+
 def run_experiment_closure(args: Namespace, report_dir: Path) -> StepResult:
+    experiment = ExperimentPipeline(
+        name="finqa_300_local",
+        manifest=str(Path(args.manifest)),
+        eval_dir=str(Path(args.eval_dir)),
+        paper_output_dir=str(Path(args.paper_output_dir)),
+        preset="finqa_300_local",
+    )
+    return run_experiment_closure_for(experiment, report_dir)
+
+
+def run_experiment_closure_for(experiment: ExperimentPipeline, report_dir: Path) -> StepResult:
     result = ExperimentClosureGate().evaluate(
-        manifest_path=args.manifest,
-        eval_dir=args.eval_dir,
-        paper_output_dir=args.paper_output_dir,
+        manifest_path=str(resolve_path(experiment.manifest)),
+        eval_dir=str(resolve_path(experiment.eval_dir)),
+        paper_output_dir=str(resolve_path(experiment.paper_output_dir)),
         report_dir=report_dir,
     )
     failed = [check for check in result["checks"] if not check["ok"]]
@@ -185,12 +305,49 @@ def run_experiment_closure(args: Namespace, report_dir: Path) -> StepResult:
     stdout = "\n".join(metrics + [f"closure report: {display_path(result['artifacts']['closure_report_markdown'])}"])
     stderr = "\n".join(f"{check['name']}: {check['detail']}" for check in failed)
     return StepResult(
-        name="experiment_closure",
+        name=f"{experiment.name}_experiment_closure",
         command=["internal", "experiment_closure"],
         returncode=0 if result["ok"] else 1,
         stdout_tail=stdout,
         stderr_tail=stderr,
     )
+
+
+def experiment_pipelines(args: Namespace) -> tuple[ExperimentPipeline, ...]:
+    if getattr(args, "suite", "main") == "submission":
+        return SUBMISSION_PIPELINE
+    return (
+        ExperimentPipeline(
+            name="finqa_300_local",
+            manifest=str(Path(args.manifest)),
+            eval_dir=str(Path(args.eval_dir)),
+            paper_output_dir=str(Path(args.paper_output_dir)),
+            preset="finqa_300_local",
+        ),
+    )
+
+
+def run_llm_preflight(name: str) -> StepResult:
+    missing = [key for key in LLM_ENV_VARS if not os.environ.get(key)]
+    if missing:
+        return StepResult(
+            name=f"{name}_llm_preflight",
+            command=["internal", "llm_preflight"],
+            returncode=1,
+            stdout_tail="",
+            stderr_tail="missing LLM environment variables: " + ", ".join(missing),
+        )
+    return StepResult(
+        name=f"{name}_llm_preflight",
+        command=["internal", "llm_preflight"],
+        returncode=0,
+        stdout_tail="LLM Direct RAG environment is configured.",
+        stderr_tail="",
+    )
+
+
+def skipped_step(name: str, reason: str) -> StepResult:
+    return StepResult(name=name, command=["internal", "skip"], returncode=0, stdout_tail=reason, stderr_tail="")
 
 
 def run_step(name: str, command: list[str]) -> StepResult:
@@ -239,6 +396,7 @@ def render_markdown(report: dict) -> str:
         "",
         f"- Created UTC: `{report['created_utc']}`",
         f"- Root: `.`",
+        f"- Suite: `{report['suite']}`",
         f"- Refresh results: `{report['refresh_results']}`",
         f"- Overall status: `{'PASS' if report['ok'] else 'FAIL'}`",
         "",

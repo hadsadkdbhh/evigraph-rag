@@ -13,6 +13,12 @@ Last updated: 2026-07-01
   are all checked by `python scripts/run_pipeline.py`.
 - FinQA-300 local-planner pipeline: closed as a one-command reproducibility
   path for tests, optional result refresh, diagnostics, and paper tables.
+- Submission-suite pipeline: now registered as
+  `python scripts/run_pipeline.py --suite submission`. It covers the FinQA-300
+  main run, component ablations, retrieval baselines, FinQA-600 local stress
+  run, and the API-backed LLM Direct RAG hooks. Use `--skip-llm-direct-rag`
+  when API credentials are unavailable; otherwise missing LLM variables are
+  reported explicitly instead of silently skipping the baseline.
 - Clean-checkout pipeline contract: documented in `README.md`; a fresh clone
   should run `python scripts/run_pipeline.py --refresh-results` first because
   `outputs/` is ignored by Git, while `python scripts/run_pipeline.py` is the
@@ -49,6 +55,18 @@ Run the full FinQA-300 refresh gate:
 
 ```powershell
 python scripts/run_pipeline.py --refresh-results
+```
+
+Run the local submission-suite gate from existing outputs:
+
+```powershell
+python scripts/run_pipeline.py --suite submission --skip-llm-direct-rag
+```
+
+Refresh all local submission-suite outputs:
+
+```powershell
+python scripts/run_pipeline.py --suite submission --refresh-results --skip-llm-direct-rag
 ```
 
 The pipeline writes:
