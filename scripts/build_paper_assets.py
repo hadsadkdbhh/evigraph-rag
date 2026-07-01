@@ -24,6 +24,7 @@ def main() -> int:
             "finqa_300_local",
             "finqa_300_local_ablation",
             "finqa_300_local_retrieval_baselines",
+            "finqa_300_local_strong_retrieval_baselines",
             "finqa_300_llm_direct_rag",
             "finqa_600_local",
             "finqa_600_llm_direct_rag",

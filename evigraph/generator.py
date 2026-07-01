@@ -94,6 +94,7 @@ class LLMDirectRAGGenerator:
         self.llm_client = llm_client or make_llm_client(config)
         self.max_context_chars = int(config.get("max_context_chars", 12000))
         self.temperature = float(config.get("temperature", 0.0))
+        self.continue_on_error = bool(config.get("continue_on_error", False))
 
     def generate(self, query: str, support_graph: EvidenceGraph) -> Answer:
         valid_citations = [
@@ -101,10 +102,19 @@ class LLMDirectRAGGenerator:
             for node in support_graph.nodes.values()
             if node.node_type in {"chart", "table", "text", "calculation"}
         ]
-        payload = self.llm_client.chat_json(
-            self._messages(query, support_graph, valid_citations),
-            temperature=self.temperature,
-        )
+        try:
+            payload = self.llm_client.chat_json(
+                self._messages(query, support_graph, valid_citations),
+                temperature=self.temperature,
+            )
+        except Exception as exc:
+            if not self.continue_on_error:
+                raise
+            return Answer(
+                text="Insufficient evidence to answer.",
+                citations=[],
+                calculations=[f"llm_error: {type(exc).__name__}: {str(exc)[:200]}"],
+            )
         answer_text = str(payload.get("answer") or payload.get("text") or "").strip()
         if not answer_text:
             answer_text = "Insufficient evidence to answer."

@@ -15,8 +15,9 @@ Last updated: 2026-07-01
   path for tests, optional result refresh, diagnostics, and paper tables.
 - Submission-suite pipeline: now registered as
   `python scripts/run_pipeline.py --suite submission`. It covers the FinQA-300
-  main run, component ablations, retrieval baselines, FinQA-600 local stress
-  run, and the API-backed LLM Direct RAG hooks. Use `--skip-llm-direct-rag`
+  main run, component ablations, retrieval baselines, strong non-API retrieval
+  controls, FinQA-600 local stress run, and the API-backed LLM Direct RAG hooks.
+  Use `--skip-llm-direct-rag`
   when API credentials are unavailable; otherwise missing LLM variables are
   reported explicitly instead of silently skipping the baseline.
 - Clean-checkout pipeline contract: documented in `README.md`; a fresh clone
@@ -42,6 +43,15 @@ Last updated: 2026-07-01
   Oracle-doc `0.403`, Open BM25 `0.295`, and BM25 plus source-rerank `0.400`.
   This larger subset is a harsher stress test and should be reported separately
   from the FinQA-300 mechanism table.
+- A stronger non-API retrieval baseline suite now adds Open TF-IDF beside Open
+  BM25 and Open hybrid. The manifest is
+  `configs/experiments.finqa_300.local_planner_strong_retrieval_baselines.json`
+  and the generated tables live under
+  `paper/generated/finqa_300_local_planner_strong_retrieval_baselines/`. Full
+  EviGraph exact match is `0.403` for BM25, `0.380` for TF-IDF, and `0.400` for
+  hybrid. This makes BM25 look like a nontrivial local baseline rather than a
+  strawman, while still showing consistent graph-vs-direct gains across the
+  three open retrieval settings.
 
 ## Reproducibility Gates
 
@@ -113,6 +123,21 @@ and `0.400` for hybrid. Direct RAG reaches `0.370` under Open BM25, while
 retrieve-then-program reaches `0.393`. The dense setting is a deterministic
 local hashed-vector baseline, not a trained neural embedding retriever; use it
 as a reproducibility baseline, not as a SOTA dense retrieval claim.
+
+The 2026-07-01 strong retrieval-control manifest adds Open TF-IDF as a second
+non-API sparse baseline:
+
+| setting | Direct RAG | Retrieve-then-program | Full context | Full EviGraph |
+| --- | ---: | ---: | ---: | ---: |
+| Open BM25 | 0.370 | 0.393 | 0.383 | 0.403 |
+| Open TF-IDF | 0.353 | 0.377 | 0.383 | 0.380 |
+| Open hybrid | 0.367 | 0.393 | 0.390 | 0.400 |
+
+TF-IDF does not beat BM25 on exact match, but it is still a useful baseline:
+it lowers wrong-row/operation failures from 52 to 38 while raising missing
+percent-answer failures from 39 to 54. The paper-safe reading is that retrieval
+choice changes the failure surface, and EviGraph's strongest open setting is
+still BM25 until a true neural dense retriever is added.
 
 The 2026-07-01 LLM Direct RAG baseline hook adds an external LLM reader over the
 same retrieval-order context budget. It is intentionally separate from the local

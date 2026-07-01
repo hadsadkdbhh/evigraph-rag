@@ -68,6 +68,13 @@ SUBMISSION_PIPELINE = (
         preset="finqa_300_local_retrieval_baselines",
     ),
     ExperimentPipeline(
+        name="finqa_300_strong_retrieval_baselines",
+        manifest="configs/experiments.finqa_300.local_planner_strong_retrieval_baselines.json",
+        eval_dir="outputs/eval/finqa_300_local_planner_strong_retrieval_baselines",
+        paper_output_dir="paper/generated/finqa_300_local_planner_strong_retrieval_baselines",
+        preset="finqa_300_local_strong_retrieval_baselines",
+    ),
+    ExperimentPipeline(
         name="finqa_600_local",
         manifest="configs/experiments.finqa_600.local_planner.json",
         eval_dir="outputs/eval/finqa_600_local_planner",

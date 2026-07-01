@@ -89,6 +89,8 @@ Main reproducibility artifacts:
 - `paper/generated/finqa_300_local_planner/finqa_results_tables.tex`
 - `paper/generated/finqa_300_local_planner_ablation/finqa_results_summary.md`
 - `paper/generated/finqa_300_local_planner_ablation/finqa_results_tables.tex`
+- `paper/generated/finqa_300_local_planner_strong_retrieval_baselines/finqa_results_summary.md`
+- `paper/generated/finqa_300_local_planner_strong_retrieval_baselines/finqa_results_tables.tex`
 - `paper/generated/finqa_600_local_planner/finqa_results_summary.md`
 - `paper/generated/finqa_600_local_planner/finqa_results_tables.tex`
 
@@ -237,6 +239,16 @@ Run the local-planner baseline/ablation manifest:
 ```powershell
 python scripts/run_manifest.py --manifest configs/experiments.finqa_300.local_planner_ablation.json
 python scripts/build_paper_assets.py --eval-dir outputs/eval/finqa_300_local_planner_ablation --output-dir paper/generated/finqa_300_local_planner_ablation --preset finqa_300_local_ablation
+```
+
+Run the stronger non-API open-retrieval baseline suite. This adds Open TF-IDF
+beside Open BM25 and Open hybrid; install the optional scikit-learn dependency
+first if it is not already available:
+
+```powershell
+python -m pip install -r requirements-optional-baselines.txt
+python scripts/run_manifest.py --manifest configs/experiments.finqa_300.local_planner_strong_retrieval_baselines.json
+python scripts/build_paper_assets.py --eval-dir outputs/eval/finqa_300_local_planner_strong_retrieval_baselines --output-dir paper/generated/finqa_300_local_planner_strong_retrieval_baselines --preset finqa_300_local_strong_retrieval_baselines
 ```
 
 Run the external LLM Direct RAG baseline after setting an OpenAI-compatible

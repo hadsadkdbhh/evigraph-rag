@@ -1,0 +1,46 @@
+{
+  "title": "EviGraph FinQA 300 Open BM25 Kimi K2.6 Direct RAG Baseline",
+  "config": "configs/default_kimi_k26_llm_direct_rag.yaml",
+  "output_dir": "outputs/eval/finqa_300_kimi_k26_direct_rag_open_bm25",
+  "datasets": [
+    {
+      "name": "finqa_300_subset",
+      "raw_questions": "data/raw/finqa_300_subset.jsonl",
+      "questions": "outputs/eval/finqa_300_kimi_k26_direct_rag_open_bm25/finqa_questions.jsonl",
+      "field_map": {
+        "id": "id",
+        "query": "question",
+        "answer": "answer",
+        "source_doc": "source_doc",
+        "task_type": "task_type"
+      },
+      "corpus": "data/finqa_300_corpus",
+      "build_index": true,
+      "index": "outputs/index/finqa_300_subset.json",
+      "chunk_size": 1200,
+      "chunk_overlap": 160,
+      "gate": {
+        "min_records": 300,
+        "min_source_doc_coverage": 1.0,
+        "fail_on_error": true
+      }
+    }
+  ],
+  "experiments": [
+    {
+      "name": "open_bm25_kimi_k26_direct_rag",
+      "type": "batch",
+      "retrieval_mode": "open",
+      "progress_every": 1,
+      "methods": [
+        "llm_direct_rag"
+      ]
+    }
+  ],
+  "limitations": [
+    "This manifest runs only the Open BM25 setting to control API spend before running the full three-setting LLM Direct RAG baseline.",
+    "The model is fixed in the config as kimi-k2.6; the OpenAI-compatible base URL and API key must be provided through LLM_BASE_URL and LLM_API_KEY.",
+    "The baseline uses retrieval-order evidence and does not use the EviGraph operation planner, risk-aware support selection, or verifier-guided repair.",
+    "The verifier still scores the output after generation so exact match and support diagnostics are comparable to local baselines."
+  ]
+}

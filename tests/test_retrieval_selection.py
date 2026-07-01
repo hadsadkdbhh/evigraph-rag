@@ -7,7 +7,7 @@ from pathlib import Path
 
 from evigraph.evidence_graph import EvidenceGraph
 from evigraph.document_loader import DocumentChunk
-from evigraph.retrieval import BM25Retriever, CorpusRetriever, DenseRetriever, HybridRetriever
+from evigraph.retrieval import BM25Retriever, CorpusRetriever, DenseRetriever, HybridRetriever, SklearnTfidfRetriever
 from evigraph.schema import EvidenceNode, EvidenceScore
 from evigraph.selector import EvidenceSetSelector
 
@@ -183,6 +183,41 @@ class RetrievalSelectionTest(unittest.TestCase):
             )
 
         self.assertEqual(nodes[0].metadata["retrieval_model"], "local_hashed_dense")
+        self.assertEqual(nodes[1].metadata.get("chunk_id"), "case_0_1")
+        self.assertTrue(nodes[1].metadata.get("neighbor_context"))
+
+    def test_tfidf_retrieval_records_sklearn_metadata(self) -> None:
+        chunks = [
+            DocumentChunk("noise", "generic revenue discussion", "noise.md"),
+            DocumentChunk("target", "net income attributable to common shareholders diluted EPS", "target.md"),
+        ]
+
+        nodes = SklearnTfidfRetriever(chunks).retrieve("diluted net income common shareholders", top_k=2)
+
+        self.assertEqual(nodes[0].metadata["chunk_id"], "target")
+        self.assertEqual(nodes[0].metadata["retrieval_model"], "sklearn_tfidf")
+
+    def test_open_tfidf_retrieval_adds_adjacent_chunk_context(self) -> None:
+        chunks = [
+            DocumentChunk("case_0_0", "net income attributable to common shareholders diluted EPS", "case.md", metadata={"char_start": 0}),
+            DocumentChunk("case_0_1", "continuation table weighted average shares outstanding", "case.md", metadata={"char_start": 900}),
+            DocumentChunk("other_0_0", "generic revenue discussion", "other.md", metadata={"char_start": 0}),
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            index_path = Path(tmpdir) / "index.json"
+            index_path.write_text(
+                json.dumps({"chunks": [chunk.to_dict() for chunk in chunks]}),
+                encoding="utf-8",
+            )
+
+            nodes = CorpusRetriever().retrieve(
+                "diluted net income common shareholders",
+                str(index_path),
+                top_k=1,
+                retrieval_mode="open_tfidf",
+            )
+
+        self.assertEqual(nodes[0].metadata["retrieval_model"], "sklearn_tfidf")
         self.assertEqual(nodes[1].metadata.get("chunk_id"), "case_0_1")
         self.assertTrue(nodes[1].metadata.get("neighbor_context"))
 

@@ -43,7 +43,7 @@ Each retrieved item becomes a node with utility, risk, cost, and provenance sign
 The system then selects a support subgraph, expands source context when running oracle-document analysis, executes table operations, and verifies claims against citations.
 
 This skeleton is intentionally conservative.
-The current FinQA experiments use a deterministic 300-example validation subset and report oracle-document, open BM25, BM25 with source reranking, local hashed dense retrieval, and deterministic hybrid retrieval settings.
+The current FinQA experiments use a deterministic 300-example validation subset and report oracle-document, open BM25, BM25 with source reranking, TF-IDF, local hashed dense retrieval, and deterministic hybrid retrieval settings.
 Rather than claiming benchmark-level superiority, the paper asks a narrower question: what is gained when a RAG system turns retrieved text into a selected, executable, and verified evidence state?
 
 Our current answer is a three-step story.
@@ -231,9 +231,10 @@ Full EviGraph & 0.510 & 0.403 & 0.510 \\
 \subsection{Open-Retrieval Baseline Stress Test}
 
 We additionally compare open retrieval variants while keeping the local program planner and verifier fixed.
-Open BM25 remains the strongest current retrieval baseline for this subset: full EviGraph obtains 0.403 exact match with BM25, 0.400 with deterministic numeric hybrid retrieval, and 0.133 with the local hashed-vector dense baseline.
+Open BM25 remains the strongest current non-API retrieval control for this subset: full EviGraph obtains 0.403 exact match with BM25, 0.400 with deterministic numeric hybrid retrieval, 0.380 with TF-IDF retrieval, and 0.133 with the local hashed-vector dense baseline.
+The TF-IDF control is useful because it changes the lexical matching surface without using a learned retriever: it reduces wrong-row/operation counts from 52 to 38, but increases missing percent-answer failures from 39 to 54.
 The dense baseline is intentionally labeled as local hashed dense rather than neural dense retrieval; it is useful as a reproducible control, but it is not a substitute for a trained embedding retriever.
-This result prevents an overbroad claim: the current system's main empirical story is not that retrieval is solved, but that evidence-state control improves the use of retrieved evidence once candidates are available.
+These results prevent an overbroad claim: the current system's main empirical story is not that retrieval is solved, but that evidence-state control improves the use of retrieved evidence once candidates are available.
 
 \paragraph{FinQA-600 stress subset.}
 To avoid overfitting the narrative to the 300-example diagnostic subset, we also construct a deterministic 600-example FinQA validation subset using the same seed and a larger sampling pool.

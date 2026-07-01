@@ -218,6 +218,32 @@ class ManifestRunnerTest(unittest.TestCase):
             self.assertIn("Retrieved context", fake_llm.messages[1]["content"])
             self.assertNotIn("planned_", " ".join(result["answer"].get("calculations", [])))
 
+    def test_llm_direct_rag_can_continue_after_external_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            corpus_dir = root / "corpus"
+            corpus_dir.mkdir()
+            (corpus_dir / "report.md").write_text("Cash paid was 6.9.\n", encoding="utf-8")
+
+            class FailingLLM:
+                def chat_json(self, messages, schema=None, temperature=0.0):
+                    raise RuntimeError("timed out")
+
+            config = {
+                "run": {"output_dir": str(root / "runs")},
+                "llm_direct_rag": {"provider": "openai_compatible", "continue_on_error": True},
+            }
+            with patch("evigraph.generator.make_llm_client", return_value=FailingLLM()):
+                result = MethodRunner(config).run(
+                    "What percentage was paid in cash?",
+                    "llm_direct_rag",
+                    corpus_path=str(corpus_dir),
+                    log_run=False,
+                )
+
+            self.assertEqual(result["answer"]["text"], "Insufficient evidence to answer.")
+            self.assertIn("llm_error", result["answer"]["calculations"][0])
+
     def test_manifest_passes_configured_retrieval_top_k_to_runner(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

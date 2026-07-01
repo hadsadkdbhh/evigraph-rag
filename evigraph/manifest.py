@@ -121,6 +121,7 @@ class ManifestRunner:
         self._validate_methods(methods)
         samples = [json.loads(line) for line in questions_path.read_text(encoding="utf-8").splitlines() if line.strip()]
         total_runs = len(samples) * len(methods)
+        progress_every = max(1, int(experiment.get("progress_every", 10)))
         print(
             f"[manifest] {dataset_name}/{experiment['name']}: "
             f"{len(samples)} samples x {len(methods)} methods = {total_runs} runs",
@@ -190,9 +191,10 @@ class ManifestRunner:
                             "run_dir": result["artifacts"]["run_dir"],
                         }
                     )
+                    output_handle.flush()
                     completed_runs += 1
                     completed_keys.add(key)
-                    if completed_runs == 1 or completed_runs % 10 == 0 or completed_runs == total_runs:
+                    if completed_runs == 1 or completed_runs % progress_every == 0 or completed_runs == total_runs:
                         print(
                             f"[manifest] {dataset_name}/{experiment['name']}: "
                             f"{completed_runs}/{total_runs} runs complete",

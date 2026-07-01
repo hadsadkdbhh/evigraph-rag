@@ -10,8 +10,9 @@ from evigraph.document_loader import DocumentChunk, DocumentLoader, load_chunks_
 from evigraph.schema import EvidenceNode
 
 
-RETRIEVAL_MODES = ("oracle_doc", "open", "open_dense", "open_hybrid", "source_rerank")
+RETRIEVAL_MODES = ("oracle_doc", "open", "open_tfidf", "open_dense", "open_hybrid", "source_rerank")
 _DENSE_VECTOR_CACHE: dict[tuple[int, tuple[str, ...]], list[dict[int, float]]] = {}
+_TFIDF_CACHE: dict[tuple[str, ...], tuple[object, object]] = {}
 
 
 class MockRetriever:
@@ -283,6 +284,58 @@ class DenseRetriever(BM25Retriever):
         return {index: value / norm for index, value in vector.items()}
 
 
+class SklearnTfidfRetriever(BM25Retriever):
+    """Scikit-learn TF-IDF cosine retrieval baseline for local reproducibility."""
+
+    def __init__(self, chunks: list[DocumentChunk]) -> None:
+        super().__init__(chunks)
+        cache_key = tuple(chunk.chunk_id for chunk in chunks)
+        cached = _TFIDF_CACHE.get(cache_key)
+        if cached is None:
+            vectorizer, matrix = self._fit_matrix(chunks)
+            cached = (vectorizer, matrix)
+            _TFIDF_CACHE[cache_key] = cached
+        self.vectorizer, self.matrix = cached
+
+    def retrieve(self, query: str, top_k: int = 8) -> list[EvidenceNode]:
+        query_vector = self.vectorizer.transform([query])
+        scores = (self.matrix @ query_vector.T).toarray().ravel()
+        scored = [(float(score), chunk) for score, chunk in zip(scores, self.chunks) if float(score) > 0]
+        if not scored:
+            scored = [(0.0, chunk) for chunk in self.chunks]
+
+        nodes = []
+        for rank, (score, chunk) in enumerate(sorted(scored, key=lambda item: item[0], reverse=True)[:top_k], start=1):
+            nodes.append(
+                self._node_from_chunk(
+                    rank,
+                    score,
+                    chunk,
+                    {"retrieval_model": "sklearn_tfidf", "tfidf_analyzer": "word_1_2"},
+                )
+            )
+        return nodes
+
+    def _fit_matrix(self, chunks: list[DocumentChunk]) -> tuple[object, object]:
+        try:
+            from sklearn.feature_extraction.text import TfidfVectorizer
+            from sklearn.preprocessing import normalize
+        except ImportError as exc:
+            raise RuntimeError(
+                "open_tfidf retrieval requires scikit-learn. Install optional retrieval dependencies first."
+            ) from exc
+
+        vectorizer = TfidfVectorizer(
+            lowercase=True,
+            ngram_range=(1, 2),
+            token_pattern=r"(?u)\b[A-Za-z0-9][A-Za-z0-9_./%-]*\b",
+            sublinear_tf=True,
+            min_df=1,
+        )
+        matrix = vectorizer.fit_transform(chunk.text for chunk in chunks)
+        return vectorizer, normalize(matrix, norm="l2", copy=False)
+
+
 class CorpusRetriever:
     def retrieve(
         self,
@@ -302,6 +355,10 @@ class CorpusRetriever:
             chunks = DocumentLoader().load(path)
         if retrieval_mode == "open":
             nodes = BM25Retriever(chunks).retrieve(query, top_k=top_k)
+            return self._with_adjacent_context(nodes, chunks)
+
+        if retrieval_mode == "open_tfidf":
+            nodes = SklearnTfidfRetriever(chunks).retrieve(query, top_k=top_k)
             return self._with_adjacent_context(nodes, chunks)
 
         if retrieval_mode == "open_dense":

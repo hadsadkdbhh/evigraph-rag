@@ -52,6 +52,7 @@ class RunPipelinePreflightTest(unittest.TestCase):
 
         self.assertIn("finqa_300_local_ablation", names)
         self.assertIn("finqa_300_retrieval_baselines", names)
+        self.assertIn("finqa_300_strong_retrieval_baselines", names)
         self.assertIn("finqa_300_llm_direct_rag", names)
         self.assertIn("finqa_600_llm_direct_rag", names)
 

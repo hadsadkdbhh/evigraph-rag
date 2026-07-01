@@ -28,6 +28,8 @@ Use the 300-example FinQA validation subset as the current reality check.
 - Local-planner ablation artifacts: `paper/generated/finqa_300_local_planner_ablation/`
 - Local-planner retrieval-baseline manifest: `configs/experiments.finqa_300.local_planner_retrieval_baselines.json`
 - Local-planner retrieval-baseline artifacts: `paper/generated/finqa_300_local_planner_retrieval_baselines/`
+- Strong non-API retrieval-control manifest: `configs/experiments.finqa_300.local_planner_strong_retrieval_baselines.json`
+- Strong non-API retrieval-control artifacts: `paper/generated/finqa_300_local_planner_strong_retrieval_baselines/`
 - LLM Direct RAG manifest: `configs/experiments.finqa_300.llm_direct_rag.json`
 - LLM Direct RAG config: `configs/default_llm_direct_rag.yaml`
 - Strong subset raw data: `data/raw/finqa_600_subset.jsonl`
@@ -55,6 +57,19 @@ Latest documented FinQA-600 local planner exact match:
 | Oracle-doc full EviGraph | 0.403 |
 | Open BM25 full EviGraph | 0.295 |
 | BM25 + source-rerank full EviGraph | 0.400 |
+
+Latest documented FinQA-300 non-API open retrieval controls:
+
+| Setting | Direct RAG | Retrieve-then-program | Full EviGraph |
+| --- | ---: | ---: | ---: |
+| Open BM25 | 0.370 | 0.393 | 0.403 |
+| Open TF-IDF | 0.353 | 0.377 | 0.380 |
+| Open hybrid | 0.367 | 0.393 | 0.400 |
+
+Interpretation: BM25 remains the strongest current open retrieval baseline.
+TF-IDF is still useful because it lowers wrong-row/operation failures but raises
+missing percent-answer failures, proving that retrieval choice changes failure
+composition rather than simply making all errors better or worse.
 
 Latest Open BM25 failure counts after the 2026-06-30 selector/pipeline pass:
 
@@ -130,7 +145,8 @@ python .\scripts\run_pipeline.py --suite submission --skip-llm-direct-rag
 ```
 
 This suite checks FinQA-300 main results, FinQA-300 component ablations,
-FinQA-300 retrieval baselines, and the FinQA-600 local stress run. The
+FinQA-300 retrieval baselines, FinQA-300 strong non-API retrieval controls, and
+the FinQA-600 local stress run. The
 API-backed LLM Direct RAG manifests are part of the suite but should be skipped
 with `--skip-llm-direct-rag` until `LLM_PROVIDER`, `LLM_BASE_URL`,
 `LLM_API_KEY`, and `LLM_MODEL` are set. Without that flag, missing LLM variables
@@ -175,6 +191,17 @@ The latest retrieval-baseline manifest passed on 2026-07-01:
 - Full EviGraph EM: BM25 `0.403`, local hashed dense `0.133`, hybrid `0.400`
 - Caveat: `open_dense` is a deterministic local hashed-vector baseline, not a trained neural dense retriever. It is useful as a reproducible retrieval baseline but should not be described as a modern embedding model.
 - Manifest batch runs now resume from existing `(id, method)` rows, which allowed the interrupted hybrid run to continue from `362/1200` rather than overwriting the finished BM25 and dense CSVs.
+
+The latest strong retrieval-control manifest passed on 2026-07-01:
+
+- Manifest: `configs/experiments.finqa_300.local_planner_strong_retrieval_baselines.json`
+- Workload: 300 FinQA examples x 6 methods x 3 open retrieval settings = 5400 runs
+- Retrieval settings: Open BM25, Open TF-IDF, Open hybrid
+- Methods: Direct RAG, Top-k Program, Retrieve-then-program, Full context, Utility-only, Full EviGraph
+- Artifact directory: `outputs/eval/finqa_300_local_planner_strong_retrieval_baselines`
+- Paper assets: `paper/generated/finqa_300_local_planner_strong_retrieval_baselines/`
+- Full EviGraph EM: BM25 `0.403`, TF-IDF `0.380`, hybrid `0.400`
+- Caveat: `open_tfidf` requires scikit-learn and is a local sparse baseline, not a neural retriever.
 
 The LLM Direct RAG external baseline is now wired but not yet run:
 

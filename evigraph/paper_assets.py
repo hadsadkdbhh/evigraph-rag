@@ -130,6 +130,24 @@ FINQA_300_LOCAL_RETRIEVAL_BASELINE_RESULT_SPECS = (
     ),
 )
 
+FINQA_300_LOCAL_STRONG_RETRIEVAL_BASELINE_RESULT_SPECS = (
+    ResultSpec(
+        "Open BM25",
+        "finqa_300_subset_open_bm25_baseline.csv",
+        ("direct_rag", "topk", "retrieve_then_program", "full_context", "utility_only", "full_evigraph"),
+    ),
+    ResultSpec(
+        "Open TF-IDF",
+        "finqa_300_subset_open_tfidf_baseline.csv",
+        ("direct_rag", "topk", "retrieve_then_program", "full_context", "utility_only", "full_evigraph"),
+    ),
+    ResultSpec(
+        "Open hybrid",
+        "finqa_300_subset_open_hybrid_baseline.csv",
+        ("direct_rag", "topk", "retrieve_then_program", "full_context", "utility_only", "full_evigraph"),
+    ),
+)
+
 FINQA_300_LLM_DIRECT_RAG_RESULT_SPECS = (
     ResultSpec(
         "Oracle-doc",
@@ -189,6 +207,7 @@ RESULT_SPEC_PRESETS = {
     "finqa_300_local": FINQA_300_LOCAL_RESULT_SPECS,
     "finqa_300_local_ablation": FINQA_300_LOCAL_ABLATION_RESULT_SPECS,
     "finqa_300_local_retrieval_baselines": FINQA_300_LOCAL_RETRIEVAL_BASELINE_RESULT_SPECS,
+    "finqa_300_local_strong_retrieval_baselines": FINQA_300_LOCAL_STRONG_RETRIEVAL_BASELINE_RESULT_SPECS,
     "finqa_300_llm_direct_rag": FINQA_300_LLM_DIRECT_RAG_RESULT_SPECS,
     "finqa_600_local": FINQA_600_LOCAL_RESULT_SPECS,
     "finqa_600_llm_direct_rag": FINQA_600_LLM_DIRECT_RAG_RESULT_SPECS,

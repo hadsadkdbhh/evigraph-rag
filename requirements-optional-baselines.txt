@@ -1,0 +1,6 @@
+# Optional local baseline dependencies.
+#
+# The core FinQA-300 pipeline intentionally uses only the Python standard
+# library. Install this file only when running optional retrieval controls such
+# as Open TF-IDF.
+scikit-learn
