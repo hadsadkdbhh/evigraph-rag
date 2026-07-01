@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated from the checked-in FinQA MVP0 run.
+Last updated: 2026-07-01
 
 ## Current Stage
 
@@ -22,9 +22,11 @@ Last updated from the checked-in FinQA MVP0 run.
   reached the `0.50+` target at `0.510`, source-rerank has cleared the `0.45+`
   target at `0.510`, and open BM25 has cleared the `0.35+` target at `0.403`.
   Local-planner baselines/ablations have been added and run on the 300-example
-  subset; the remaining paper work is stronger external baselines and a method
-  narrative centered on operation planner, verifier, and evidence graph rather
-  than rule patches.
+  subset. Open retrieval baselines have also been run for BM25, local hashed
+  dense, and numeric hybrid retrieval. The remaining paper work is a stronger
+  external LLM direct RAG baseline, ideally a true neural dense retriever, and a
+  method narrative centered on operation planner, verifier, and evidence graph
+  rather than rule patches.
 
 ## Reproducibility Gates
 
@@ -71,6 +73,17 @@ batch and Pareto experiments; this closes a pipeline-control bug where changing
 the YAML top-k value did not actually affect manifest evaluation. A controlled
 Open BM25 top-k probe showed that increasing top-k alone did not improve exact
 match, so the main config remains at top-k 8.
+The manifest runner now also resumes incomplete batch CSVs by skipping existing
+`(id, method)` rows. This was added after an interrupted retrieval-baseline
+run, and it is now the recommended path for long baseline and ablation jobs.
+
+The 2026-07-01 retrieval-baseline manifest runs 3600 examples across Open BM25,
+Open dense, and Open hybrid retrieval, using Top-k Program, Full context,
+Utility-only, and Full EviGraph methods. Full EviGraph exact match is `0.403`
+for BM25, `0.133` for local hashed dense, and `0.400` for hybrid. The dense
+setting is a deterministic local hashed-vector baseline, not a trained neural
+embedding retriever; use it as a reproducibility baseline, not as a SOTA dense
+retrieval claim.
 
 Run the quick MVP0 acceptance suite:
 

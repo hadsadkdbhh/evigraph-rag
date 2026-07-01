@@ -1,0 +1,69 @@
+{
+  "title": "EviGraph FinQA 300-Example Local Program Planner Retrieval Baselines",
+  "config": "configs/default_local_planner.yaml",
+  "output_dir": "outputs/eval/finqa_300_local_planner_retrieval_baselines",
+  "datasets": [
+    {
+      "name": "finqa_300_subset",
+      "raw_questions": "data/raw/finqa_300_subset.jsonl",
+      "questions": "outputs/eval/finqa_300_local_planner_retrieval_baselines/finqa_questions.jsonl",
+      "field_map": {
+        "id": "id",
+        "query": "question",
+        "answer": "answer",
+        "source_doc": "source_doc",
+        "task_type": "task_type"
+      },
+      "corpus": "data/finqa_300_corpus",
+      "build_index": true,
+      "index": "outputs/index/finqa_300_subset.json",
+      "chunk_size": 1200,
+      "chunk_overlap": 160,
+      "gate": {
+        "min_records": 300,
+        "min_source_doc_coverage": 1.0,
+        "fail_on_error": true
+      }
+    }
+  ],
+  "experiments": [
+    {
+      "name": "open_bm25_baseline",
+      "type": "batch",
+      "retrieval_mode": "open",
+      "methods": [
+        "topk",
+        "full_context",
+        "utility_only",
+        "full_evigraph"
+      ]
+    },
+    {
+      "name": "open_dense_baseline",
+      "type": "batch",
+      "retrieval_mode": "open_dense",
+      "methods": [
+        "topk",
+        "full_context",
+        "utility_only",
+        "full_evigraph"
+      ]
+    },
+    {
+      "name": "open_hybrid_baseline",
+      "type": "batch",
+      "retrieval_mode": "open_hybrid",
+      "methods": [
+        "topk",
+        "full_context",
+        "utility_only",
+        "full_evigraph"
+      ]
+    }
+  ],
+  "limitations": [
+    "The dense retriever is a deterministic local hashed-vector baseline, not a trained neural retriever.",
+    "All retrieval baselines use the same local program planner and verifier so retrieval effects are easier to compare.",
+    "These results are diagnostic FinQA-300 subset results and should not be reported as final benchmark claims."
+  ]
+}

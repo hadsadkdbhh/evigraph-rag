@@ -103,10 +103,29 @@ FINQA_300_LOCAL_ABLATION_RESULT_SPECS = (
     ),
 )
 
+FINQA_300_LOCAL_RETRIEVAL_BASELINE_RESULT_SPECS = (
+    ResultSpec(
+        "Open BM25",
+        "finqa_300_subset_open_bm25_baseline.csv",
+        ("topk", "full_context", "utility_only", "full_evigraph"),
+    ),
+    ResultSpec(
+        "Open dense",
+        "finqa_300_subset_open_dense_baseline.csv",
+        ("topk", "full_context", "utility_only", "full_evigraph"),
+    ),
+    ResultSpec(
+        "Open hybrid",
+        "finqa_300_subset_open_hybrid_baseline.csv",
+        ("topk", "full_context", "utility_only", "full_evigraph"),
+    ),
+)
+
 RESULT_SPEC_PRESETS = {
     "finqa": DEFAULT_RESULT_SPECS,
     "finqa_300_local": FINQA_300_LOCAL_RESULT_SPECS,
     "finqa_300_local_ablation": FINQA_300_LOCAL_ABLATION_RESULT_SPECS,
+    "finqa_300_local_retrieval_baselines": FINQA_300_LOCAL_RETRIEVAL_BASELINE_RESULT_SPECS,
 }
 
 

@@ -108,6 +108,33 @@ class PaperAssetBuilderTest(unittest.TestCase):
         self.assertIn("Open BM25", markdown)
         self.assertIn("BM25 + source rerank", markdown)
 
+    def test_builds_tables_from_finqa_300_retrieval_baseline_preset(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            eval_dir = root / "eval"
+            output_dir = root / "paper"
+            eval_dir.mkdir()
+            for suffix in [
+                "open_bm25_baseline",
+                "open_dense_baseline",
+                "open_hybrid_baseline",
+            ]:
+                self._write_eval_csv(
+                    eval_dir / f"finqa_300_subset_{suffix}.csv",
+                    [("topk", "0.40", "7"), ("full_context", "0.35", "8"), ("full_evigraph", "0.45", "9")],
+                )
+
+            paths = PaperAssetBuilder().build(
+                eval_dir,
+                output_dir,
+                preset="finqa_300_local_retrieval_baselines",
+            )
+            markdown = Path(paths["markdown"]).read_text(encoding="utf-8")
+
+        self.assertIn("Open dense", markdown)
+        self.assertIn("Full context", markdown)
+        self.assertIn("Top-k Program", markdown)
+
     def _write_eval_csv(self, path: Path, rows: list[tuple[str, str, str]]) -> None:
         fieldnames = [
             "dataset",

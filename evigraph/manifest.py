@@ -121,7 +121,6 @@ class ManifestRunner:
         self._validate_methods(methods)
         samples = [json.loads(line) for line in questions_path.read_text(encoding="utf-8").splitlines() if line.strip()]
         total_runs = len(samples) * len(methods)
-        completed_runs = 0
         print(
             f"[manifest] {dataset_name}/{experiment['name']}: "
             f"{len(samples)} samples x {len(methods)} methods = {total_runs} runs",
@@ -149,13 +148,26 @@ class ManifestRunner:
             "latency_ms",
             "run_dir",
         ]
+        completed_keys = self._completed_batch_keys(output_path)
+        completed_runs = len(completed_keys)
+        if completed_runs:
+            print(
+                f"[manifest] {dataset_name}/{experiment['name']}: "
+                f"resuming from {completed_runs}/{total_runs} completed runs",
+                flush=True,
+            )
+        append_existing = output_path.exists() and output_path.stat().st_size > 0
         with questions_path.open("r", encoding="utf-8") as input_handle, output_path.open(
-            "w", encoding="utf-8", newline=""
+            "a" if append_existing else "w", encoding="utf-8", newline=""
         ) as output_handle:
             writer = csv.DictWriter(output_handle, fieldnames=fieldnames)
-            writer.writeheader()
+            if not append_existing:
+                writer.writeheader()
             for sample in samples:
                 for method in methods:
+                    key = self._batch_key(sample.get("id"), method)
+                    if key in completed_keys:
+                        continue
                     result = MethodRunner(deepcopy(base_config)).run(
                         sample["query"],
                         method,
@@ -179,6 +191,7 @@ class ManifestRunner:
                         }
                     )
                     completed_runs += 1
+                    completed_keys.add(key)
                     if completed_runs == 1 or completed_runs % 10 == 0 or completed_runs == total_runs:
                         print(
                             f"[manifest] {dataset_name}/{experiment['name']}: "
@@ -315,6 +328,20 @@ class ManifestRunner:
         unknown = [method for method in methods if method not in METHODS]
         if unknown:
             raise ValueError(f"Unknown methods: {', '.join(unknown)}")
+
+    def _completed_batch_keys(self, output_path: Path) -> set[tuple[str, str]]:
+        if not output_path.exists() or output_path.stat().st_size == 0:
+            return set()
+        with output_path.open("r", encoding="utf-8", newline="") as handle:
+            reader = csv.DictReader(handle)
+            return {
+                self._batch_key(row.get("id"), row.get("method"))
+                for row in reader
+                if row.get("id") and row.get("method")
+            }
+
+    def _batch_key(self, sample_id: Any, method: Any) -> tuple[str, str]:
+        return str(sample_id), str(method)
 
     def _read_manifest(self, path: Path) -> dict[str, Any]:
         if not path.exists():

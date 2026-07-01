@@ -3,13 +3,15 @@ from __future__ import annotations
 import math
 import re
 from collections import Counter, defaultdict
+from hashlib import blake2b
 from pathlib import Path
 
 from evigraph.document_loader import DocumentChunk, DocumentLoader, load_chunks_from_index
 from evigraph.schema import EvidenceNode
 
 
-RETRIEVAL_MODES = ("oracle_doc", "open", "open_hybrid", "source_rerank")
+RETRIEVAL_MODES = ("oracle_doc", "open", "open_dense", "open_hybrid", "source_rerank")
+_DENSE_VECTOR_CACHE: dict[tuple[int, tuple[str, ...]], list[dict[int, float]]] = {}
 
 
 class MockRetriever:
@@ -232,6 +234,55 @@ class HybridRetriever(BM25Retriever):
         return nodes
 
 
+class DenseRetriever(BM25Retriever):
+    """Local hashed-vector retriever for reproducible dense-style baselines."""
+
+    def __init__(self, chunks: list[DocumentChunk], dimensions: int = 384) -> None:
+        super().__init__(chunks)
+        self.dimensions = dimensions
+        cache_key = (dimensions, tuple(chunk.chunk_id for chunk in chunks))
+        cached_vectors = _DENSE_VECTOR_CACHE.get(cache_key)
+        if cached_vectors is None:
+            cached_vectors = [self._embed(chunk.text) for chunk in chunks]
+            _DENSE_VECTOR_CACHE[cache_key] = cached_vectors
+        self.chunk_vectors = cached_vectors
+
+    def retrieve(self, query: str, top_k: int = 8) -> list[EvidenceNode]:
+        query_vector = self._embed(query)
+        scored = []
+        for chunk, vector in zip(self.chunks, self.chunk_vectors):
+            score = _dot(query_vector, vector)
+            if score > 0:
+                scored.append((score, chunk))
+        if not scored:
+            scored = [(0.0, chunk) for chunk in self.chunks]
+
+        nodes = []
+        for rank, (score, chunk) in enumerate(sorted(scored, key=lambda item: item[0], reverse=True)[:top_k], start=1):
+            nodes.append(
+                self._node_from_chunk(
+                    rank,
+                    score,
+                    chunk,
+                    {"retrieval_model": "local_hashed_dense", "embedding_dimensions": self.dimensions},
+                )
+            )
+        return nodes
+
+    def _embed(self, text: str) -> dict[int, float]:
+        vector: dict[int, float] = defaultdict(float)
+        for feature, weight in _dense_features(text).items():
+            digest = blake2b(feature.encode("utf-8"), digest_size=8).digest()
+            raw = int.from_bytes(digest, byteorder="big", signed=False)
+            index = raw % self.dimensions
+            sign = 1.0 if (raw >> 8) & 1 else -1.0
+            vector[index] += sign * weight
+        norm = math.sqrt(sum(value * value for value in vector))
+        if norm == 0:
+            return dict(vector)
+        return {index: value / norm for index, value in vector.items()}
+
+
 class CorpusRetriever:
     def retrieve(
         self,
@@ -251,6 +302,10 @@ class CorpusRetriever:
             chunks = DocumentLoader().load(path)
         if retrieval_mode == "open":
             nodes = BM25Retriever(chunks).retrieve(query, top_k=top_k)
+            return self._with_adjacent_context(nodes, chunks)
+
+        if retrieval_mode == "open_dense":
+            nodes = DenseRetriever(chunks).retrieve(query, top_k=top_k)
             return self._with_adjacent_context(nodes, chunks)
 
         if retrieval_mode == "open_hybrid":
@@ -413,6 +468,25 @@ class CorpusRetriever:
 
 def _tokens(text: str) -> list[str]:
     return [token for token in re.findall(r"[A-Za-z0-9_]+", text.lower()) if len(token) > 1]
+
+
+def _dense_features(text: str) -> Counter[str]:
+    tokens = _tokens(text)
+    features: Counter[str] = Counter()
+    for token in tokens:
+        features[f"tok:{token}"] += 1.0
+        padded = f"^{token}$"
+        for index in range(max(0, len(padded) - 2)):
+            features[f"tri:{padded[index:index + 3]}"] += 0.35
+    for first, second in zip(tokens, tokens[1:]):
+        features[f"bi:{first}_{second}"] += 0.65
+    return features
+
+
+def _dot(left: dict[int, float], right: dict[int, float]) -> float:
+    if len(left) > len(right):
+        left, right = right, left
+    return sum(value * right.get(index, 0.0) for index, value in left.items())
 
 
 def _years(text: str) -> list[str]:

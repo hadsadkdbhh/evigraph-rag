@@ -1,6 +1,6 @@
 # EviGraph-RAG Working Context
 
-Last updated: 2026-06-30
+Last updated: 2026-07-01
 
 This file is the durable context checkpoint for Codex. Read it before continuing
 project work after chat compaction or a new session. Keep it short, factual,
@@ -26,6 +26,8 @@ Use the 300-example FinQA validation subset as the current reality check.
 - Paper table artifacts: `paper/generated/finqa_300_local_planner/`
 - Local-planner ablation manifest: `configs/experiments.finqa_300.local_planner_ablation.json`
 - Local-planner ablation artifacts: `paper/generated/finqa_300_local_planner_ablation/`
+- Local-planner retrieval-baseline manifest: `configs/experiments.finqa_300.local_planner_retrieval_baselines.json`
+- Local-planner retrieval-baseline artifacts: `paper/generated/finqa_300_local_planner_retrieval_baselines/`
 - Next phase goals: `docs/next_phase_goals.md`
 - Main diagnostics:
   - `outputs/eval/finqa_300_local_planner/finqa_300_subset_source_rerank_full_local_planner_failures.md`
@@ -134,6 +136,18 @@ The latest local-planner ablation manifest also passed on 2026-06-30:
 - Paper assets: `paper/generated/finqa_300_local_planner_ablation/`
 - Contribution table now reports planner, verifier, support-graph, risk, Top-k, and utility-only deltas.
 
+The latest retrieval-baseline manifest passed on 2026-07-01:
+
+- Manifest: `configs/experiments.finqa_300.local_planner_retrieval_baselines.json`
+- Workload: 300 FinQA examples x 4 methods x 3 open retrieval settings = 3600 runs
+- Retrieval settings: Open BM25, Open dense, Open hybrid
+- Methods: Top-k Program, Full context, Utility-only, Full EviGraph
+- Artifact directory: `outputs/eval/finqa_300_local_planner_retrieval_baselines`
+- Paper assets: `paper/generated/finqa_300_local_planner_retrieval_baselines/`
+- Full EviGraph EM: BM25 `0.403`, local hashed dense `0.133`, hybrid `0.400`
+- Caveat: `open_dense` is a deterministic local hashed-vector baseline, not a trained neural dense retriever. It is useful as a reproducible retrieval baseline but should not be described as a modern embedding model.
+- Manifest batch runs now resume from existing `(id, method)` rows, which allowed the interrupted hybrid run to continue from `362/1200` rather than overwriting the finished BM25 and dense CSVs.
+
 Use `scripts/run_pipeline.py --refresh-results` as the default reproducibility
 gate before reporting new FinQA-300 numbers.
 
@@ -158,10 +172,11 @@ story:
 
 Required additions for the next paper-quality phase:
 
-- Baselines: internal Top-k Program, Full context, Utility-only, and top-k plus
-  local numeric executor are now wired into the FinQA-300 ablation manifest.
-  External dense retrieval and LLM direct RAG baselines are still required before
-  making paper-level benchmark claims.
+- Baselines: internal Top-k Program, Full context, Utility-only, top-k plus
+  local numeric executor, local hashed dense retrieval, and open hybrid
+  retrieval are now wired into FinQA-300 manifests. LLM direct RAG and a true
+  neural dense retriever are still required before making paper-level benchmark
+  claims.
 - Ablations: no risk scoring, no verifier, no evidence-graph support selection,
   and no operation planner are now wired into the FinQA-300 ablation manifest.
   Planner without verifier-grounded rejection and open-retrieval-safe repair

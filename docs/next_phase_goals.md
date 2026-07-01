@@ -1,6 +1,6 @@
 # Next Phase Goals
 
-Last updated: 2026-06-30
+Last updated: 2026-07-01
 
 This file defines the next research phase after the FinQA-300 experiment loop
 was closed as a reproducible artifact workflow. These are target gates for a
@@ -51,10 +51,18 @@ Current local-planner baselines and ablations have been added in
 They cover Top-k Program, Full context, Utility-only, no-risk,
 no-operation-planner, no-verifier, no-support, and Full EviGraph across
 oracle-doc, open BM25, and source-rerank.
+Retrieval baselines have also been added in
+`configs/experiments.finqa_300.local_planner_retrieval_baselines.json` and
+generated under `paper/generated/finqa_300_local_planner_retrieval_baselines/`.
+They compare Open BM25, local hashed dense, and open hybrid retrieval using the
+same local planner and verifier. Current Full EviGraph EM is `0.403` for BM25,
+`0.133` for local hashed dense, and `0.400` for hybrid.
 Before making a paper-level empirical claim, still add external baselines:
 
-- Dense retrieval baseline.
 - LLM direct RAG baseline with the same retrieved context budget.
+- A true neural dense retrieval baseline if environment and dependencies allow;
+  the current `open_dense` setting is only a deterministic local hashed-vector
+  baseline.
 - Retrieve-then-program baseline without evidence graph control if we want a
   separately named baseline beyond the current Top-k Program implementation.
 
@@ -80,7 +88,7 @@ Still required:
 - Open-retrieval-safe verifier-guided repair; the first repair loop is enabled
   only for oracle-doc and source-rerank because open retrieval can otherwise
   accept self-consistent repairs from the wrong document.
-- Dense retrieval and retrieve-then-read baselines.
+- LLM direct RAG and retrieve-then-read baselines.
 
 The paper should report exact match separately from support diagnostics:
 answer support, calculation support, operation-semantics checking, row grounding,
@@ -108,6 +116,6 @@ executor, or verifier mechanisms.
 2. Continue improving Oracle-doc beyond the exact `0.50` floor while monitoring
    source-rerank and open BM25 for regressions.
 3. Add planner-without-verifier-grounded-rejection ablations.
-4. Add dense retrieval and LLM direct RAG baselines.
+4. Add LLM direct RAG and, if feasible, a true neural dense retrieval baseline.
 5. Rewrite the methodology section around operation planner, verifier, and
    evidence graph rather than rule patches.

@@ -16,7 +16,16 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Build paper-ready tables from experiment outputs.")
     parser.add_argument("--eval-dir", default=str(ROOT / "outputs" / "eval" / "finqa"))
     parser.add_argument("--output-dir", default=str(ROOT / "paper" / "generated"))
-    parser.add_argument("--preset", default="finqa", choices=["finqa", "finqa_300_local", "finqa_300_local_ablation"])
+    parser.add_argument(
+        "--preset",
+        default="finqa",
+        choices=[
+            "finqa",
+            "finqa_300_local",
+            "finqa_300_local_ablation",
+            "finqa_300_local_retrieval_baselines",
+        ],
+    )
     args = parser.parse_args()
 
     paths = PaperAssetBuilder().build(args.eval_dir, args.output_dir, preset=args.preset)
