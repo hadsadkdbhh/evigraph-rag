@@ -62,6 +62,12 @@ Retrieval-augmented generation combines parametric generation with retrieved non
 Dense Passage Retrieval further shows that learned retrievers can replace or complement sparse retrieval for open-domain QA~\cite{karpukhin2020dense}.
 EviGraph-RAG is complementary to this line: rather than proposing a new retriever, it treats retrieved candidates as an intermediate evidence state that must be selected, risk-scored, and verified before generation.
 
+\paragraph{Graph-Structured and Multimodal RAG.}
+Recent graph-based RAG systems use structured relations to move beyond flat top-\(K\) retrieval.
+MG\({}^2\)-RAG, for example, constructs a multi-granularity multimodal graph and propagates relevance across textual and visual evidence for cross-modal retrieval and reasoning~\cite{dai2026mg2rag}.
+Our setting is narrower but complementary: EviGraph-RAG does not build a general multimodal knowledge graph; instead, it builds a task-local evidence graph over retrieved financial text, tables, derived operations, and verifier judgments.
+This distinction lets us evaluate whether graph structure improves not only retrieval recall, but also executable numerical grounding and support diagnostics.
+
 \paragraph{Table and Financial QA.}
 Financial QA benchmarks such as FinQA and TAT-QA require numerical reasoning over tables and surrounding text~\cite{chen2021finqa,zhu2021tatqa}.
 These tasks expose a weakness of passage-only RAG: the relevant context may be split across row labels, year columns, prose definitions, and derived operations.
