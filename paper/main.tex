@@ -65,6 +65,7 @@ EviGraph-RAG is complementary to this line: rather than proposing a new retrieve
 \paragraph{Graph-Structured and Multimodal RAG.}
 Recent graph-based RAG systems use structured relations to move beyond flat top-\(K\) retrieval.
 MG\({}^2\)-RAG, for example, constructs a multi-granularity multimodal graph and propagates relevance across textual and visual evidence for cross-modal retrieval and reasoning~\cite{dai2026mg2rag}.
+ReAG similarly targets knowledge-based visual question answering with a multimodal RAG pipeline that combines coarse- and fine-grained retrieval, critic-based passage filtering, and reinforcement learning for reasoning over retrieved evidence~\cite{compagnoni2026reag}.
 Our setting is narrower but complementary: EviGraph-RAG does not build a general multimodal knowledge graph; instead, it builds a task-local evidence graph over retrieved financial text, tables, derived operations, and verifier judgments.
 This distinction lets us evaluate whether graph structure improves not only retrieval recall, but also executable numerical grounding and support diagnostics.
 
