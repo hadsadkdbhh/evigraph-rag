@@ -40,6 +40,8 @@ Use the 300-example FinQA validation subset as the current reality check.
 - GPT-5.4 30-example prompt pilot config: `configs/default_gpt54_llm_direct_rag.yaml`
 - GPT-5.4 300-example Open BM25 manifest: `configs/experiments.finqa_300.open_bm25.gpt54_direct_rag.json`
 - GPT-5.4 oracle/source completion manifest: `configs/experiments.finqa_300.oracle_source.gpt54_direct_rag.json`
+- GLM-5.1 30-example prompt pilot config: `configs/default_glm51_llm_direct_rag.yaml`
+- GLM-5.1 30-example prompt pilot manifest: `configs/experiments.finqa_30.open_bm25.glm51_direct_rag.json`
 - Strong subset raw data: `data/raw/finqa_600_subset.jsonl`
 - Strong subset corpus: `data/finqa_600_corpus`
 - FinQA-600 local-planner manifest: `configs/experiments.finqa_600.local_planner.json`
@@ -322,6 +324,13 @@ Paper interpretation: GPT-5.4 Direct RAG is now the strongest exact-match
 baseline in all three FinQA-300 settings, while Full EviGraph remains much
 stronger on answer support. The paper claim should focus on auditable
 evidence-state control and support diagnostics, not beating GPT-5.4 on EM.
+
+GLM-5.1 is wired as the next spend-controlled external baseline pilot:
+
+- Config: `configs/default_glm51_llm_direct_rag.yaml`
+- Manifest: `configs/experiments.finqa_30.open_bm25.glm51_direct_rag.json`
+- Output directory: `outputs/eval/finqa_30_glm51_direct_rag_open_bm25`
+- Same 30-example subset as the Kimi/GPT-5.4 pilots, so pilot results are directly comparable.
 
 The FinQA-600 strong subset is now wired and locally run:
 

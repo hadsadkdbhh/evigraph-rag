@@ -322,6 +322,19 @@ Current GPT-5.4 Direct RAG exact match is `0.693` oracle-doc, `0.523` Open
 BM25, and `0.690` source-rerank; answer support remains much lower at `0.343`,
 `0.273`, and `0.340`.
 
+Run the same 30-example Open BM25 prompt pilot with GLM-5.1:
+
+```powershell
+$env:LLM_PROVIDER="openai_compatible"
+$env:LLM_BASE_URL="YOUR_OPENAI_COMPATIBLE_BASE_URL"
+$env:LLM_API_KEY="YOUR_KEY"
+$env:LLM_MODEL="glm-5.1"
+python scripts/run_manifest.py --manifest configs/experiments.finqa_30.open_bm25.glm51_direct_rag.json
+```
+
+The GLM-5.1 pilot writes to
+`outputs/eval/finqa_30_glm51_direct_rag_open_bm25/`.
+
 Run the stronger FinQA-600 local-planner stress subset:
 
 ```powershell

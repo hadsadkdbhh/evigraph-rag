@@ -211,6 +211,11 @@ wrong numeric operation/row: `82` oracle-doc, `95` Open BM25, and `78`
 source-rerank; unsupported/refusal-style predictions are `10`, `48`, and `15`.
 This gives the paper a strong external accuracy baseline, but strengthens the
 need to report verifier and grounding diagnostics rather than exact match only.
+The next external baseline pilot is GLM-5.1, wired at
+`configs/experiments.finqa_30.open_bm25.glm51_direct_rag.json` with config
+`configs/default_glm51_llm_direct_rag.yaml`. It uses the same deterministic
+30-example subset as the Kimi and GPT-5.4 pilots and writes to
+`outputs/eval/finqa_30_glm51_direct_rag_open_bm25/`.
 
 The 2026-07-01 FinQA-600 strong-subset run doubles the FinQA-300 diagnostic
 sample. It uses `data/raw/finqa_600_subset.jsonl`, `data/finqa_600_corpus`,
