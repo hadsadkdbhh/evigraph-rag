@@ -114,7 +114,11 @@ class OpenAICompatibleLLMClient(LLMClient):
         for attempt in range(self.max_retries + 1):
             try:
                 with self.opener.open(request, timeout=self.timeout) as response:
-                    return json.loads(response.read().decode("utf-8"))
+                    raw_body = response.read().decode("utf-8", errors="replace")
+                    try:
+                        return json.loads(raw_body)
+                    except json.JSONDecodeError as exc:
+                        raise RuntimeError(f"LLM response was not valid JSON: {raw_body[:200]}") from exc
             except urllib.error.HTTPError as exc:
                 detail = exc.read().decode("utf-8", errors="ignore")
                 if not self._retryable_http_error(exc.code) or attempt >= self.max_retries:

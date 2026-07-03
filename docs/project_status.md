@@ -182,7 +182,9 @@ A matching 30-example `gpt-5.4` prompt pilot is now registered at
 `configs/default_gpt54_llm_direct_rag.yaml` and outputting to
 `outputs/eval/finqa_30_gpt54_direct_rag_open_bm25`. The model id is passed
 exactly as `gpt-5.4`; if an OpenAI-compatible provider uses a different exact
-name, update the config before running.
+name, update the config before running. The first run with `wire_api:
+responses` produced 30/30 JSON decode failures, so the GPT-5.4 pilot config now
+uses `wire_api: chat_completions`.
 
 The 2026-07-01 FinQA-600 strong-subset run doubles the FinQA-300 diagnostic
 sample. It uses `data/raw/finqa_600_subset.jsonl`, `data/finqa_600_corpus`,

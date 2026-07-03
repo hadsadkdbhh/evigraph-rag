@@ -259,7 +259,7 @@ The same 30-example prompt pilot is also wired for `gpt-5.4`:
 - Config: `configs/default_gpt54_llm_direct_rag.yaml`
 - Manifest: `configs/experiments.finqa_30.open_bm25.gpt54_direct_rag.json`
 - Output directory: `outputs/eval/finqa_30_gpt54_direct_rag_open_bm25`
-- Caveat: `gpt-5.4` is passed as an OpenAI-compatible model id. If the user's provider requires a different exact model string, update the config before running.
+- Caveat: `gpt-5.4` is passed as an OpenAI-compatible model id. The pilot config uses `chat_completions` wire format because the first `responses` run returned non-JSON API responses for all 30 examples. If the user's provider requires a different exact model string or Responses API, update the config before running.
 
 The FinQA-600 strong subset is now wired and locally run:
 

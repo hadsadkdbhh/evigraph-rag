@@ -291,8 +291,10 @@ python scripts/run_manifest.py --manifest configs/experiments.finqa_30.open_bm25
 ```
 
 The config also pins `model: gpt-5.4` in
-`configs/default_gpt54_llm_direct_rag.yaml`. If your API provider uses a
-different exact model id, update that file before running.
+`configs/default_gpt54_llm_direct_rag.yaml` and uses `chat_completions` wire
+format because many relay providers do not expose the newer Responses API. If
+your API provider uses a different exact model id or requires Responses API,
+update that file before running.
 
 Run the stronger FinQA-600 local-planner stress subset:
 

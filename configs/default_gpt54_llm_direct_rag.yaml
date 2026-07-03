@@ -15,7 +15,7 @@ numeric_planner:
 llm_direct_rag:
   provider: openai_compatible
   model: gpt-5.4
-  wire_api: responses
+  wire_api: chat_completions
   timeout: 60
   max_retries: 2
   retry_backoff: 2.0
