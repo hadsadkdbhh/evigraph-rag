@@ -121,6 +121,50 @@ paper should foreground:
 Use concrete FinQA repairs only as case studies that motivate general planner,
 executor, or verifier mechanisms.
 
+## Main-Conference Idea Additions
+
+Four recent graph, multimodal, and agentic RAG papers suggest a stronger
+method framing for the next phase:
+
+- `MG^2-RAG` motivates multi-granularity evidence structure. For EviGraph-RAG,
+  the transferable idea is not multimodal visual grounding, but representing
+  retrieved evidence at document, chunk, table, row, cell/year, operation, and
+  verifier-judgment granularities rather than treating each retrieved chunk as a
+  flat passage.
+- `MC-Search` motivates process-level evaluation. For EviGraph-RAG, convert a
+  final numeric answer into a hop-wise trace: source hit, row hit, period hit,
+  operand hit, operation hit, citation hit, and final exact match. This should
+  become a paper table because it explains where failures occur instead of only
+  reporting end accuracy.
+- `DGPO/ARC` motivates fine-grained agentic capability metrics without forcing
+  us to train with RL. For EviGraph-RAG, use the capability breakdown as a
+  diagnostic template: retrieval coordination, evidence selection, operation
+  planning, execution, and response synthesis.
+- `ReAG` motivates critic-based evidence filtering. For EviGraph-RAG, add an
+  `EvidenceCritic` that labels candidate evidence before selection with
+  structured fields such as target entity present, target period present,
+  required row present, numerator present, denominator present, operation cue
+  present, and noise risk.
+
+The recommended implementation order is:
+
+1. Add `EvidenceCritic` as a deterministic first version, reusing existing
+   scorer, verifier, and row-operation diagnostic signals rather than creating a
+   new model dependency.
+2. Add hop-wise numeric trace artifacts and a process accuracy table for
+   FinQA-300. This should report source, row, period, operand, operation, and
+   citation support separately from exact match.
+3. Add verifier-guided repair as a bounded one-retry loop driven by critic and
+   verifier labels: wrong denominator, wrong year/period, wrong row label, and
+   wrong operation type.
+4. Extend the evidence graph schema and paper figure to describe multi-
+   granularity nodes. This is a method and visualization upgrade first; only
+   measure accuracy after the critic and trace are in place.
+
+Do not start RL training in this phase. The main-conference value should come
+from auditable evidence-state control, process diagnostics, and bounded
+verifier-guided repair, not from an underpowered reinforcement-learning claim.
+
 ## Immediate Work Order
 
 1. Run `configs/experiments.finqa_300.llm_direct_rag.json` with a named model
