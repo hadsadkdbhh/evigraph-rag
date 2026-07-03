@@ -8,6 +8,31 @@ from evigraph.verifier import ClaimVerifier
 
 
 class ClaimVerifierTest(unittest.TestCase):
+    def test_rejects_explicit_calculation_year_mismatch(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                "node",
+                "text",
+                "recognized tax-related interest and penalties in 2011 was 16 and 2013 interest rate contracts were 2400.",
+            )
+        )
+        answer = Answer(
+            text="11.6%",
+            citations=["node"],
+            calculations=["percent_change row=interest rate contracts years=2012->2013: (2400 - 2150) / 2150 * 100 = 11.6%"],
+        )
+
+        verification = ClaimVerifier().verify(
+            "what was the percentage change in the company recognized tax-related interest and penalties in 2011?",
+            answer,
+            graph,
+        )
+
+        self.assertFalse(verification["answer_supported"])
+        self.assertFalse(verification["period_grounded"])
+        self.assertIn("Calculation period or year does not match query terms.", verification["missing_evidence"])
+
     def test_row_grounding_accepts_matching_calculation_row(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(EvidenceNode("table", "text", "commodities net 2017 47 2016 73 -35.6", source_doc="report.md"))

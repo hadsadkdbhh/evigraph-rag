@@ -19,12 +19,16 @@ class ClaimVerifier:
         calculation_supported = self._calculation_claim_supported(answer.text, answer.calculations)
         row_grounded = self._row_grounded(query, answer, support_graph)
         operation_semantics_checked = self._operation_semantics_checked(query, answer)
-        semantically_grounded = citation_nodes_exist and row_grounded and operation_semantics_checked and not has_risky_support
+        period_grounded = self._period_grounded(query, answer)
+        semantically_grounded = (
+            citation_nodes_exist and row_grounded and period_grounded and operation_semantics_checked and not has_risky_support
+        )
         answer_supported = (
             has_citation
             and citation_nodes_exist
             and numeric_supported
             and row_grounded
+            and period_grounded
             and operation_semantics_checked
             and not has_risky_support
         )
@@ -32,20 +36,28 @@ class ClaimVerifier:
             "answer_supported": answer_supported,
             "unsupported_claims": [] if answer_supported else [answer.text],
             "contradictions": [],
-            "missing_evidence": self._missing_evidence(has_citation, numeric_supported, row_grounded, operation_semantics_checked),
+            "missing_evidence": self._missing_evidence(
+                has_citation,
+                numeric_supported,
+                row_grounded,
+                period_grounded,
+                operation_semantics_checked,
+            ),
             "citation_correct": citation_nodes_exist,
             "confidence": 0.85 if answer_supported else 0.35,
             "context_utilization": self._context_utilization(
                 numeric_supported,
                 calculation_supported,
                 row_grounded,
+                period_grounded,
                 operation_semantics_checked,
             ),
             "checked_citations": list(answer.citations),
             "arithmetically_supported": numeric_supported,
             "calculation_supported": calculation_supported,
             "operation_semantics_checked": operation_semantics_checked,
-            "row_operation_grounded": row_grounded and operation_semantics_checked,
+            "period_grounded": period_grounded,
+            "row_operation_grounded": row_grounded and period_grounded and operation_semantics_checked,
             "semantically_grounded": semantically_grounded,
             "row_grounded": row_grounded,
         }
@@ -168,11 +180,28 @@ class ClaimVerifier:
         actual.discard(None)
         return bool(actual & expected)
 
+    def _period_grounded(self, query: str, answer: Answer) -> bool:
+        query_years = set(re.findall(r"\b(?:19|20)\d{2}\b", query))
+        if not query_years:
+            return True
+        explicit_calculation_years: set[str] = set()
+        for calculation in answer.calculations:
+            for match in re.finditer(r"\byears?=([^:;]+)", calculation, flags=re.IGNORECASE):
+                explicit_calculation_years.update(re.findall(r"\b(?:19|20)\d{2}\b", match.group(1)))
+        if not explicit_calculation_years:
+            return True
+        if len(query_years) == 1:
+            return query_years <= explicit_calculation_years
+        if re.search(r"\b(?:from|between)\b", query.lower()):
+            return query_years <= explicit_calculation_years
+        return bool(query_years & explicit_calculation_years)
+
     def _missing_evidence(
         self,
         has_citation: bool,
         numeric_supported: bool,
         row_grounded: bool,
+        period_grounded: bool,
         operation_semantics_checked: bool,
     ) -> list[str]:
         missing = []
@@ -182,6 +211,8 @@ class ClaimVerifier:
             missing.append("Answer contains numeric claims not supported by source numbers or calculation results.")
         if not row_grounded:
             missing.append("Calculation row label does not match query terms.")
+        if not period_grounded:
+            missing.append("Calculation period or year does not match query terms.")
         if not operation_semantics_checked:
             missing.append("Calculation operation type does not match query intent.")
         return missing
@@ -191,11 +222,12 @@ class ClaimVerifier:
         numeric_supported: bool,
         calculation_supported: bool,
         row_grounded: bool,
+        period_grounded: bool,
         operation_semantics_checked: bool,
     ) -> str:
-        if numeric_supported and calculation_supported and row_grounded and operation_semantics_checked:
+        if numeric_supported and calculation_supported and row_grounded and period_grounded and operation_semantics_checked:
             return "numeric_calculation_row_operation_and_citation_checked"
-        if numeric_supported and row_grounded and operation_semantics_checked:
+        if numeric_supported and row_grounded and period_grounded and operation_semantics_checked:
             return "numeric_row_operation_and_citation_checked"
         return "citation_only"
 
@@ -302,6 +334,7 @@ def _calculation_operation(calculation: str) -> str | None:
         "percent_change": "percent_change",
         "percent_change_from_to": "percent_change",
         "planned_percent_change": "percent_change",
+        "prose_current_balance_change": "percent_change",
         "planned_percent_of_increase": "percent_of_increase",
         "percent_delta": "percent_delta",
         "ratio_percent": "ratio_percent",

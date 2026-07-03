@@ -2069,6 +2069,33 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "166.4%")
         self.assertIn("ratio_percent", answer.calculations[0])
 
+    def test_single_year_prose_decrease_uses_current_balance_before_later_table(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="mixed",
+                node_type="text",
+                content=(
+                    "December 31, 2011, the company recognized a decrease of $3 million of "
+                    "tax-related interest and penalties and had approximately $16 million accrued "
+                    "at December 31, 2011.\n"
+                    "| ( millions ) | 2013 | 2012 |\n"
+                    "| --- | ---: | ---: |\n"
+                    "| interest rate contracts | 2400 | 2150 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the percentage change in the company recognized tax-related interest and penalties in 2011?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "15.8%")
+        self.assertIn("prose_current_balance_change", answer.calculations[0])
+        self.assertIn("3 / 19", answer.calculations[0])
+
     def test_ratio_percent_uses_terminal_total_operating_income_denominator(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

@@ -114,6 +114,108 @@ class VerifierGuidedRepairerTest(unittest.TestCase):
         self.assertIs(verification, supported)
         self.assertIsNone(action)
 
+    def test_repairs_operand_failure_even_when_row_and_operation_pass(self) -> None:
+        graph = EvidenceGraph()
+        wrong = EvidenceNode(
+            "wrong",
+            "text",
+            "rental expense 2008 100 2009 105",
+            source_doc="wrong.md",
+            metadata={"retrieval_rank": 1},
+            scores={"final_score": 4.0},
+        )
+        right = EvidenceNode(
+            "right",
+            "text",
+            "rental expense 2008 100 2009 117",
+            source_doc="right.md",
+            metadata={"retrieval_rank": 2},
+            scores={"final_score": 3.9},
+        )
+        graph.add_node(wrong)
+        graph.add_node(right)
+        initial = Answer(
+            text="5.0%",
+            citations=["wrong"],
+            calculations=["percent_change row=rental expense: (105 - 100) / 100 * 100 = 5.0%"],
+        )
+        failed_operand = {
+            "answer_supported": False,
+            "row_grounded": True,
+            "operation_semantics_checked": True,
+            "arithmetically_supported": False,
+            "calculation_supported": True,
+        }
+
+        class OperandGenerator:
+            def generate_planner_first(self, query: str, support_graph: EvidenceGraph) -> Answer:
+                source_docs = {node.source_doc for node in support_graph.nodes.values()}
+                if "right.md" in source_docs:
+                    return Answer(
+                        text="17.0%",
+                        citations=["right"],
+                        calculations=["percent_change row=rental expense: (117 - 100) / 100 * 100 = 17.0%"],
+                    )
+                return initial
+
+            def generate(self, query: str, support_graph: EvidenceGraph) -> Answer:
+                return self.generate_planner_first(query, support_graph)
+
+        class OperandVerifier:
+            def verify(self, query: str, answer: Answer, support_graph: EvidenceGraph) -> dict:
+                supported = answer.text == "17.0%"
+                return {
+                    "answer_supported": supported,
+                    "row_grounded": True,
+                    "operation_semantics_checked": True,
+                    "arithmetically_supported": supported,
+                    "calculation_supported": supported,
+                    "missing_evidence": [] if supported else ["Answer contains numeric claims not supported by source numbers."],
+                }
+
+        answer, verification, action = VerifierGuidedRepairer().repair(
+            "what was the percentage change in rental expense from 2008 to 2009?",
+            initial,
+            failed_operand,
+            graph,
+            OperandGenerator(),
+            OperandVerifier(),
+        )
+
+        self.assertEqual(answer.text, "17.0%")
+        self.assertTrue(verification["repair_applied"])
+        self.assertIn("operand_support", action.params["issues"])
+        self.assertEqual(action.target_node_ids, ["right"])
+
+    def test_operand_candidate_graph_prefers_query_aligned_nodes_within_source(self) -> None:
+        graph = EvidenceGraph()
+        distractor = EvidenceNode(
+            "distractor",
+            "text",
+            "interest rates 2014 36.6 2015 34.7",
+            source_doc="report.md",
+            metadata={"retrieval_rank": 1},
+            scores={"final_score": 4.0},
+        )
+        aligned = EvidenceNode(
+            "aligned",
+            "text",
+            "interest income 2014 119 2015 99",
+            source_doc="report.md",
+            metadata={"retrieval_rank": 1, "neighbor_context": True},
+            scores={"final_score": 3.8},
+        )
+        graph.add_node(distractor)
+        graph.add_node(aligned)
+
+        support_graph = VerifierGuidedRepairer()._source_cluster_graphs(
+            graph,
+            "what percent decrease for interest income occurred between 2014 and 2015?",
+            Answer("0", [], ["percent_change row=interest rates: (34.7 - 36.6) / 36.6 * 100 = -5.2%"]),
+        )[0]
+
+        self.assertEqual(next(iter(support_graph.nodes)), "aligned")
+
     def test_rejects_low_rank_self_consistent_repair_candidate(self) -> None:
         graph = EvidenceGraph()
         wrong = EvidenceNode(
@@ -263,6 +365,46 @@ class VerifierGuidedRepairerTest(unittest.TestCase):
 
             self.assertEqual(result["answer"]["text"], "20.0%")
             self.assertNotEqual(result["answer"]["text"], "Insufficient evidence to answer.")
+
+    def test_method_runner_records_period_ungrounded_numeric_answer_without_row_rejection(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            corpus = root / "corpus"
+            corpus.mkdir()
+            (corpus / "report.md").write_text(
+                "recognized tax-related interest and penalties 2011 16 2012 19 2013 22\n",
+                encoding="utf-8",
+            )
+            runner = MethodRunner({"run": {"output_dir": str(root / "runs")}})
+
+            class FakeGenerator:
+                def generate(self, query, support_graph):
+                    return Answer(
+                        text="15.8%",
+                        citations=[next(iter(support_graph.nodes))],
+                        calculations=["percent_change row=interest and penalties years=2012->2013: (22 - 19) / 19 * 100 = 15.8%"],
+                    )
+
+                def generate_planner_first(self, query, support_graph):
+                    return self.generate(query, support_graph)
+
+            runner.generator = FakeGenerator()
+
+            result = runner.run(
+                "what was the percentage change in recognized tax-related interest and penalties in 2011?",
+                "full_evigraph",
+                corpus_path=str(corpus),
+                source_doc="report.md",
+                retrieval_mode="oracle_doc",
+                log_run=False,
+            )
+
+            self.assertEqual(result["answer"]["text"], "15.8%")
+            self.assertFalse(result["verification"]["period_grounded"])
+            self.assertIn(
+                "Calculation period or year does not match query terms.",
+                result["verification"]["missing_evidence"],
+            )
 
 
 if __name__ == "__main__":

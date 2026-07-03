@@ -72,6 +72,9 @@ class NumericReasoner:
                 if answer:
                     return answer
                 if len(re.findall(r"\b(20\d{2})\b", query_lower)) < 2:
+                    answer = self._single_year_prose_current_balance_change(query_lower, contexts)
+                    if answer:
+                        return answer
                     answer = self._percent_delta_phrase(query_lower, contexts)
                     if answer:
                         return answer
@@ -1467,6 +1470,66 @@ class NumericReasoner:
                 cited_node_ids=[node_id],
             )
         return None
+
+    def _single_year_prose_current_balance_change(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        query_terms = set(self._keywords(query_lower))
+        if not query_terms:
+            return None
+        query_years = re.findall(r"\b(20\d{2})\b", query_lower)
+        if len(query_years) != 1:
+            return None
+        query_year = query_years[0]
+        pattern = re.compile(
+            r"\b(?:recognized|recorded|reported)\s+(?:a\s+)?(?P<direction>increase|decrease)\s+of\s+\$?\s*"
+            r"(?P<delta>[-+]?\d+(?:\.\d+)?)\s*(?P<delta_scale>million|billion|thousand)?\s+of\s+"
+            r"(?P<label>[a-z0-9 ,&'/-]{0,120}?)\s+and\s+had\s+(?:approximately\s+)?\$?\s*"
+            r"(?P<current>[-+]?\d+(?:\.\d+)?)\s*(?P<current_scale>million|billion|thousand)?\s+"
+            r"(?P<balance_label>[a-z0-9 ,&'/-]{0,60}?)\s+at\s+"
+            r"(?:december|january|february|march|april|may|june|july|august|september|october|november)\s+"
+            r"\d{1,2}\s*,?\s+(?P<year>20\d{2})",
+            flags=re.IGNORECASE,
+        )
+        best: tuple[int, str, str, str, float, float, float] | None = None
+        for node_id, text in contexts:
+            for sentence in self._prose_sentences(text):
+                lower_sentence = sentence.lower()
+                if query_year not in lower_sentence:
+                    continue
+                for match in pattern.finditer(sentence):
+                    if match.group("year") != query_year:
+                        continue
+                    label = re.sub(r"\s+", " ", match.group("label")).strip(" ,.;")
+                    label_terms = set(self._keywords(label))
+                    score = len(query_terms & set(re.findall(r"[a-z0-9]+", lower_sentence))) + len(query_terms & label_terms)
+                    if score == 0:
+                        continue
+                    delta = self._scaled_number(match.group("delta"), match.group("delta_scale"))
+                    current = self._scaled_number(match.group("current"), match.group("current_scale") or match.group("delta_scale"))
+                    if delta is None or current is None:
+                        continue
+                    direction = match.group("direction").lower()
+                    base = current - delta if direction == "increase" else current + delta
+                    if base == 0:
+                        continue
+                    result = abs(delta / base * 100.0)
+                    candidate = (score, node_id, label, direction, delta, base, result)
+                    if best is None or candidate > best:
+                        best = candidate
+        if best is None:
+            return None
+        _score, node_id, label, direction, delta, base, result = best
+        return NumericAnswer(
+            text=f"{result:.1f}%",
+            calculation=(
+                f"prose_current_balance_change row={label} direction={direction} year={query_year}: "
+                f"{delta:g} / {base:g} * 100 = {result:.1f}%"
+            ),
+            cited_node_ids=[node_id],
+        )
 
     def _percent_delta_phrase(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
         query_terms = set(self._keywords(query_lower))
