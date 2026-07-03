@@ -318,6 +318,9 @@ python scripts/run_manifest.py --manifest configs/experiments.finqa_300.oracle_s
 
 This writes to `outputs/eval/finqa_300_gpt54_direct_rag_oracle_source/` and
 does not rerun the completed Open BM25 GPT-5.4 baseline.
+Current GPT-5.4 Direct RAG exact match is `0.693` oracle-doc, `0.523` Open
+BM25, and `0.690` source-rerank; answer support remains much lower at `0.343`,
+`0.273`, and `0.340`.
 
 Run the stronger FinQA-600 local-planner stress subset:
 

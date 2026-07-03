@@ -204,6 +204,13 @@ To complete the three-setting comparison without rerunning Open BM25, use
 `configs/experiments.finqa_300.oracle_source.gpt54_direct_rag.json`. It runs
 only oracle-doc and source-rerank GPT-5.4 Direct RAG and writes to
 `outputs/eval/finqa_300_gpt54_direct_rag_oracle_source/`.
+That run is now complete. GPT-5.4 Direct RAG reaches `0.693` oracle-doc,
+`0.523` Open BM25, and `0.690` source-rerank exact match. Answer support is
+much lower: `0.343`, `0.273`, and `0.340`. Failure counts are dominated by
+wrong numeric operation/row: `82` oracle-doc, `95` Open BM25, and `78`
+source-rerank; unsupported/refusal-style predictions are `10`, `48`, and `15`.
+This gives the paper a strong external accuracy baseline, but strengthens the
+need to report verifier and grounding diagnostics rather than exact match only.
 
 The 2026-07-01 FinQA-600 strong-subset run doubles the FinQA-300 diagnostic
 sample. It uses `data/raw/finqa_600_subset.jsonl`, `data/finqa_600_corpus`,

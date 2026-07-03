@@ -304,6 +304,25 @@ This runs only oracle-doc and source-rerank and writes to
 `outputs/eval/finqa_300_gpt54_direct_rag_oracle_source/`, leaving the completed
 Open BM25 GPT-5.4 output untouched.
 
+The GPT-5.4 oracle/source run is now complete:
+
+| Setting | GPT-5.4 EM | answer support | failures |
+| --- | ---: | ---: | --- |
+| Oracle-doc | 0.693 | 0.343 | wrong row/op 82, unsupported 10 |
+| Open BM25 | 0.523 | 0.273 | wrong row/op 95, unsupported 48 |
+| Source-rerank | 0.690 | 0.340 | wrong row/op 78, unsupported 15 |
+
+Artifacts:
+
+- Oracle/source output directory: `outputs/eval/finqa_300_gpt54_direct_rag_oracle_source/`
+- Oracle/source summary: `outputs/eval/finqa_300_gpt54_direct_rag_oracle_source/summary.md`
+- Open BM25 output directory: `outputs/eval/finqa_300_gpt54_direct_rag_open_bm25/`
+
+Paper interpretation: GPT-5.4 Direct RAG is now the strongest exact-match
+baseline in all three FinQA-300 settings, while Full EviGraph remains much
+stronger on answer support. The paper claim should focus on auditable
+evidence-state control and support diagnostics, not beating GPT-5.4 on EM.
+
 The FinQA-600 strong subset is now wired and locally run:
 
 - Dataset: `data/raw/finqa_600_subset.jsonl`
