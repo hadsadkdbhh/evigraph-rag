@@ -76,6 +76,7 @@ Our current experiments focus on FinQA because it lets us evaluate whether a sys
 \paragraph{Verifiable and Tool-Augmented QA.}
 Tool-augmented reasoning frameworks such as ReAct interleave reasoning traces with external actions~\cite{yao2023react}.
 Recent agentic multimodal RAG work similarly argues that complex retrieval should be evaluated at the process level, not only by final answers; MC-Search uses process reward modeling for agentic multimodal search and reports trajectory-level evidence quality for long-chain multimodal tasks~\cite{li2026mcsearch}.
+Distillation-guided policy optimization further studies how compact language models can preserve agentic RAG behaviors such as search coordination, reasoning, and response synthesis through teacher guidance and fine-grained capability metrics~\cite{kotoge2026dgpo}.
 EviGraph-RAG uses a narrower but more auditable version of this idea for numerical QA: table operations are executed locally, cited values are checked against the support graph, and verifier diagnostics are reported separately from exact-match accuracy.
 This separation is important for submission claims because a numerically correct answer and a well-supported answer are related but distinct properties.
 
