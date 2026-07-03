@@ -244,6 +244,62 @@ class ManifestRunnerTest(unittest.TestCase):
             self.assertEqual(result["answer"]["text"], "Insufficient evidence to answer.")
             self.assertIn("llm_error", result["answer"]["calculations"][0])
 
+    def test_manifest_failure_reports_use_llm_direct_rag_method_when_no_full_evigraph(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            raw_questions = root / "raw.jsonl"
+            raw_questions.write_text(
+                json.dumps({"qid": "q1", "question": "What was revenue?", "gold_answer": "42"}) + "\n",
+                encoding="utf-8",
+            )
+            config_path = root / "config.json"
+            config_path.write_text(json.dumps({"run": {"output_dir": str(root / "runs")}}), encoding="utf-8")
+            eval_dir = root / "eval"
+            manifest_path = root / "manifest.json"
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "title": "LLM Baseline Manifest",
+                        "config": str(config_path),
+                        "output_dir": str(eval_dir),
+                        "datasets": [
+                            {
+                                "name": "temp",
+                                "raw_questions": str(raw_questions),
+                                "questions": str(eval_dir / "questions.jsonl"),
+                                "field_map": {"id": "qid", "query": "question", "answer": "gold_answer"},
+                            }
+                        ],
+                        "experiments": [{"name": "llm", "type": "batch", "methods": ["llm_direct_rag"]}],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            class FakeMethodRunner:
+                def __init__(self, config: dict) -> None:
+                    self.config = config
+
+                def run(self, *args, **kwargs) -> dict:
+                    return {
+                        "answer": {"text": "41", "citations": [], "calculations": []},
+                        "selected_ids": [],
+                        "actions": [],
+                        "verification": {"answer_supported": False},
+                        "cost": {"selected_tokens": 0.0, "tool_calls": 1.0, "latency_ms": 60.0},
+                        "artifacts": {"run_dir": str(root / "runs" / "fake")},
+                    }
+
+            with patch("evigraph.manifest.MethodRunner", FakeMethodRunner):
+                artifacts = ManifestRunner(manifest_path).run()
+
+            failure_text = Path(artifacts["failure_reports"][0]).read_text(encoding="utf-8")
+            diagnostic_text = Path(artifacts["row_operation_diagnostics"][0]).read_text(encoding="utf-8")
+            self.assertIn("- Method: `llm_direct_rag`", failure_text)
+            self.assertIn("- Total: 1", failure_text)
+            self.assertIn("- Method: `llm_direct_rag`", diagnostic_text)
+            self.assertIn("- Total rows for method: 1", diagnostic_text)
+
     def test_manifest_passes_configured_retrieval_top_k_to_runner(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

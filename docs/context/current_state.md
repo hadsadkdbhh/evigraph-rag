@@ -32,6 +32,8 @@ Use the 300-example FinQA validation subset as the current reality check.
 - Strong non-API retrieval-control artifacts: `paper/generated/finqa_300_local_planner_strong_retrieval_baselines/`
 - LLM Direct RAG manifest: `configs/experiments.finqa_300.llm_direct_rag.json`
 - LLM Direct RAG config: `configs/default_llm_direct_rag.yaml`
+- Kimi K2.6 Open BM25 Direct RAG pilot manifest: `configs/experiments.finqa_300.open_bm25.kimi_k26_direct_rag.json`
+- Kimi K2.6 Open BM25 Direct RAG pilot artifacts: `outputs/eval/finqa_300_kimi_k26_direct_rag_open_bm25/`
 - Strong subset raw data: `data/raw/finqa_600_subset.jsonl`
 - Strong subset corpus: `data/finqa_600_corpus`
 - FinQA-600 local-planner manifest: `configs/experiments.finqa_600.local_planner.json`
@@ -70,6 +72,17 @@ Interpretation: BM25 remains the strongest current open retrieval baseline.
 TF-IDF is still useful because it lowers wrong-row/operation failures but raises
 missing percent-answer failures, proving that retrieval choice changes failure
 composition rather than simply making all errors better or worse.
+
+Latest API-backed LLM Direct RAG pilot:
+
+| Setting | Model | EM | answer support | notes |
+| --- | --- | ---: | ---: | --- |
+| Open BM25 | Kimi K2.6 | 0.223 | 0.087 | spend-controlled one-setting pilot |
+
+Interpretation: this is not yet a strong external baseline. It mostly shows
+that a direct external reader over the same Open BM25 context can underperform
+the local Direct RAG baseline when the prompt/model frequently refuses or emits
+unsupported textual outputs.
 
 Latest Open BM25 failure counts after the 2026-06-30 selector/pipeline pass:
 
@@ -215,6 +228,18 @@ The LLM Direct RAG external baseline is now wired but not yet run:
 - Caveat: this is separate from local `direct_rag`. Local `direct_rag` uses the
   local generator with no operation planner; `llm_direct_rag` sends the same
   retrieval-order evidence budget to an external chat-completions model.
+
+The Kimi K2.6 Open BM25 Direct RAG pilot completed on 2026-07-03:
+
+- Manifest: `configs/experiments.finqa_300.open_bm25.kimi_k26_direct_rag.json`
+- Workload: 300 FinQA examples x 1 method x 1 retrieval setting = 300 runs
+- Output directory: `outputs/eval/finqa_300_kimi_k26_direct_rag_open_bm25`
+- Exact match: `0.223`
+- Answer support: `0.087`
+- Failure categories: unsupported/refusal-style textual prediction `206`, wrong numeric operation/row `27`
+- Row/operation diagnostics: wrong operation type `4`, ambiguous supported wrong number `23`
+- Important interpretation: do not use this as a strong LLM baseline claim. It is a spend-controlled pilot showing that the prompt/model combination is weak under Open BM25.
+- Diagnostic fix: LLM-only manifests now generate failure reports for `llm_direct_rag` instead of empty `full_evigraph` reports.
 
 The FinQA-600 strong subset is now wired and locally run:
 

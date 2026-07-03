@@ -72,11 +72,12 @@ class ManifestRunner:
                 artifacts["evaluations"].append(str(output_path))
                 summary_inputs.append(output_path)
                 if experiment.get("type", "batch") != "pareto":
+                    diagnostic_method = self._diagnostic_method(experiment)
                     failure_path = self.output_dir / f"{dataset_name}_{experiment['name']}_failures.md"
-                    FailureAnalyzer().write(output_path, failure_path, method="full_evigraph")
+                    FailureAnalyzer().write(output_path, failure_path, method=diagnostic_method)
                     artifacts["failure_reports"].append(str(failure_path))
                     diagnostic_path = self.output_dir / f"{dataset_name}_{experiment['name']}_row_operation_diagnostics.md"
-                    RowOperationDiagnosticAnalyzer().write(output_path, diagnostic_path, method="full_evigraph")
+                    RowOperationDiagnosticAnalyzer().write(output_path, diagnostic_path, method=diagnostic_method)
                     artifacts["row_operation_diagnostics"].append(str(diagnostic_path))
             if dataset.get("build_index"):
                 artifacts["indexes"].append(str(self._resolve(dataset["index"])))
@@ -106,6 +107,10 @@ class ManifestRunner:
             self._run_pareto(experiment, dataset_name, questions_path, corpus_path, base_config, output_path, retrieval_mode)
             return
         self._run_batch(experiment, dataset_name, questions_path, corpus_path, base_config, output_path, retrieval_mode)
+
+    def _diagnostic_method(self, experiment: dict[str, Any]) -> str:
+        methods = experiment.get("methods") or [experiment.get("method", "full_evigraph")]
+        return "full_evigraph" if "full_evigraph" in methods else methods[0]
 
     def _run_batch(
         self,

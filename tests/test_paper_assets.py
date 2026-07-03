@@ -186,6 +186,7 @@ class PaperAssetBuilderTest(unittest.TestCase):
 
         self.assertIn("LLM Direct RAG", markdown)
         self.assertIn("BM25 + source rerank", markdown)
+        self.assertIn("| Oracle-doc | 1 |", markdown)
 
     def test_builds_tables_from_finqa_600_local_preset(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

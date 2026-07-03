@@ -591,7 +591,7 @@ class PaperAssetBuilder:
         rows = []
         analyzer = FailureAnalyzer()
         for spec in specs:
-            analysis = analyzer.analyze(self._spec_csv_path(eval_dir, spec), method="full_evigraph")
+            analysis = analyzer.analyze(self._spec_csv_path(eval_dir, spec), method=self._diagnostic_method(spec))
             categories = analysis["categories"]
             rows.append(
                 {
@@ -610,7 +610,7 @@ class PaperAssetBuilder:
         rows = []
         analyzer = RowOperationDiagnosticAnalyzer()
         for spec in specs:
-            analysis = analyzer.analyze(self._spec_csv_path(eval_dir, spec), method="full_evigraph")
+            analysis = analyzer.analyze(self._spec_csv_path(eval_dir, spec), method=self._diagnostic_method(spec))
             label_counts = analysis["label_counts"]
             row = {"setting": spec.label}
             for label in DIAGNOSTIC_LABELS:
@@ -629,6 +629,9 @@ class PaperAssetBuilder:
         if not matches:
             raise FileNotFoundError(f"Required experiment CSV not found: {exact_path}")
         raise ValueError(f"Ambiguous experiment CSVs for {spec.csv_name}: {matches}")
+
+    def _diagnostic_method(self, spec: ResultSpec) -> str:
+        return "full_evigraph" if "full_evigraph" in spec.methods else spec.methods[0]
 
     def _read_csv(self, path: Path) -> list[dict[str, str]]:
         if not path.exists():

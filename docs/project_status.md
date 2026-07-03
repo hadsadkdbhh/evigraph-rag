@@ -52,6 +52,16 @@ Last updated: 2026-07-01
   hybrid. This makes BM25 look like a nontrivial local baseline rather than a
   strawman, while still showing consistent graph-vs-direct gains across the
   three open retrieval settings.
+- The first API-backed LLM Direct RAG pilot has completed for Kimi K2.6 on
+  FinQA-300 Open BM25 only. It is intentionally a spend-controlled pilot, not
+  the full three-setting LLM baseline. The manifest is
+  `configs/experiments.finqa_300.open_bm25.kimi_k26_direct_rag.json`, and the
+  output directory is `outputs/eval/finqa_300_kimi_k26_direct_rag_open_bm25`.
+  Exact match is `0.223`, answer support is `0.087`, and the dominant failure
+  mode is unsupported/refusal-style textual prediction (`206/233` failures).
+  This is useful as evidence that a direct external reader over the same Open
+  BM25 context is not enough; it should not be presented as a strong model
+  result without a better prompt/model sweep.
 
 ## Reproducibility Gates
 
@@ -147,6 +157,16 @@ an OpenAI-compatible chat-completions endpoint and expects JSON with answer,
 citations, and optional calculation. Run it only after setting
 `LLM_PROVIDER=openai_compatible`, `LLM_BASE_URL`, `LLM_API_KEY`, and
 `LLM_MODEL`.
+
+The 2026-07-03 Kimi K2.6 Open BM25 pilot completed 300 rows with no remaining
+LLM error rows. It reached `0.223` exact match, far below local Open BM25 Direct
+RAG (`0.370`) and Full EviGraph (`0.403`). The corrected LLM-only failure report
+shows 206 unsupported/refusal-style predictions and 27 wrong numeric
+operation/row predictions; row/operation diagnostics split the latter into 4
+wrong-operation-type and 23 ambiguous-supported-wrong-number cases. The
+manifest and paper-asset diagnostics now choose the analyzed method from the
+experiment/spec, so LLM-only runs no longer produce empty `full_evigraph`
+failure reports.
 
 The 2026-07-01 FinQA-600 strong-subset run doubles the FinQA-300 diagnostic
 sample. It uses `data/raw/finqa_600_subset.jsonl`, `data/finqa_600_corpus`,
