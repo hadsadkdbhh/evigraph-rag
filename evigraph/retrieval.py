@@ -125,7 +125,10 @@ class BM25Retriever:
             scored = [(0.0, chunk) for chunk in self.chunks]
 
         nodes = []
-        for rank, (score, chunk) in enumerate(sorted(scored, key=lambda item: item[0], reverse=True)[:top_k], start=1):
+        for rank, (score, chunk) in enumerate(
+            sorted(scored, key=lambda item: (-item[0], item[1].chunk_id))[:top_k],
+            start=1,
+        ):
             nodes.append(self._node_from_chunk(rank, score, chunk))
         return nodes
 
@@ -231,7 +234,7 @@ class HybridRetriever(BM25Retriever):
 
         nodes = []
         for rank, (hybrid_score, bm25_score, features, chunk) in enumerate(
-            sorted(scored, key=lambda item: item[0], reverse=True)[:top_k],
+            sorted(scored, key=lambda item: (-item[0], item[3].chunk_id))[:top_k],
             start=1,
         ):
             nodes.append(
@@ -273,7 +276,10 @@ class DenseRetriever(BM25Retriever):
             scored = [(0.0, chunk) for chunk in self.chunks]
 
         nodes = []
-        for rank, (score, chunk) in enumerate(sorted(scored, key=lambda item: item[0], reverse=True)[:top_k], start=1):
+        for rank, (score, chunk) in enumerate(
+            sorted(scored, key=lambda item: (-item[0], item[1].chunk_id))[:top_k],
+            start=1,
+        ):
             nodes.append(
                 self._node_from_chunk(
                     rank,
@@ -319,7 +325,10 @@ class SklearnTfidfRetriever(BM25Retriever):
             scored = [(0.0, chunk) for chunk in self.chunks]
 
         nodes = []
-        for rank, (score, chunk) in enumerate(sorted(scored, key=lambda item: item[0], reverse=True)[:top_k], start=1):
+        for rank, (score, chunk) in enumerate(
+            sorted(scored, key=lambda item: (-item[0], item[1].chunk_id))[:top_k],
+            start=1,
+        ):
             nodes.append(
                 self._node_from_chunk(
                     rank,
@@ -378,7 +387,10 @@ class NeuralDenseRetriever(BM25Retriever):
             scored = [(0.0, chunk) for chunk in self.chunks]
 
         nodes = []
-        for rank, (score, chunk) in enumerate(sorted(scored, key=lambda item: item[0], reverse=True)[:top_k], start=1):
+        for rank, (score, chunk) in enumerate(
+            sorted(scored, key=lambda item: (-item[0], item[1].chunk_id))[:top_k],
+            start=1,
+        ):
             nodes.append(
                 self._node_from_chunk(
                     rank,
@@ -484,7 +496,7 @@ class NeuralHybridRetriever(NeuralDenseRetriever):
 
         nodes = []
         for rank, (hybrid_score, neural_score, bm25_score, features, chunk) in enumerate(
-            sorted(scored, key=lambda item: item[0], reverse=True)[:top_k],
+            sorted(scored, key=lambda item: (-item[0], item[4].chunk_id))[:top_k],
             start=1,
         ):
             nodes.append(

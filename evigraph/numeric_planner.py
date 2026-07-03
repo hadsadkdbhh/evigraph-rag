@@ -277,10 +277,17 @@ class HeuristicNumericPlanClient:
             lowered = text.lower()
             score = sum(1 for term in normalized_terms if term in lowered)
             table_bonus = 2 if "|" in text else 0
-            candidate = (score + table_bonus, -index, node_id)
+            alias_bonus = self._node_alias_bonus(normalized_terms, lowered)
+            candidate = (score + table_bonus + alias_bonus, -index, node_id)
             if best is None or candidate > best:
                 best = candidate
         return best[2] if best else contexts[0][0]
+
+    def _node_alias_bonus(self, terms: list[str], lowered_context: str) -> int:
+        term_set = set(terms)
+        if {"net", "tangible", "assets"} <= term_set and "total identifiable net assets" in lowered_context:
+            return 3
+        return 0
 
     def _target_base_years(self, lowered: str, years: list[str]) -> tuple[str, str]:
         from_to = re.search(r"\bfrom\s+(20\d{2})\s+(?:to|through|-)\s+(20\d{2})\b", lowered)

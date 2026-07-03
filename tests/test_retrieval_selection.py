@@ -52,6 +52,16 @@ class RetrievalSelectionTest(unittest.TestCase):
         self.assertEqual(nodes[0].metadata["retrieval_rank"], 1)
         self.assertEqual(nodes[1].metadata["retrieval_rank"], 2)
 
+    def test_bm25_tie_breaks_by_chunk_id(self) -> None:
+        chunks = [
+            DocumentChunk("z_chunk", "target value", "z.md"),
+            DocumentChunk("a_chunk", "target value", "a.md"),
+        ]
+
+        nodes = BM25Retriever(chunks).retrieve("target value", top_k=2)
+
+        self.assertEqual([node.metadata["chunk_id"] for node in nodes], ["a_chunk", "z_chunk"])
+
     def test_open_retrieval_adds_adjacent_chunk_context(self) -> None:
         chunks = [
             DocumentChunk("case_0_0", "fuel recovery query hit amount 98", "case.md", metadata={"char_start": 0}),
@@ -341,6 +351,35 @@ class RetrievalSelectionTest(unittest.TestCase):
         selected = EvidenceSetSelector(max_nodes=2).select("same retrieved paragraph", graph, scores)
 
         self.assertEqual([node.node_id for node in selected], ["source_a", "source_b"])
+
+    def test_selector_tie_breaks_equal_scores_by_retrieval_rank(self) -> None:
+        graph = EvidenceGraph()
+        lower_rank = EvidenceNode(
+            node_id="rank_two",
+            node_type="text",
+            content="same score answer candidate",
+            source_doc="report_b.md",
+            modality="text",
+            metadata={"retrieval_rank": 2},
+        )
+        higher_rank = EvidenceNode(
+            node_id="rank_one",
+            node_type="text",
+            content="same score answer candidate",
+            source_doc="report_a.md",
+            modality="text",
+            metadata={"retrieval_rank": 1},
+        )
+        graph.add_node(lower_rank)
+        graph.add_node(higher_rank)
+        scores = {
+            lower_rank.node_id: self._score(2.0),
+            higher_rank.node_id: self._score(2.0),
+        }
+
+        selected = EvidenceSetSelector(max_nodes=2).select("same score answer", graph, scores)
+
+        self.assertEqual([node.node_id for node in selected], ["rank_one", "rank_two"])
 
     def test_selector_keeps_safe_retrieval_rank_one_anchor(self) -> None:
         graph = EvidenceGraph()

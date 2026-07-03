@@ -407,6 +407,37 @@ class NumericPlannerFallbackTest(unittest.TestCase):
         self.assertEqual(answer.text, "218")
         self.assertIn("planned_average", answer.calculation)
 
+    def test_lookup_prefers_identifiable_net_assets_over_other_acquisition_assets(self) -> None:
+        distractor_context = (
+            "purchase price net of assumed liabilities.\n"
+            "| operating rental properties | $ 602011 |\n"
+            "| --- | --- |\n"
+            "| total real estate investments | 756311 |\n"
+            "| other assets | 10478 |\n"
+            "| lease related intangible assets | 86047 |\n"
+            "| total assets acquired | 867558 |\n"
+        )
+        gold_context = (
+            "major classes of assets acquired and liabilities assumed in the acquisition.\n"
+            "| cash | $ 45826 |\n"
+            "| --- | --- |\n"
+            "| customer-related intangible assets | 42721 |\n"
+            "| acquired technology | 27954 |\n"
+            "| other assets | 2337 |\n"
+            "| total identifiable net assets | 62154 |\n"
+            "| total purchase consideration | $ 265982 |\n"
+        )
+        planner = NumericPlannerFallback(HeuristicNumericPlanClient())
+
+        answer = planner.answer(
+            "what are the total amount of net tangible assets obtained through the acquisition?",
+            [("distractor", distractor_context), ("gold", gold_context)],
+        )
+
+        self.assertIsNotNone(answer)
+        self.assertEqual(answer.text, "62154")
+        self.assertIn("total identifiable net assets", answer.calculation)
+
     def test_heuristic_plans_average_over_compact_hyphen_year_range(self) -> None:
         context = (
             "| metric | 2016 | 2017 | 2018 |\n"

@@ -19,7 +19,14 @@ class EvidenceSetSelector:
     ) -> list[EvidenceNode]:
         source_matched = self._source_matched_nodes(graph)
         candidate_nodes = source_matched or list(graph.nodes.values())
-        ranked = sorted(candidate_nodes, key=lambda node: scores[node.node_id].final_score, reverse=True)
+        ranked = sorted(
+            candidate_nodes,
+            key=lambda node: (
+                -scores[node.node_id].final_score,
+                self._retrieval_rank(node),
+                node.node_id,
+            ),
+        )
         selected: list[EvidenceNode] = []
         seen_modalities: set[str] = set()
 
