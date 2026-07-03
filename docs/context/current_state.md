@@ -38,6 +38,7 @@ Use the 300-example FinQA validation subset as the current reality check.
 - Kimi K2.6 30-example prompt pilot raw subset: `data/raw/finqa_30_kimi_pilot_subset.jsonl`
 - GPT-5.4 30-example prompt pilot manifest: `configs/experiments.finqa_30.open_bm25.gpt54_direct_rag.json`
 - GPT-5.4 30-example prompt pilot config: `configs/default_gpt54_llm_direct_rag.yaml`
+- GPT-5.4 300-example Open BM25 manifest: `configs/experiments.finqa_300.open_bm25.gpt54_direct_rag.json`
 - Strong subset raw data: `data/raw/finqa_600_subset.jsonl`
 - Strong subset corpus: `data/finqa_600_corpus`
 - FinQA-600 local-planner manifest: `configs/experiments.finqa_600.local_planner.json`
@@ -260,6 +261,17 @@ The same 30-example prompt pilot is also wired for `gpt-5.4`:
 - Manifest: `configs/experiments.finqa_30.open_bm25.gpt54_direct_rag.json`
 - Output directory: `outputs/eval/finqa_30_gpt54_direct_rag_open_bm25`
 - Caveat: `gpt-5.4` is passed as an OpenAI-compatible model id. The pilot config uses `chat_completions` wire format because the first `responses` run returned non-JSON API responses for all 30 examples. If the user's provider requires a different exact model string or Responses API, update the config before running.
+
+After the API base URL was corrected to include `/v1`, the GPT-5.4 30-example
+Open BM25 pilot completed with no LLM errors:
+
+| Setting | Model | EM | answer support | notes |
+| --- | --- | ---: | ---: | --- |
+| Open BM25 30-example pilot | GPT-5.4 | 0.467 | 0.233 | 14/30 correct |
+
+Failure split: wrong numeric operation/row `12`, unsupported/refusal-style
+prediction `4`. This clears the threshold for a 300-example Open BM25 GPT-5.4
+run using `configs/experiments.finqa_300.open_bm25.gpt54_direct_rag.json`.
 
 The FinQA-600 strong subset is now wired and locally run:
 

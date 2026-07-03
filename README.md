@@ -296,6 +296,16 @@ format because many relay providers do not expose the newer Responses API. If
 your API provider uses a different exact model id or requires Responses API,
 update that file before running.
 
+If the 30-example pilot is healthy, scale GPT-5.4 to the 300-example Open BM25
+baseline:
+
+```powershell
+python scripts/run_manifest.py --manifest configs/experiments.finqa_300.open_bm25.gpt54_direct_rag.json
+```
+
+The 300-example run writes to
+`outputs/eval/finqa_300_gpt54_direct_rag_open_bm25/`.
+
 Run the stronger FinQA-600 local-planner stress subset:
 
 ```powershell

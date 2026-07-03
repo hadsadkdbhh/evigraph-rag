@@ -185,6 +185,12 @@ exactly as `gpt-5.4`; if an OpenAI-compatible provider uses a different exact
 name, update the config before running. The first run with `wire_api:
 responses` produced 30/30 JSON decode failures, so the GPT-5.4 pilot config now
 uses `wire_api: chat_completions`.
+After correcting the API base URL to include `/v1`, the GPT-5.4 30-example
+Open BM25 pilot completed without LLM errors and reached `0.467` exact match
+(`14/30`). The dominant remaining failures are wrong numeric operation/row
+(`12`) and unsupported/refusal-style outputs (`4`). This clears the pilot gate
+for a 300-example Open BM25 run, now registered at
+`configs/experiments.finqa_300.open_bm25.gpt54_direct_rag.json`.
 
 The 2026-07-01 FinQA-600 strong-subset run doubles the FinQA-300 diagnostic
 sample. It uses `data/raw/finqa_600_subset.jsonl`, `data/finqa_600_corpus`,
