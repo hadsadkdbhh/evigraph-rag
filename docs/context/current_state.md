@@ -36,6 +36,8 @@ Use the 300-example FinQA validation subset as the current reality check.
 - Kimi K2.6 Open BM25 Direct RAG pilot artifacts: `outputs/eval/finqa_300_kimi_k26_direct_rag_open_bm25/`
 - Kimi K2.6 30-example prompt pilot manifest: `configs/experiments.finqa_30.open_bm25.kimi_k26_direct_rag.json`
 - Kimi K2.6 30-example prompt pilot raw subset: `data/raw/finqa_30_kimi_pilot_subset.jsonl`
+- GPT-5.4 30-example prompt pilot manifest: `configs/experiments.finqa_30.open_bm25.gpt54_direct_rag.json`
+- GPT-5.4 30-example prompt pilot config: `configs/default_gpt54_llm_direct_rag.yaml`
 - Strong subset raw data: `data/raw/finqa_600_subset.jsonl`
 - Strong subset corpus: `data/finqa_600_corpus`
 - FinQA-600 local-planner manifest: `configs/experiments.finqa_600.local_planner.json`
@@ -251,6 +253,13 @@ The next Kimi step is a 30-example revised-prompt pilot:
 - Output directory: `outputs/eval/finqa_30_kimi_k26_direct_rag_open_bm25`
 - Prompt change: direct RAG now says to attempt arithmetic when operands are present, discourages unnecessary refusal, specifies percent-change/ratio/average operations, and includes two format-only financial examples.
 - Decision rule: scale to the 300-example Kimi manifest only if this pilot reduces unsupported/refusal-style failures enough to make the external LLM baseline credible.
+
+The same 30-example prompt pilot is also wired for `gpt-5.4`:
+
+- Config: `configs/default_gpt54_llm_direct_rag.yaml`
+- Manifest: `configs/experiments.finqa_30.open_bm25.gpt54_direct_rag.json`
+- Output directory: `outputs/eval/finqa_30_gpt54_direct_rag_open_bm25`
+- Caveat: `gpt-5.4` is passed as an OpenAI-compatible model id. If the user's provider requires a different exact model string, update the config before running.
 
 The FinQA-600 strong subset is now wired and locally run:
 

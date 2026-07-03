@@ -1,0 +1,47 @@
+{
+  "title": "EviGraph FinQA 30 Open BM25 GPT-5.4 Direct RAG Prompt Pilot",
+  "config": "configs/default_gpt54_llm_direct_rag.yaml",
+  "output_dir": "outputs/eval/finqa_30_gpt54_direct_rag_open_bm25",
+  "datasets": [
+    {
+      "name": "finqa_30_gpt54_pilot",
+      "raw_questions": "data/raw/finqa_30_kimi_pilot_subset.jsonl",
+      "questions": "outputs/eval/finqa_30_gpt54_direct_rag_open_bm25/finqa_questions.jsonl",
+      "field_map": {
+        "id": "id",
+        "query": "question",
+        "answer": "answer",
+        "source_doc": "source_doc",
+        "task_type": "task_type"
+      },
+      "corpus": "data/finqa_300_corpus",
+      "build_index": true,
+      "index": "outputs/index/finqa_30_gpt54_pilot.json",
+      "chunk_size": 1200,
+      "chunk_overlap": 160,
+      "gate": {
+        "min_records": 30,
+        "min_source_doc_coverage": 1.0,
+        "fail_on_error": true
+      }
+    }
+  ],
+  "experiments": [
+    {
+      "name": "open_bm25_gpt54_direct_rag_prompt_pilot",
+      "type": "batch",
+      "retrieval_mode": "open",
+      "progress_every": 1,
+      "methods": [
+        "llm_direct_rag"
+      ]
+    }
+  ],
+  "limitations": [
+    "This manifest is a 30-example spend-controlled prompt pilot before running a full 300-example GPT-5.4 Direct RAG baseline.",
+    "The model id is set to gpt-5.4. If the selected API provider does not support that exact id, update configs/default_gpt54_llm_direct_rag.yaml or use the provider's exact model id.",
+    "The 30 examples are sampled deterministically from data/raw/finqa_300_subset.jsonl with seed 13 and require source_doc coverage against data/finqa_300_corpus.",
+    "The baseline uses retrieval-order evidence and does not use the EviGraph operation planner, risk-aware support selection, or verifier-guided repair.",
+    "Use this pilot only to decide whether GPT-5.4 is worth scaling to the 300-example Open BM25 setting."
+  ]
+}

@@ -177,6 +177,13 @@ two financial arithmetic format examples, and still forbids EviGraph planner,
 risk-aware selection, and verifier-guided repair. Only scale this to the
 300-example Kimi manifest if refusal-style failures fall sharply.
 
+A matching 30-example `gpt-5.4` prompt pilot is now registered at
+`configs/experiments.finqa_30.open_bm25.gpt54_direct_rag.json`, using
+`configs/default_gpt54_llm_direct_rag.yaml` and outputting to
+`outputs/eval/finqa_30_gpt54_direct_rag_open_bm25`. The model id is passed
+exactly as `gpt-5.4`; if an OpenAI-compatible provider uses a different exact
+name, update the config before running.
+
 The 2026-07-01 FinQA-600 strong-subset run doubles the FinQA-300 diagnostic
 sample. It uses `data/raw/finqa_600_subset.jsonl`, `data/finqa_600_corpus`,
 `configs/experiments.finqa_600.local_planner.json`, and

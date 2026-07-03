@@ -279,6 +279,21 @@ Scale to the full 300-example manifest only if the pilot substantially reduces
 refusal-style failures and improves exact match over the earlier Kimi Open BM25
 pilot.
 
+To run the same 30-example pilot with `gpt-5.4`, set your provider credentials
+and use the GPT-5.4 manifest:
+
+```powershell
+$env:LLM_PROVIDER="openai_compatible"
+$env:LLM_BASE_URL="YOUR_OPENAI_COMPATIBLE_BASE_URL"
+$env:LLM_API_KEY="YOUR_KEY"
+$env:LLM_MODEL="gpt-5.4"
+python scripts/run_manifest.py --manifest configs/experiments.finqa_30.open_bm25.gpt54_direct_rag.json
+```
+
+The config also pins `model: gpt-5.4` in
+`configs/default_gpt54_llm_direct_rag.yaml`. If your API provider uses a
+different exact model id, update that file before running.
+
 Run the stronger FinQA-600 local-planner stress subset:
 
 ```powershell
