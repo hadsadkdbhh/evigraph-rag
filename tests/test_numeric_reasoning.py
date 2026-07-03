@@ -2722,6 +2722,100 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertIn("453815 / 2.99634e+06", answer.calculations[0])
         self.assertEqual(answer.citations, ["correct"])
 
+    def test_percentage_due_in_year_uses_year_row_over_same_row_planner(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="debt_maturities",
+                node_type="text",
+                content=(
+                    "future maturities of corporate debt scheduled principal payments of corporate debt "
+                    "as of december 31 , 2007 are as follows ( dollars in thousands ).\n"
+                    "| 2008 | $ 2014 |\n"
+                    "| --- | ---: |\n"
+                    "| 2009 | 2014 |\n"
+                    "| 2010 | 2014 |\n"
+                    "| 2011 | 453815 |\n"
+                    "| 2012 | 2014 |\n"
+                    "| thereafter | 2996337 |\n"
+                    "| total future principal payments of corporate debt | 3450152 |\n"
+                    "| total corporate debt | $ 3022698 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator(
+            planner_fallback=NumericPlannerFallback(HeuristicNumericPlanClient())
+        ).generate_planner_first(
+            "what percentage of total future principal payments of corporate debt are due in 2011?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "13.2%")
+        self.assertIn("planned_ratio", answer.calculations[0])
+        self.assertIn("453815 / 3.45015e+06", answer.calculations[0])
+        self.assertEqual(answer.citations, ["debt_maturities"])
+
+    def test_percentage_increase_in_loss_row_reports_magnitude(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="losses",
+                node_type="text",
+                content=(
+                    "| ( losses ) earnings ( in millions ) | ( losses ) earnings 2015 | "
+                    "( losses ) earnings 2014 | 2013 |\n"
+                    "| --- | ---: | ---: | ---: |\n"
+                    "| currency translation adjustments | $ -6129 | $ -3929 | $ -2207 |\n"
+                    "| pension and other benefits | -3332 | -3020 | -2046 |\n"
+                    "| derivatives accounted for as hedges | 59 | 123 | 63 |\n"
+                    "| total accumulated other comprehensive losses | $ -9402 | $ -6826 | $ -4190 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator(
+            planner_fallback=NumericPlannerFallback(HeuristicNumericPlanClient())
+        ).generate(
+            "what is the percentage increase in total accumulated other comprehensive losses from 2014 to 2015?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "37.7%")
+        self.assertIn("loss_magnitude", answer.calculations[0])
+
+    def test_planned_average_in_millions_rounds_to_integer_when_query_asks_millions(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="stock_comp",
+                node_type="text",
+                content=(
+                    "| years ended december 31 | 2010 | 2009 | 2008 |\n"
+                    "| --- | ---: | ---: | ---: |\n"
+                    "| rsus | $ 138 | $ 124 | $ 132 |\n"
+                    "| performance plans | 62 | 60 | 67 |\n"
+                    "| stock options | 17 | 21 | 24 |\n"
+                    "| employee stock purchase plans | 4 | 4 | 3 |\n"
+                    "| total stock-based compensation expense | 221 | 209 | 226 |\n"
+                    "| stock-based compensation expense net of tax | $ 146 | $ 141 | $ 144 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator(
+            planner_fallback=NumericPlannerFallback(HeuristicNumericPlanClient())
+        ).generate(
+            "what was the average total stock-based compensation expense from 2008 to 2010 in millions",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "219")
+        self.assertIn("planned_average", answer.calculations[0])
+
     def test_acquisition_debts_to_assets_ratio_combines_assumed_liabilities(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

@@ -49,16 +49,16 @@ Use the 300-example FinQA validation subset as the current reality check.
 - FinQA-600 status: `docs/finqa_600_status.md`
 - Next phase goals: `docs/next_phase_goals.md`
 - Main diagnostics:
-  - `outputs/eval/finqa_300_local_planner/finqa_300_subset_source_rerank_full_local_planner_failures.md`
-  - `outputs/eval/finqa_300_local_planner/finqa_300_subset_source_rerank_full_local_planner_row_operation_diagnostics.md`
+  - `outputs/eval/finqa_300_local_planner_operand_repair_v4/finqa_300_subset_source_rerank_full_local_planner_failures.md`
+  - `outputs/eval/finqa_300_local_planner_operand_repair_v4/finqa_300_subset_source_rerank_full_local_planner_row_operation_diagnostics.md`
 
 Latest documented FinQA-300 local planner exact match:
 
 | Setting | Accuracy |
 | --- | ---: |
-| Oracle-doc full EviGraph | 0.510 |
-| Open BM25 full EviGraph | 0.403 |
-| BM25 + source-rerank full EviGraph | 0.510 |
+| Oracle-doc full EviGraph | 0.523 |
+| Open BM25 full EviGraph | 0.407 |
+| BM25 + source-rerank full EviGraph | 0.523 |
 
 Latest documented FinQA-600 local planner exact match:
 
@@ -72,7 +72,7 @@ Latest documented FinQA-300 non-API open retrieval controls:
 
 | Setting | Direct RAG | Retrieve-then-program | Full EviGraph |
 | --- | ---: | ---: | ---: |
-| Open BM25 | 0.370 | 0.393 | 0.403 |
+| Open BM25 | 0.370 | 0.393 | 0.407 |
 | Open TF-IDF | 0.353 | 0.377 | 0.380 |
 | Open hybrid | 0.367 | 0.393 | 0.400 |
 
@@ -373,16 +373,17 @@ story:
 
 | Setting | Current | Target |
 | --- | ---: | ---: |
-| Oracle-doc full EviGraph | 0.510 | 0.50+ |
-| BM25 + source-rerank full EviGraph | 0.510 | 0.45+ |
-| Open BM25 full EviGraph | 0.403 | 0.35+ |
+| Oracle-doc full EviGraph | 0.523 | 0.50+ |
+| BM25 + source-rerank full EviGraph | 0.523 | 0.45+ |
+| Open BM25 full EviGraph | 0.407 | 0.35+ |
 
 Required additions for the next paper-quality phase:
 
 - Baselines: Direct RAG, internal Top-k Program, Retrieve-then-program, Full
   context, Utility-only, top-k plus local numeric executor, local hashed dense
   retrieval, open hybrid retrieval, and LLM Direct RAG are now wired into
-  FinQA-300 manifests. LLM Direct RAG still needs an API-backed run, and a true
+  FinQA-300 manifests. GPT-5.4 Direct RAG has an API-backed 300-example run;
+  Kimi K2.6 has a weaker one-setting pilot. A true
   neural dense retriever is still required before making paper-level benchmark
   claims.
 - Ablations: no risk scoring, no verifier, no evidence-graph support selection,
@@ -411,6 +412,12 @@ Required additions for the next paper-quality phase:
   a self-consistent answer from the wrong document. The 2026-06-30 repair pass
   applied 9 repairs in oracle-doc and 9 in source-rerank, moving both settings
   from 0.500 to 0.510 while leaving Open BM25 at 0.403.
+- Operand-repair v4 on 2026-07-03 adds due-in-year ratio planning and
+  loss-row percent-increase magnitude handling. It moves FinQA-300 Full
+  EviGraph to 0.523 oracle-doc, 0.407 Open BM25, and 0.523 source-rerank.
+  The AON stock-compensation average case remains a documented
+  benchmark-rounding mismatch: the system returns the mathematically rounded
+  219 while the gold answer is 218.
 - Stronger baseline and storytelling pass on 2026-07-01. The method set now
   includes `direct_rag`, `retrieve_then_program`, and
   `evigraph_wo_verifier_grounded_rejection`. Direct RAG disables the local

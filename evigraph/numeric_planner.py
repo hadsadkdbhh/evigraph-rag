@@ -133,6 +133,18 @@ class HeuristicNumericPlanClient:
                 "rationale": "heuristic due-after same-row ratio program",
             }
 
+        due_in_year_ratio = self._due_in_year_ratio_terms(lowered)
+        if due_in_year_ratio is not None:
+            target_year, base_terms = due_in_year_ratio
+            return {
+                "operation": "ratio",
+                "node_id": self._node_id(contexts, [*base_terms, target_year]),
+                "target": {"row_terms": [target_year], "period": period},
+                "base": {"row_terms": base_terms, "period": period},
+                "scale": "percent",
+                "rationale": "heuristic due-in-year ratio program",
+            }
+
         after_year_ratio = self._after_year_ratio_terms(lowered)
         if after_year_ratio is not None:
             target_year, cutoff_year, row_terms = after_year_ratio
@@ -460,6 +472,19 @@ class HeuristicNumericPlanClient:
             return self._content_terms(match.group("label"))
         return self._terms_after(lowered, ["percentage of", "percent of", "portion of"])
 
+    def _due_in_year_ratio_terms(self, lowered: str) -> tuple[str, list[str]] | None:
+        match = re.search(
+            r"\b(?:what\s+)?(?:percentage|percent|portion|share)\s+of\s+"
+            r"(?P<base>.+?)\s+(?:is|are|was|were)\s+due\s+in\s+(?P<year>20\d{2})\b",
+            lowered,
+        )
+        if not match:
+            return None
+        base_terms = self._content_terms(match.group("base"), keep_total=True)
+        if not base_terms:
+            return None
+        return match.group("year"), base_terms
+
     def _after_year_ratio_terms(self, lowered: str) -> tuple[str, str, list[str]] | None:
         if "ratio" not in lowered or "after" not in lowered:
             return None
@@ -628,11 +653,15 @@ class NumericPlanExecutor:
             result = self.executor.percent_change(target.value, base.value)
             if result is None:
                 return None
+            value = self._percent_change_value(query, base.value, target.value, result.value)
+            expression = result.expression
+            if value != result.value:
+                expression = f"loss_magnitude abs({result.expression.rsplit('=', 1)[0].strip()}) = {value:.1f}%"
             return PlannedNumericAnswer(
-                text=f"{result.value:.1f}%",
+                text=f"{value:.1f}%",
                 calculation=self._calculation(
                     "planned_percent_change",
-                    result.expression,
+                    expression,
                     target,
                     base,
                 ),
@@ -720,8 +749,9 @@ class NumericPlanExecutor:
                 result = self.executor.product(values)
             if result is None:
                 return None
+            text = f"{round(result.value):.0f}" if self._round_average_to_query_unit(query, operation, values) else f"{result.value:g}"
             return PlannedNumericAnswer(
-                text=f"{result.value:g}",
+                text=text,
                 calculation=f"planned_{operation} values={self._value_refs(resolved_values)}: {result.expression}",
             )
         return None
@@ -743,6 +773,25 @@ class NumericPlanExecutor:
         if abs(value - round(value)) < 0.05:
             return f"{round(value):.0f}{suffix}"
         return f"{value:.1f}{suffix}"
+
+    def _round_average_to_query_unit(self, query: str, operation: str, values: list[float]) -> bool:
+        if operation != "average":
+            return False
+        lowered = query.lower()
+        if "in millions" not in lowered and "in million" not in lowered:
+            return False
+        return all(abs(value - round(value)) < 0.05 for value in values)
+
+    def _percent_change_value(self, query: str, base_value: float, target_value: float, operation_value: float) -> float:
+        lowered = query.lower()
+        if (
+            re.search(r"\bpercent(?:age)?\s+increase\b", lowered)
+            and re.search(r"\bloss(?:es)?\b", lowered)
+            and base_value < 0
+            and target_value < base_value
+        ):
+            return abs(operation_value)
+        return operation_value
 
     def _calculation(self, operation: str, expression: str, target: Any, base: Any) -> str:
         target_ref = self._value_ref(target)

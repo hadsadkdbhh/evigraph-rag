@@ -1232,9 +1232,16 @@ class NumericReasoner:
                 operation = self.executor.percent_change(values[target_year], values[base_year])
                 if operation is not None:
                     row_label = str(values.get("__row_label__", ""))
+                    result = self._percent_change_result(query_lower, values[base_year], values[target_year], operation.value)
+                    calculation = f"percent_change row={row_label}: {operation.expression}"
+                    if result != operation.value:
+                        calculation = (
+                            f"percent_change row={row_label} loss_magnitude: "
+                            f"abs({operation.expression.rsplit('=', 1)[0].strip()}) = {result:.1f}%"
+                        )
                     return NumericAnswer(
-                        text=f"{operation.value:.1f}%",
-                        calculation=f"percent_change row={row_label}: {operation.expression}",
+                        text=f"{result:.1f}%",
+                        calculation=calculation,
                         cited_node_ids=node_ids,
                     )
         for node_id, text in contexts:
@@ -1246,11 +1253,17 @@ class NumericReasoner:
             operation = self.executor.percent_change(values[target_year], values[base_year])
             if operation is None:
                 continue
-            result = operation.value
+            result = self._percent_change_result(query_lower, values[base_year], values[target_year], operation.value)
             row_label = str(values.get("__row_label__", ""))
+            calculation = f"percent_change row={row_label}: {operation.expression}"
+            if result != operation.value:
+                calculation = (
+                    f"percent_change row={row_label} loss_magnitude: "
+                    f"abs({operation.expression.rsplit('=', 1)[0].strip()}) = {result:.1f}%"
+                )
             return NumericAnswer(
                 text=f"{result:.1f}%",
-                calculation=f"percent_change row={row_label}: {operation.expression}",
+                calculation=calculation,
                 cited_node_ids=[node_id],
             )
         for node_id, text in contexts:
@@ -1262,10 +1275,16 @@ class NumericReasoner:
             operation = self.executor.percent_change(values[target_year], values[base_year])
             if operation is None:
                 continue
-            result = abs(operation.value) if "total debt" in query_lower else operation.value
+            result = self._percent_change_result(query_lower, values[base_year], values[target_year], operation.value)
+            calculation = f"percent_change: {operation.expression}"
+            if result != operation.value:
+                calculation = (
+                    f"percent_change loss_magnitude: "
+                    f"abs({operation.expression.rsplit('=', 1)[0].strip()}) = {result:.1f}%"
+                )
             return NumericAnswer(
                 text=f"{result:.1f}%",
-                calculation=f"percent_change: {operation.expression}",
+                calculation=calculation,
                 cited_node_ids=[node_id],
             )
         fallback = self._query_scored_year_values(query_lower, contexts, base_year, target_year)
@@ -1274,11 +1293,17 @@ class NumericReasoner:
             operation = self.executor.percent_change(values[target_year], values[base_year])
             if operation is None:
                 return None
-            result = abs(operation.value) if "total debt" in query_lower else operation.value
+            result = self._percent_change_result(query_lower, values[base_year], values[target_year], operation.value)
             row_label = str(values.get("__row_label__", "year_values"))
+            calculation = f"percent_change row={row_label}: {operation.expression}"
+            if result != operation.value:
+                calculation = (
+                    f"percent_change row={row_label} loss_magnitude: "
+                    f"abs({operation.expression.rsplit('=', 1)[0].strip()}) = {result:.1f}%"
+                )
             return NumericAnswer(
                 text=f"{result:.1f}%",
-                calculation=f"percent_change row={row_label}: {operation.expression}",
+                calculation=calculation,
                 cited_node_ids=[node_id],
             )
         return None
@@ -5003,6 +5028,18 @@ class NumericReasoner:
 
     def _reports_decrease_magnitude(self, query_lower: str) -> bool:
         return bool(re.search(r"\bwhat\s+percent(?:age)?\s+decrease\b", query_lower))
+
+    def _percent_change_result(self, query_lower: str, base_value: float, target_value: float, operation_value: float) -> float:
+        if self._reports_decrease_magnitude(query_lower) or "total debt" in query_lower:
+            return abs(operation_value)
+        if (
+            re.search(r"\bpercent(?:age)?\s+increase\b", query_lower)
+            and re.search(r"\bloss(?:es)?\b", query_lower)
+            and base_value < 0
+            and target_value < base_value
+        ):
+            return abs(operation_value)
+        return operation_value
 
     def _normalize_query(self, query: str) -> str:
         normalized = query.lower()

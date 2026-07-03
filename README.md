@@ -64,9 +64,9 @@ Expected current FinQA-300 exact-match results:
 
 | setting | full EviGraph EM |
 | --- | ---: |
-| Oracle-doc | 0.510 |
-| Open BM25 | 0.403 |
-| BM25 + source rerank | 0.510 |
+| Oracle-doc | 0.523 |
+| Open BM25 | 0.407 |
+| BM25 + source rerank | 0.523 |
 
 FinQA-600 is also checked in as a stronger validation-scale stress subset.
 Current local-planner Full EviGraph exact-match results are:
@@ -81,10 +81,16 @@ Main reproducibility artifacts:
 
 - `outputs/pipeline/pipeline_report.md`
 - `outputs/pipeline/experiment_closure_report.md`
+- `outputs/eval/finqa_300_local_planner_operand_repair_v4/summary.md`
+- `outputs/eval/finqa_300_local_planner_operand_repair_v4/experiment_card.md`
+- `outputs/eval/finqa_300_local_planner_operand_repair_v4/*_failures.md`
+- `outputs/eval/finqa_300_local_planner_operand_repair_v4/*_row_operation_diagnostics.md`
 - `outputs/eval/finqa_300_local_planner/summary.md`
 - `outputs/eval/finqa_300_local_planner/experiment_card.md`
 - `outputs/eval/finqa_300_local_planner/*_failures.md`
 - `outputs/eval/finqa_300_local_planner/*_row_operation_diagnostics.md`
+- `paper/generated/finqa_300_local_planner_operand_repair_v4/finqa_results_summary.md`
+- `paper/generated/finqa_300_local_planner_operand_repair_v4/finqa_results_tables.tex`
 - `paper/generated/finqa_300_local_planner/finqa_results_summary.md`
 - `paper/generated/finqa_300_local_planner/finqa_results_tables.tex`
 - `paper/generated/finqa_300_local_planner_ablation/finqa_results_summary.md`
@@ -224,8 +230,9 @@ evidence annotations from retrieval.
 
 The current FinQA-300 local-planner manifest uses the sample `source_doc` field
 to evaluate oracle-document reasoning before open retrieval. On this diagnostic
-subset, `full_evigraph` currently reaches 0.510 exact match in oracle-doc mode,
-0.403 in open BM25 mode, and 0.510 in BM25 + source-rerank mode. The CSVs also
+subset, the latest operand-repair v4 pass reaches 0.523 exact match in
+oracle-doc mode, 0.407 in open BM25 mode, and 0.523 in BM25 + source-rerank
+mode. The CSVs also
 report diagnostic verifier metrics including arithmetic support,
 calculation-result support, operation-semantics checking, row-operation
 grounding, and semantic grounding. These are diagnostic baselines, not final

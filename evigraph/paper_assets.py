@@ -167,6 +167,24 @@ FINQA_300_LLM_DIRECT_RAG_RESULT_SPECS = (
     ),
 )
 
+FINQA_300_GPT54_DIRECT_RAG_RESULT_SPECS = (
+    ResultSpec(
+        "Oracle-doc",
+        "../finqa_300_gpt54_direct_rag_oracle_source/finqa_300_subset_oracle_doc_gpt54_direct_rag.csv",
+        ("llm_direct_rag",),
+    ),
+    ResultSpec(
+        "Open BM25",
+        "../finqa_300_gpt54_direct_rag_open_bm25/finqa_300_subset_open_bm25_gpt54_direct_rag.csv",
+        ("llm_direct_rag",),
+    ),
+    ResultSpec(
+        "BM25 + source rerank",
+        "../finqa_300_gpt54_direct_rag_oracle_source/finqa_300_subset_source_rerank_gpt54_direct_rag.csv",
+        ("llm_direct_rag",),
+    ),
+)
+
 FINQA_600_LOCAL_RESULT_SPECS = (
     ResultSpec(
         "Oracle-doc",
@@ -210,6 +228,7 @@ RESULT_SPEC_PRESETS = {
     "finqa_300_local_retrieval_baselines": FINQA_300_LOCAL_RETRIEVAL_BASELINE_RESULT_SPECS,
     "finqa_300_local_strong_retrieval_baselines": FINQA_300_LOCAL_STRONG_RETRIEVAL_BASELINE_RESULT_SPECS,
     "finqa_300_llm_direct_rag": FINQA_300_LLM_DIRECT_RAG_RESULT_SPECS,
+    "finqa_300_gpt54_direct_rag": FINQA_300_GPT54_DIRECT_RAG_RESULT_SPECS,
     "finqa_600_local": FINQA_600_LOCAL_RESULT_SPECS,
     "finqa_600_llm_direct_rag": FINQA_600_LLM_DIRECT_RAG_RESULT_SPECS,
 }

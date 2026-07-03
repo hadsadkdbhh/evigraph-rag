@@ -190,6 +190,41 @@ class PaperAssetBuilderTest(unittest.TestCase):
         self.assertIn("BM25 + source rerank", markdown)
         self.assertIn("| Oracle-doc | 1 |", markdown)
 
+    def test_builds_tables_from_split_gpt54_direct_rag_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            eval_root = root / "eval"
+            base_dir = eval_root / "paper_anchor"
+            oracle_source_dir = eval_root / "finqa_300_gpt54_direct_rag_oracle_source"
+            open_dir = eval_root / "finqa_300_gpt54_direct_rag_open_bm25"
+            output_dir = root / "paper"
+            base_dir.mkdir(parents=True)
+            oracle_source_dir.mkdir()
+            open_dir.mkdir()
+            self._write_eval_csv(
+                oracle_source_dir / "finqa_300_subset_oracle_doc_gpt54_direct_rag.csv",
+                [("llm_direct_rag", "0.69", "7")],
+            )
+            self._write_eval_csv(
+                open_dir / "finqa_300_subset_open_bm25_gpt54_direct_rag.csv",
+                [("llm_direct_rag", "0.52", "7")],
+            )
+            self._write_eval_csv(
+                oracle_source_dir / "finqa_300_subset_source_rerank_gpt54_direct_rag.csv",
+                [("llm_direct_rag", "0.68", "7")],
+            )
+
+            paths = PaperAssetBuilder().build(
+                base_dir,
+                output_dir,
+                preset="finqa_300_gpt54_direct_rag",
+            )
+            markdown = Path(paths["markdown"]).read_text(encoding="utf-8")
+
+        self.assertIn("LLM Direct RAG", markdown)
+        self.assertIn("| Open BM25 | LLM Direct RAG | 0.52", markdown)
+        self.assertIn("BM25 + source rerank", markdown)
+
     def test_builds_tables_from_finqa_600_local_preset(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
