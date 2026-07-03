@@ -34,6 +34,14 @@ Generated from `outputs\eval\finqa_300_local_planner` after the latest manifest 
 | Open BM25 | 5 | 4 | 5 | 6 | 13 | 26 |
 | BM25 + source rerank | 4 | 1 | 4 | 2 | 9 | 25 |
 
+## Process Trace Diagnostics
+
+| setting | evidence | period | row | operand | operation | citation | support | EM |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Oracle-doc | 1.00 | 1.00 | 0.99 | 0.52 | 0.86 | 1.00 | 0.78 | 0.51 |
+| Open BM25 | 1.00 | 0.98 | 0.99 | 0.52 | 0.87 | 1.00 | 0.79 | 0.40 |
+| BM25 + source rerank | 1.00 | 1.00 | 0.99 | 0.52 | 0.86 | 1.00 | 0.78 | 0.51 |
+
 ## Paper-Safe Claims
 
 - Treat these as diagnostic smoke-subset results, not final benchmark claims.

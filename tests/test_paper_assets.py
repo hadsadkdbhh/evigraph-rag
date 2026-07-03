@@ -60,6 +60,8 @@ class PaperAssetBuilderTest(unittest.TestCase):
         self.assertIn("Open hybrid", markdown)
         self.assertIn("Full EviGraph", markdown)
         self.assertIn("wrong row/op", markdown)
+        self.assertIn("Process Trace Diagnostics", markdown)
+        self.assertIn("\\label{tab:finqa-process-diagnostics}", latex)
         self.assertIn("Paper-Safe Claims", markdown)
 
     def test_builds_tables_from_alternate_finqa_prefix(self) -> None:

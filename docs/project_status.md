@@ -217,6 +217,16 @@ The next external baseline pilot is GLM-5.1, wired at
 30-example subset as the Kimi and GPT-5.4 pilots and writes to
 `outputs/eval/finqa_30_glm51_direct_rag_open_bm25/`.
 
+The main-conference idea additions are now partially implemented. A deterministic
+`EvidenceCritic` and `ProcessTraceAnalyzer` in `evigraph/process_trace.py`
+derive hop-wise process diagnostics from existing run artifacts without making
+new API calls. Manifest runs now write `*_process_trace.md` beside failure and
+row-operation diagnostics, and paper assets include
+`tab:finqa-process-diagnostics`. On the current FinQA-300 local-planner outputs,
+the process table shows that evidence availability and citation checks are high,
+but operand support is about `0.52`; this makes operand selection the next
+highest-yield mechanism target.
+
 The 2026-07-01 FinQA-600 strong-subset run doubles the FinQA-300 diagnostic
 sample. It uses `data/raw/finqa_600_subset.jsonl`, `data/finqa_600_corpus`,
 `configs/experiments.finqa_600.local_planner.json`, and

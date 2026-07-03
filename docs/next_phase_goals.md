@@ -150,10 +150,13 @@ The recommended implementation order is:
 
 1. Add `EvidenceCritic` as a deterministic first version, reusing existing
    scorer, verifier, and row-operation diagnostic signals rather than creating a
-   new model dependency.
+   new model dependency. Implemented as a diagnostic critic in
+   `evigraph/process_trace.py`.
 2. Add hop-wise numeric trace artifacts and a process accuracy table for
    FinQA-300. This should report source, row, period, operand, operation, and
-   citation support separately from exact match.
+   citation support separately from exact match. Implemented for manifest
+   outputs as `*_process_trace.md` and for paper assets as
+   Table `tab:finqa-process-diagnostics`.
 3. Add verifier-guided repair as a bounded one-retry loop driven by critic and
    verifier labels: wrong denominator, wrong year/period, wrong row label, and
    wrong operation type.
@@ -164,6 +167,14 @@ The recommended implementation order is:
 Do not start RL training in this phase. The main-conference value should come
 from auditable evidence-state control, process diagnostics, and bounded
 verifier-guided repair, not from an underpowered reinforcement-learning claim.
+
+Initial FinQA-300 process diagnostics show the next bottleneck clearly:
+evidence availability, period alignment, row grounding, and citation checking
+are high, while operand support is only about `0.52` across oracle-doc, Open
+BM25, and source-rerank. Operation semantics are around `0.86--0.87`.
+Therefore the next repair target should be operand selection, especially
+wrong numerator/denominator and wrong year/period interactions, rather than
+additional broad retrieval or row-label heuristics.
 
 ## Immediate Work Order
 

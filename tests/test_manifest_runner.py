@@ -82,10 +82,13 @@ class ManifestRunnerTest(unittest.TestCase):
                 self.assertTrue(Path(evaluation).exists())
             self.assertEqual(len(artifacts["row_operation_diagnostics"]), 1)
             self.assertTrue(Path(artifacts["row_operation_diagnostics"][0]).exists())
+            self.assertEqual(len(artifacts["process_traces"]), 1)
+            self.assertTrue(Path(artifacts["process_traces"][0]).exists())
             self.assertTrue(Path(artifacts["summary"]).exists())
             self.assertTrue(Path(artifacts["card"]).exists())
             self.assertIn("Temp Manifest", Path(artifacts["card"]).read_text(encoding="utf-8"))
             self.assertIn("row_operation_diagnostics", Path(artifacts["card"]).read_text(encoding="utf-8"))
+            self.assertIn("process_traces", Path(artifacts["card"]).read_text(encoding="utf-8"))
 
     def test_full_evigraph_handles_non_default_year_pair(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

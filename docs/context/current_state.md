@@ -356,6 +356,18 @@ and a machine-checked closure report.
 
 The next phase is now defined in `docs/next_phase_goals.md`.
 
+The first main-conference idea module is implemented:
+
+- `evigraph/process_trace.py` adds a deterministic `EvidenceCritic` and
+  `ProcessTraceAnalyzer`.
+- `scripts/run_manifest.py` now emits `*_process_trace.md` artifacts for batch
+  experiments.
+- `scripts/build_paper_assets.py` now includes
+  `tab:finqa-process-diagnostics`.
+- Current FinQA-300 process diagnostics show operand support at about `0.52`
+  while period, row, and citation steps are high, so the next mechanism target
+  is verifier-guided operand repair rather than more broad rules.
+
 Target exact-match gates before presenting FinQA-300 as a positive empirical
 story:
 

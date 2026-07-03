@@ -125,6 +125,7 @@ class ExperimentCard:
             "evaluations",
             "failure_reports",
             "row_operation_diagnostics",
+            "process_traces",
         ):
             for path in artifacts.get(key, []):
                 lines.append(f"| {key} | `{self._display_path(path)}` |")
