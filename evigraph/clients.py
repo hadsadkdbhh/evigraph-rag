@@ -107,7 +107,25 @@ class OpenAICompatibleLLMClient(LLMClient):
                     if content.get("type") in {"output_text", "text"} and content.get("text") is not None:
                         return str(content["text"])
             raise RuntimeError(f"Responses API body did not contain text output: {str(body)[:200]}")
-        return str(body["choices"][0]["message"]["content"])
+        choices = body.get("choices")
+        if not choices or not isinstance(choices, list):
+            raise RuntimeError(f"Chat completions body did not contain choices: {str(body)[:200]}")
+        first = choices[0] if isinstance(choices[0], dict) else {}
+        message = first.get("message") if isinstance(first.get("message"), dict) else {}
+        content = message.get("content")
+        if content is None and first.get("text") is not None:
+            content = first.get("text")
+        if isinstance(content, list):
+            parts = []
+            for item in content:
+                if isinstance(item, dict) and item.get("text") is not None:
+                    parts.append(str(item["text"]))
+                elif isinstance(item, str):
+                    parts.append(item)
+            content = "".join(parts)
+        if content is None:
+            raise RuntimeError(f"Chat completions body did not contain message content: {str(body)[:200]}")
+        return str(content)
 
     def _open_with_retries(self, request: urllib.request.Request) -> dict[str, Any]:
         last_error: BaseException | None = None

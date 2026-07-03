@@ -28,8 +28,8 @@ Anonymous Authors
 \begin{abstract}
 Retrieval-augmented generation systems often treat retrieved passages as usable evidence, even when the retrieved context is incomplete, noisy, or numerically under-specified.
 We study evidence-state control: a pipeline that converts retrieved candidates into an explicit evidence graph, scores their utility and risk, selects a compact support subgraph, executes table-oriented numerical operations, and verifies generated claims against cited support.
-On a deterministic 300-example FinQA validation subset, we evaluate EviGraph-RAG against direct RAG, retrieve-then-program, full-context, utility-only, retrieval-baseline, and component-ablation controls; we also add a 600-example FinQA stress subset to test whether the diagnostic story survives a larger sample.
-The current results support a conservative mechanism claim: operation planning and evidence-graph selection improve exact match over direct RAG while verifier diagnostics expose when higher exact match is not accompanied by stronger support.
+On a deterministic 300-example FinQA validation subset, we evaluate EviGraph-RAG against direct RAG, retrieve-then-program, full-context, utility-only, retrieval-baseline, external LLM Direct RAG, and component-ablation controls; we also add a 600-example FinQA stress subset to test whether the diagnostic story survives a larger sample.
+The current results support a conservative mechanism claim: operation planning and evidence-graph selection improve exact match over local direct RAG, while verifier diagnostics expose when a stronger external reader achieves higher exact match without correspondingly strong cited support.
 \end{abstract}
 
 \section{Introduction}
@@ -50,7 +50,8 @@ Our current answer is a three-step story.
 First, direct RAG without the operation planner is a meaningful but weaker baseline: under open BM25 it reaches 0.370 exact match.
 Second, retrieve-then-program improves the same retrieval prefix to 0.393, showing that local program execution matters even before graph selection.
 Third, full EviGraph reaches 0.403 under open BM25 and 0.510 under oracle-document and source-rerank settings, while using far fewer tokens than full-context reading.
-The margins are still modest, but the decomposition makes the next research bottleneck visible: operand selection and open-retrieval evidence quality, not generic answer fluency.
+Fourth, a GPT-5.4 Direct RAG baseline reaches 0.523 exact match under Open BM25, but its answer-support rate is only 0.273 versus 0.790 for full EviGraph.
+This makes the current claim sharper: EviGraph is not simply an accuracy booster over a frontier external reader; it is an auditable evidence-state mechanism whose support diagnostics expose a tradeoff between answer accuracy and verifiable grounding.
 On the larger FinQA-600 stress subset, the same local-planner configuration reaches 0.403 under oracle-document retrieval, 0.295 under open BM25, and 0.400 under BM25 plus source reranking.
 We therefore treat FinQA-300 as the mechanism table and FinQA-600 as a pressure test that exposes remaining generalization gaps.
 
@@ -208,6 +209,8 @@ This distinction matters: exact match can stay flat while answer-support diagnos
 The current ablation table shows that the operation planner contributes about 4.0--6.0 exact-match points over the no-planner ablation across retrieval settings.
 Under open BM25, direct RAG reaches 0.370, retrieve-then-program reaches 0.393, and full EviGraph reaches 0.403.
 Full EviGraph also improves answer support over direct RAG (0.790 vs. 0.707) and utility-only selection (0.790 vs. 0.747).
+The strongest external reader baseline, GPT-5.4 Direct RAG over the same Open BM25 retrieval-order context, reaches 0.523 exact match but only 0.273 answer support.
+We therefore report it as a strong accuracy baseline and a grounding stress test, not as evidence that support verification is unnecessary.
 Under oracle-document retrieval, full EviGraph reaches 0.510 while direct RAG reaches 0.463; under BM25 plus source reranking, full EviGraph reaches 0.510 while direct RAG reaches 0.463.
 We therefore frame the current numbers as diagnostic evidence for the planner--verifier--evidence-graph mechanism, not as final benchmark superiority over modern neural retrieval systems.
 
@@ -219,12 +222,13 @@ We therefore frame the current numbers as diagnostic evidence for the planner--v
 Method & Oracle-doc & Open BM25 & Source rerank \\
 \midrule
 Direct RAG & 0.463 & 0.370 & 0.463 \\
+GPT-5.4 Direct RAG & -- & 0.523 & -- \\
 Retrieve-then-program & 0.500 & 0.393 & 0.500 \\
 Utility-only & 0.490 & 0.333 & 0.450 \\
 Full EviGraph & 0.510 & 0.403 & 0.510 \\
 \bottomrule
 \end{tabular}
-\caption{Baseline ladder on the FinQA-300 diagnostic subset. The progression isolates direct retrieval reading, retrieval-order program execution, utility-only selection, and full evidence-state control.}
+\caption{Baseline ladder on the FinQA-300 diagnostic subset. The progression isolates direct retrieval reading, external LLM reading, retrieval-order program execution, utility-only selection, and full evidence-state control. GPT-5.4 Direct RAG is currently run only under Open BM25.}
 \label{tab:baseline-ladder}
 \end{table}
 
@@ -251,7 +255,8 @@ Table~\ref{tab:finqa-failure-categories} reports the current full EviGraph failu
 Table~\ref{tab:finqa-row-operation-diagnostics} further decomposes wrong numeric answers into operand, year/period, row-label, operation-type, and ambiguous supported wrong-number signals.
 The latest failure-driven planner repairs add grounded operation templates for rate-of-return multiplication, return-on-assets ratios, cumulative return tables, implied tier-2 capital, current ratio, respectively ordered prose differences, implicit percent-increase queries, source-aware support ordering, row-year sums, per-unit costs, implied ownership-value calculations, stated-amount percentage products, per-share acquisition value, inventory-component ratios, and two-year table-column differences.
 These repairs move exact match to 0.510 under oracle-document retrieval, 0.403 under open BM25, and 0.510 under BM25 plus source reranking.
-The largest remaining actionable categories are still operand selection and unresolved numeric-answer extraction, especially percent and row/operation failures; the next phase must run the LLM Direct RAG hook with a named model and add true neural dense retrieval baselines before claiming benchmark-level gains.
+The GPT-5.4 Direct RAG Open BM25 baseline changes the failure surface: it produces 0.523 exact match, but its remaining 143 failures are dominated by wrong numeric operation or row (95) and unsupported textual predictions (48).
+The largest remaining actionable categories are still operand selection and unresolved numeric-answer extraction, especially percent and row/operation failures; the next phase must add true neural dense retrieval baselines and improve verifier-aware selection before claiming benchmark-level gains.
 
 \section{Conclusion}
 

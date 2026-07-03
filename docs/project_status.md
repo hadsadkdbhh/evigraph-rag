@@ -191,6 +191,15 @@ Open BM25 pilot completed without LLM errors and reached `0.467` exact match
 (`12`) and unsupported/refusal-style outputs (`4`). This clears the pilot gate
 for a 300-example Open BM25 run, now registered at
 `configs/experiments.finqa_300.open_bm25.gpt54_direct_rag.json`.
+The 300-example GPT-5.4 Open BM25 run is now complete:
+`157/300` exact match (`0.523`), answer support `0.273`, calculation support
+`0.793`, and no systematic LLM transport failure (`297/300` no LLM error; 3
+provider responses lacked message content). It is the strongest current exact
+match baseline under Open BM25, beating local Direct RAG (`0.370`),
+retrieve-then-program (`0.393`), and Full EviGraph (`0.403`). However, Full
+EviGraph remains much stronger on answer support (`0.790` vs. `0.273`), so the
+paper should frame GPT-5.4 as a strong accuracy baseline and a grounding stress
+test rather than as a replacement for evidence-state verification.
 
 The 2026-07-01 FinQA-600 strong-subset run doubles the FinQA-300 diagnostic
 sample. It uses `data/raw/finqa_600_subset.jsonl`, `data/finqa_600_corpus`,

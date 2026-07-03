@@ -273,6 +273,26 @@ Failure split: wrong numeric operation/row `12`, unsupported/refusal-style
 prediction `4`. This clears the threshold for a 300-example Open BM25 GPT-5.4
 run using `configs/experiments.finqa_300.open_bm25.gpt54_direct_rag.json`.
 
+The GPT-5.4 300-example Open BM25 run completed after fixing the API base URL:
+
+| Setting | Model | EM | answer support | notes |
+| --- | --- | ---: | ---: | --- |
+| Open BM25 300-example baseline | GPT-5.4 | 0.523 | 0.273 | 157/300 correct |
+
+Artifacts:
+
+- Output directory: `outputs/eval/finqa_300_gpt54_direct_rag_open_bm25/`
+- Summary: `outputs/eval/finqa_300_gpt54_direct_rag_open_bm25/summary.md`
+- Failure report: `outputs/eval/finqa_300_gpt54_direct_rag_open_bm25/finqa_300_subset_open_bm25_gpt54_direct_rag_failures.md`
+- Row diagnostics: `outputs/eval/finqa_300_gpt54_direct_rag_open_bm25/finqa_300_subset_open_bm25_gpt54_direct_rag_row_operation_diagnostics.md`
+
+Failure split: wrong numeric operation/row `95`, unsupported/refusal-style
+prediction `48`. Transport status: `297/300` no LLM error; 3 provider responses
+lacked `message.content`, so `evigraph.clients` now reports missing content
+cleanly and accepts `choices[0].text` fallback. Interpretation: GPT-5.4 Direct
+RAG is now the strongest exact-match Open BM25 baseline, but Full EviGraph still
+has far higher answer support (`0.790` vs. `0.273`).
+
 The FinQA-600 strong subset is now wired and locally run:
 
 - Dataset: `data/raw/finqa_600_subset.jsonl`

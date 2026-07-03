@@ -305,6 +305,9 @@ python scripts/run_manifest.py --manifest configs/experiments.finqa_300.open_bm2
 
 The 300-example run writes to
 `outputs/eval/finqa_300_gpt54_direct_rag_open_bm25/`.
+The current GPT-5.4 Open BM25 300-example result is `0.523` exact match with
+`0.273` answer support; report it as a strong external accuracy baseline and a
+grounding stress test.
 
 Run the stronger FinQA-600 local-planner stress subset:
 

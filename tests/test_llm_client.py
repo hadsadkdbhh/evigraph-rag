@@ -62,6 +62,33 @@ class OpenAICompatibleLLMClientTest(unittest.TestCase):
 
         self.assertEqual(text, '{"answer":"ok"}')
 
+    def test_chat_completions_parses_text_choice_fallback(self) -> None:
+        client = OpenAICompatibleLLMClient(
+            base_url="https://example.test/v1",
+            api_key="test-key",
+            model="test-model",
+            wire_api="chat_completions",
+        )
+        body = {"choices": [{"text": '{"answer":"ok"}'}]}
+
+        with patch.object(client.opener, "open", return_value=_FakeResponse(body)):
+            text = client.chat_text([{"role": "user", "content": "hello"}])
+
+        self.assertEqual(text, '{"answer":"ok"}')
+
+    def test_chat_completions_reports_missing_content(self) -> None:
+        client = OpenAICompatibleLLMClient(
+            base_url="https://example.test/v1",
+            api_key="test-key",
+            model="test-model",
+            wire_api="chat_completions",
+        )
+        body = {"choices": [{"message": {"role": "assistant"}}]}
+
+        with patch.object(client.opener, "open", return_value=_FakeResponse(body)):
+            with self.assertRaisesRegex(RuntimeError, "message content"):
+                client.chat_text([{"role": "user", "content": "hello"}])
+
     def test_redirect_handler_preserves_post_method_and_body(self) -> None:
         original = urllib.request.Request(
             "https://example.test/v1/responses",
