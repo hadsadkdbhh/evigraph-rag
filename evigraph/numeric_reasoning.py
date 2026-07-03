@@ -27,6 +27,10 @@ class NumericReasoner:
         if not contexts:
             return None
 
+        answer = self._yes_no_comparison(query_lower, contexts)
+        if answer:
+            return answer
+
         is_roi_query = "roi" in query_lower or "rate of return" in query_lower
         answer = self._return_on_assets(query_lower, contexts)
         if answer:
@@ -1913,6 +1917,23 @@ class NumericReasoner:
             return None
         if numerator_label and numerator_label == denominator_label:
             return None
+        service_interest = {"service", "cost"}.issubset(set(numerator_terms)) and {
+            "interest",
+            "cost",
+        }.issubset(set(denominator_terms))
+        if service_interest:
+            operation = self.executor.ratio(denominator, numerator)
+            if operation is None:
+                return None
+            percent_value = operation.value * 100
+            return NumericAnswer(
+                text=self._format_percent(percent_value),
+                calculation=(
+                    f"same_year_row_ratio_percent row={denominator_label} denominator_row={numerator_label} "
+                    f"column={query_year}: {denominator:g} / {numerator:g} * 100 = {self._format_percent(percent_value)}"
+                ),
+                cited_node_ids=[node_id],
+            )
         operation = self.executor.ratio(numerator, denominator)
         if operation is None:
             return None
@@ -2009,6 +2030,189 @@ class NumericReasoner:
                 ),
                 cited_node_ids=[node_id],
             )
+        return None
+
+    def _yes_no_comparison(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        if "outperform" in query_lower:
+            answer = self._yes_no_outperform(query_lower, contexts)
+            if answer:
+                return answer
+        if "spend more" in query_lower:
+            return self._yes_no_spend_more(query_lower, contexts)
+        return None
+
+    def _yes_no_outperform(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        match = re.search(r"\bdid\b(?P<target>.+?)\boutperform\b(?P<baseline>.+?)\??$", query_lower)
+        if not match:
+            return None
+        target_terms = self._comparison_terms(match.group("target"))
+        baseline_terms = self._comparison_terms(match.group("baseline"))
+        if not target_terms or not baseline_terms:
+            return None
+        best: tuple[int, float, float, str, str, str] | None = None
+        for node_id, text in contexts:
+            for _headers, rows in self._markdown_tables(text):
+                target = self._best_comparison_row(rows, target_terms)
+                baseline = self._best_comparison_row(rows, baseline_terms)
+                if target is None or baseline is None:
+                    continue
+                target_score, target_row, target_value = target
+                baseline_score, baseline_row, baseline_value = baseline
+                if target_row == baseline_row:
+                    continue
+                score = target_score + baseline_score
+                candidate = (score, target_value, baseline_value, target_row[0], baseline_row[0], node_id)
+                if best is None or candidate > best:
+                    best = candidate
+        if best is None:
+            return None
+        _score, target_value, baseline_value, target_label, baseline_label, node_id = best
+        answer = "yes" if target_value > baseline_value else "no"
+        return NumericAnswer(
+            text=answer,
+            calculation=(
+                f"yes_no_outperform row={target_label} baseline_row={baseline_label}: "
+                f"{target_value:g} {'>' if target_value > baseline_value else '<='} {baseline_value:g} => {answer}"
+            ),
+            cited_node_ids=[node_id],
+        )
+
+    def _yes_no_spend_more(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        match = re.search(
+            r"\bspend\s+more\s+on\s+(?P<left>.+?)\s+in\s+(?P<year>20\d{2})\s+than\s+(?:on\s+)?(?P<right>.+?)\??$",
+            query_lower,
+        )
+        if not match:
+            return None
+        year = match.group("year")
+        left_terms = self._comparison_terms(match.group("left"))
+        right_terms = self._comparison_terms(match.group("right"))
+        if not left_terms or not right_terms:
+            return None
+        for node_id, text in contexts:
+            left_value, left_label = self._comparison_value_for_terms_year(text, left_terms, year, query_lower)
+            right_value, right_label = self._comparison_value_for_terms_year(text, right_terms, year, query_lower)
+            if left_value is None or right_value is None:
+                continue
+            answer = "yes" if left_value > right_value else "no"
+            return NumericAnswer(
+                text=answer,
+                calculation=(
+                    f"yes_no_spend_more row={left_label} baseline_row={right_label} year={year}: "
+                    f"{left_value:g} {'>' if left_value > right_value else '<='} {right_value:g} => {answer}"
+                ),
+                cited_node_ids=[node_id],
+            )
+        return None
+
+    def _comparison_value_for_terms_year(
+        self,
+        text: str,
+        terms: list[str],
+        year: str,
+        query_lower: str,
+    ) -> tuple[float | None, str]:
+        value, meta = self._table_value_for_terms_year_with_label(text, terms, year, allow_partial=False)
+        if value is not None:
+            return value, str(meta.get("row_label", ""))
+        value, label = self._prose_ordered_value_for_terms_year(text, terms, year)
+        if value is not None:
+            return value, label
+        return self._prose_amount_for_terms_year(text, terms, year)
+
+    def _prose_ordered_value_for_terms_year(
+        self,
+        text: str,
+        terms: list[str],
+        year: str,
+    ) -> tuple[float | None, str]:
+        amount_pattern = re.compile(
+            r"(\$)?\s*([-+]?\d+(?:,\d{3})*(?:\.\d+)?)\s*(billion|million|thousand)?",
+            flags=re.IGNORECASE,
+        )
+        min_matches = self._minimum_term_matches(terms)
+        for sentence in self._prose_sentences(text):
+            lower_sentence = sentence.lower()
+            if year not in lower_sentence:
+                continue
+            matched_terms = [term for term in terms if term in lower_sentence]
+            if len(matched_terms) < min_matches:
+                continue
+            years = re.findall(r"\b(20\d{2})\b", sentence)
+            if len(years) < 2 or year not in years:
+                continue
+            amounts = [
+                self._scaled_number(match.group(2), match.group(3).lower() if match.group(3) else None)
+                for match in amount_pattern.finditer(sentence)
+                if match.group(1) or match.group(3)
+            ]
+            if len(amounts) < len(years):
+                continue
+            aligned = dict(zip(years, amounts[-len(years) :]))
+            if year in aligned:
+                return aligned[year], " ".join(matched_terms)
+        return None, ""
+
+    def _comparison_terms(self, text: str) -> list[str]:
+        terms = [
+            term
+            for term in self._keywords(text)
+            if term
+            not in {
+                "company",
+                "corporation",
+                "corp",
+                "five",
+                "year",
+                "years",
+                "total",
+                "common",
+                "stock",
+                "index",
+                "than",
+                "on",
+            }
+        ]
+        return terms[:6]
+
+    def _best_comparison_row(self, rows: list[list[str]], terms: list[str]) -> tuple[int, list[str], float] | None:
+        best: tuple[int, int, list[str], float] | None = None
+        for row_index, row in enumerate(rows):
+            if not row:
+                continue
+            label = row[0].lower()
+            matched = [term for term in terms if term in label]
+            if len(matched) < min(2, len(terms)):
+                continue
+            value = self._last_numeric_value(row)
+            if value is None:
+                continue
+            score = len(matched) * 100 + sum(len(term) for term in matched)
+            candidate = (score, -row_index, row, value)
+            if best is None or candidate > best:
+                best = candidate
+        if best is None:
+            return None
+        score, _row_order, row, value = best
+        return score, row, value
+
+    def _last_numeric_value(self, row: list[str]) -> float | None:
+        for cell in reversed(row[1:]):
+            value = self._first_number(cell)
+            if value is not None:
+                return value
         return None
 
     def _value_for_row_terms_year(

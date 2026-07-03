@@ -1,6 +1,6 @@
 # EviGraph-RAG Working Context
 
-Last updated: 2026-07-01
+Last updated: 2026-07-03
 
 This file is the durable context checkpoint for Codex. Read it before continuing
 project work after chat compaction or a new session. Keep it short, factual,
@@ -51,16 +51,24 @@ Use the 300-example FinQA validation subset as the current reality check.
 - FinQA-600 status: `docs/finqa_600_status.md`
 - Next phase goals: `docs/next_phase_goals.md`
 - Main diagnostics:
-  - `outputs/eval/finqa_300_local_planner_operand_repair_v4/finqa_300_subset_source_rerank_full_local_planner_failures.md`
-  - `outputs/eval/finqa_300_local_planner_operand_repair_v4/finqa_300_subset_source_rerank_full_local_planner_row_operation_diagnostics.md`
+  - `outputs/eval/finqa_300_local_planner_binary_comparison_v6/finqa_300_subset_source_rerank_full_local_planner_failures.md`
+  - `outputs/eval/finqa_300_local_planner_binary_comparison_v6/finqa_300_subset_source_rerank_full_local_planner_row_operation_diagnostics.md`
 
 Latest documented FinQA-300 local planner exact match:
 
 | Setting | Accuracy |
 | --- | ---: |
-| Oracle-doc full EviGraph | 0.523 |
-| Open BM25 full EviGraph | 0.407 |
-| BM25 + source-rerank full EviGraph | 0.523 |
+| Oracle-doc full EviGraph | 0.533 |
+| Open BM25 full EviGraph | 0.417 |
+| BM25 + source-rerank full EviGraph | 0.533 |
+
+Current local-planner run:
+
+- Manifest: `configs/experiments.finqa_300.local_planner_binary_comparison_v6.json`
+- Output directory: `outputs/eval/finqa_300_local_planner_binary_comparison_v6`
+- Paper artifacts: `paper/generated/finqa_300_local_planner_binary_comparison_v6/`
+- Delta against operand-repair v4: +3 correct examples in oracle-doc, Open BM25, and source-rerank.
+- Closed examples: BLL 2010 yes/no outperform comparison, PPG 2013 advertising vs R&D yes/no comparison, and BDX 2018 service/interest cost ratio-percent convention.
 
 Latest documented FinQA-600 local planner exact match:
 
@@ -375,9 +383,9 @@ story:
 
 | Setting | Current | Target |
 | --- | ---: | ---: |
-| Oracle-doc full EviGraph | 0.523 | 0.50+ |
-| BM25 + source-rerank full EviGraph | 0.523 | 0.45+ |
-| Open BM25 full EviGraph | 0.407 | 0.35+ |
+| Oracle-doc full EviGraph | 0.533 | 0.60+ stretch |
+| BM25 + source-rerank full EviGraph | 0.533 | 0.60+ stretch |
+| Open BM25 full EviGraph | 0.417 | 0.35+ floor met |
 
 Required additions for the next paper-quality phase:
 
@@ -420,6 +428,14 @@ Required additions for the next paper-quality phase:
   The AON stock-compensation average case remains a documented
   benchmark-rounding mismatch: the system returns the mathematically rounded
   219 while the gold answer is 218.
+- Binary-comparison v6 on 2026-07-03 adds bounded yes/no comparison execution
+  for table outperform questions and prose/table `spend more` questions, plus
+  a narrow FinQA service-cost/interest-cost ratio-percent convention. It moves
+  FinQA-300 Full EviGraph to 0.533 oracle-doc, 0.417 Open BM25, and 0.533
+  source-rerank. The remaining 0.60+ path needs roughly +20 to +21 more
+  correct examples on oracle-doc/source-rerank, so the next high-yield cluster
+  is still `ambiguous_supported_wrong_number` and operand selection, not broad
+  retrieval work.
 - Stronger baseline and storytelling pass on 2026-07-01. The method set now
   includes `direct_rag`, `retrieve_then_program`, and
   `evigraph_wo_verifier_grounded_rejection`. Direct RAG disables the local

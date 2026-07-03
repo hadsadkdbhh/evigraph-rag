@@ -2646,6 +2646,30 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertIn("same_year_row_ratio", answer.calculations[0])
         self.assertEqual(answer.citations, ["retrieved_1_case_0_0", "neighbor_1_case_0_1"])
 
+    def test_service_interest_cost_ratio_matches_finqa_percent_convention(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| metric | 2018 | 2017 | 2016 |\n"
+                    "| --- | ---: | ---: | ---: |\n"
+                    "| service cost | $ 136 | $ 110 | $ 81 |\n"
+                    "| interest cost | 90 | 61 | 72 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "in 2018 what was the ratio of the service cost to the interest cost",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "66.2%")
+        self.assertIn("same_year_row_ratio_percent", answer.calculations[0])
+
     def test_ratio_after_year_to_year_uses_future_range_row(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
@@ -3698,6 +3722,55 @@ class NumericReasoningTest(unittest.TestCase):
 
         self.assertEqual(answer.text, "995")
         self.assertIn("increase_between_table_year_columns", answer.calculations[0])
+
+    def test_yes_no_outperform_compares_final_table_values(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "|  | 2005 | 2006 | 2007 | 2008 | 2009 | 2010 |\n"
+                    "| --- | --- | --- | --- | --- | --- | --- |\n"
+                    "| ball corporation | 100.00 | 109.44 | 124.01 | 97.31 | 141.10 | 178.93 |\n"
+                    "| dj containers & packaging index | 100.00 | 104.23 | 118.95 | 82.14 | 101.22 | 123.56 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "did the five year total return on ball corporation outperform the dj containers & packaging index?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "yes")
+        self.assertIn("yes_no_outperform", answer.calculations[0])
+
+    def test_yes_no_spend_more_compares_prose_amount_to_table_row(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="mixed",
+                node_type="text",
+                content=(
+                    "Advertising costs totaled $345 million, $288 million and $245 million "
+                    "in 2013, 2012 and 2011, respectively.\n"
+                    "|  | 2013 | 2012 | 2011 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| research and development | $ 505 | $ 477 | $ 435 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "does the company spend more on advertising in 2013 than on research and development?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "no")
+        self.assertIn("yes_no_spend_more", answer.calculations[0])
 
     def test_percentage_exact_match_allows_rounding(self) -> None:
         self.assertEqual(numeric_exact_match("86.8%", "87%"), 1.0)
