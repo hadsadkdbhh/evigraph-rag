@@ -134,20 +134,42 @@ class LLMDirectRAGGenerator:
                 "role": "system",
                 "content": (
                     "You are a direct RAG baseline for financial question answering. "
-                    "Answer only from the supplied retrieved context. "
-                    "Return strict JSON with keys: answer, citations, calculation. "
+                    "Answer only from the supplied retrieved context; do not use outside knowledge. "
+                    "You must attempt the required arithmetic whenever the retrieved context contains the needed numbers. "
+                    "Do not refuse merely because the calculation is implicit. "
+                    "Use the row labels, column labels, years, and operation words in the question to choose operands. "
+                    "For percent change, compute (new - old) / old * 100. "
+                    "For portion, percentage, or ratio questions, compute numerator / denominator * 100 when the answer is a percent. "
+                    "For average questions, average the requested values only. "
+                    "Return strict JSON with exactly these keys: answer, citations, calculation. "
                     "Use citations from the supplied node ids only. "
-                    "If the answer is not supported, set answer to 'Insufficient evidence to answer.' "
+                    "If and only if the context lacks the required operands, set answer to 'Insufficient evidence to answer.' "
                     "and citations to an empty list."
                 ),
             },
             {
                 "role": "user",
                 "content": (
+                    "Use these examples only as output-format and arithmetic guides; do not reuse their node ids.\n\n"
+                    "Example A\n"
+                    "Question: what percentage of the purchase price was paid in cash?\n"
+                    "Retrieved context:\n"
+                    "[example_node_a] source=example page=1\n"
+                    "Cash paid was 6.9 and estimated purchase price was 220.6.\n"
+                    "JSON:\n"
+                    '{"answer":"3.1%","citations":["example_node_a"],"calculation":"6.9 / 220.6 * 100 = 3.1%"}\n\n'
+                    "Example B\n"
+                    "Question: what was the average stock-based compensation expense from 2008 to 2010?\n"
+                    "Retrieved context:\n"
+                    "[example_node_b] source=example page=2\n"
+                    "| year | 2010 | 2009 | 2008 |\n"
+                    "| stock-based compensation expense | 221 | 209 | 226 |\n"
+                    "JSON:\n"
+                    '{"answer":"218.7","citations":["example_node_b"],"calculation":"(221 + 209 + 226) / 3 = 218.7"}\n\n'
+                    "Actual task\n"
                     f"Question:\n{query}\n\n"
                     f"Retrieved context:\n{context}\n\n"
-                    "Return JSON only, for example: "
-                    '{"answer":"4.4%","citations":["node_id"],"calculation":"11800 / 267100 * 100 = 4.4%"}'
+                    "Return JSON only. Use only actual retrieved node ids in citations."
                 ),
             },
         ]

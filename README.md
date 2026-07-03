@@ -263,6 +263,22 @@ python scripts/run_manifest.py --manifest configs/experiments.finqa_300.llm_dire
 python scripts/build_paper_assets.py --eval-dir outputs/eval/finqa_300_llm_direct_rag --output-dir paper/generated/finqa_300_llm_direct_rag --preset finqa_300_llm_direct_rag
 ```
 
+Before spending on the full 300-example Kimi run, use the 30-example Open BM25
+prompt pilot:
+
+```powershell
+$env:LLM_PROVIDER="openai_compatible"
+$env:LLM_BASE_URL="YOUR_OPENAI_COMPATIBLE_BASE_URL"
+$env:LLM_API_KEY="YOUR_KEY"
+$env:LLM_MODEL="kimi-k2.6"
+python scripts/run_manifest.py --manifest configs/experiments.finqa_30.open_bm25.kimi_k26_direct_rag.json
+```
+
+The pilot writes to `outputs/eval/finqa_30_kimi_k26_direct_rag_open_bm25/`.
+Scale to the full 300-example manifest only if the pilot substantially reduces
+refusal-style failures and improves exact match over the earlier Kimi Open BM25
+pilot.
+
 Run the stronger FinQA-600 local-planner stress subset:
 
 ```powershell

@@ -216,6 +216,9 @@ class ManifestRunnerTest(unittest.TestCase):
             self.assertEqual(result["answer"]["citations"], result["selected_ids"][:1])
             self.assertIn("6.9 / 220.6", result["answer"]["calculations"][0])
             self.assertIn("Retrieved context", fake_llm.messages[1]["content"])
+            self.assertIn("Do not refuse merely because the calculation is implicit", fake_llm.messages[0]["content"])
+            self.assertIn("Example A", fake_llm.messages[1]["content"])
+            self.assertIn("Use only actual retrieved node ids", fake_llm.messages[1]["content"])
             self.assertNotIn("planned_", " ".join(result["answer"].get("calculations", [])))
 
     def test_llm_direct_rag_can_continue_after_external_error(self) -> None:

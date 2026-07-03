@@ -34,6 +34,8 @@ Use the 300-example FinQA validation subset as the current reality check.
 - LLM Direct RAG config: `configs/default_llm_direct_rag.yaml`
 - Kimi K2.6 Open BM25 Direct RAG pilot manifest: `configs/experiments.finqa_300.open_bm25.kimi_k26_direct_rag.json`
 - Kimi K2.6 Open BM25 Direct RAG pilot artifacts: `outputs/eval/finqa_300_kimi_k26_direct_rag_open_bm25/`
+- Kimi K2.6 30-example prompt pilot manifest: `configs/experiments.finqa_30.open_bm25.kimi_k26_direct_rag.json`
+- Kimi K2.6 30-example prompt pilot raw subset: `data/raw/finqa_30_kimi_pilot_subset.jsonl`
 - Strong subset raw data: `data/raw/finqa_600_subset.jsonl`
 - Strong subset corpus: `data/finqa_600_corpus`
 - FinQA-600 local-planner manifest: `configs/experiments.finqa_600.local_planner.json`
@@ -240,6 +242,15 @@ The Kimi K2.6 Open BM25 Direct RAG pilot completed on 2026-07-03:
 - Row/operation diagnostics: wrong operation type `4`, ambiguous supported wrong number `23`
 - Important interpretation: do not use this as a strong LLM baseline claim. It is a spend-controlled pilot showing that the prompt/model combination is weak under Open BM25.
 - Diagnostic fix: LLM-only manifests now generate failure reports for `llm_direct_rag` instead of empty `full_evigraph` reports.
+
+The next Kimi step is a 30-example revised-prompt pilot:
+
+- Manifest: `configs/experiments.finqa_30.open_bm25.kimi_k26_direct_rag.json`
+- Raw subset: `data/raw/finqa_30_kimi_pilot_subset.jsonl`
+- Sampling: deterministic 30 examples from `data/raw/finqa_300_subset.jsonl`, seed 13, source-doc coverage required
+- Output directory: `outputs/eval/finqa_30_kimi_k26_direct_rag_open_bm25`
+- Prompt change: direct RAG now says to attempt arithmetic when operands are present, discourages unnecessary refusal, specifies percent-change/ratio/average operations, and includes two format-only financial examples.
+- Decision rule: scale to the 300-example Kimi manifest only if this pilot reduces unsupported/refusal-style failures enough to make the external LLM baseline credible.
 
 The FinQA-600 strong subset is now wired and locally run:
 

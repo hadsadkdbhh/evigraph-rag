@@ -168,6 +168,15 @@ manifest and paper-asset diagnostics now choose the analyzed method from the
 experiment/spec, so LLM-only runs no longer produce empty `full_evigraph`
 failure reports.
 
+The next spend-controlled LLM step is now a 30-example Kimi K2.6 prompt pilot:
+`configs/experiments.finqa_30.open_bm25.kimi_k26_direct_rag.json`. It uses
+`data/raw/finqa_30_kimi_pilot_subset.jsonl`, sampled deterministically from the
+FinQA-300 subset with seed 13 and full source-document coverage. The revised
+LLM Direct RAG prompt now explicitly discourages unnecessary refusal, includes
+two financial arithmetic format examples, and still forbids EviGraph planner,
+risk-aware selection, and verifier-guided repair. Only scale this to the
+300-example Kimi manifest if refusal-style failures fall sharply.
+
 The 2026-07-01 FinQA-600 strong-subset run doubles the FinQA-300 diagnostic
 sample. It uses `data/raw/finqa_600_subset.jsonl`, `data/finqa_600_corpus`,
 `configs/experiments.finqa_600.local_planner.json`, and
