@@ -309,6 +309,16 @@ The current GPT-5.4 Open BM25 300-example result is `0.523` exact match with
 `0.273` answer support; report it as a strong external accuracy baseline and a
 grounding stress test.
 
+To complete the GPT-5.4 three-setting comparison, run oracle-doc and
+source-rerank only:
+
+```powershell
+python scripts/run_manifest.py --manifest configs/experiments.finqa_300.oracle_source.gpt54_direct_rag.json
+```
+
+This writes to `outputs/eval/finqa_300_gpt54_direct_rag_oracle_source/` and
+does not rerun the completed Open BM25 GPT-5.4 baseline.
+
 Run the stronger FinQA-600 local-planner stress subset:
 
 ```powershell

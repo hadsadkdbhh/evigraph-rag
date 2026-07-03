@@ -200,6 +200,10 @@ retrieve-then-program (`0.393`), and Full EviGraph (`0.403`). However, Full
 EviGraph remains much stronger on answer support (`0.790` vs. `0.273`), so the
 paper should frame GPT-5.4 as a strong accuracy baseline and a grounding stress
 test rather than as a replacement for evidence-state verification.
+To complete the three-setting comparison without rerunning Open BM25, use
+`configs/experiments.finqa_300.oracle_source.gpt54_direct_rag.json`. It runs
+only oracle-doc and source-rerank GPT-5.4 Direct RAG and writes to
+`outputs/eval/finqa_300_gpt54_direct_rag_oracle_source/`.
 
 The 2026-07-01 FinQA-600 strong-subset run doubles the FinQA-300 diagnostic
 sample. It uses `data/raw/finqa_600_subset.jsonl`, `data/finqa_600_corpus`,
