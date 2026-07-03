@@ -1,0 +1,6 @@
+# Optional neural retrieval dependencies.
+#
+# The core EviGraph pipeline intentionally stays standard-library only.
+# Install this file only when running open_neural_dense/open_neural_hybrid
+# retrieval manifests.
+sentence-transformers

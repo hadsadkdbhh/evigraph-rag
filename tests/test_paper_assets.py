@@ -163,6 +163,33 @@ class PaperAssetBuilderTest(unittest.TestCase):
         self.assertIn("Open TF-IDF", markdown)
         self.assertIn("Open hybrid", markdown)
 
+    def test_builds_tables_from_finqa_300_neural_retrieval_baseline_preset(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            eval_dir = root / "eval"
+            output_dir = root / "paper"
+            eval_dir.mkdir()
+            for suffix in [
+                "open_bm25_baseline",
+                "open_neural_dense_baseline",
+                "open_neural_hybrid_baseline",
+            ]:
+                self._write_eval_csv(
+                    eval_dir / f"finqa_300_subset_{suffix}.csv",
+                    [("direct_rag", "0.38", "7"), ("retrieve_then_program", "0.42", "8"), ("full_evigraph", "0.46", "9")],
+                )
+
+            paths = PaperAssetBuilder().build(
+                eval_dir,
+                output_dir,
+                preset="finqa_300_neural_retrieval_baselines",
+            )
+            markdown = Path(paths["markdown"]).read_text(encoding="utf-8")
+
+        self.assertIn("Open neural dense", markdown)
+        self.assertIn("Open neural hybrid", markdown)
+        self.assertIn("Retrieve-then-program", markdown)
+
     def test_builds_tables_from_finqa_300_llm_direct_rag_preset(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

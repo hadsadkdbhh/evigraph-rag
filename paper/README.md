@@ -31,4 +31,11 @@ folders:
 python .\scripts\build_paper_assets.py --eval-dir .\outputs\eval\paper_anchor --output-dir .\paper\generated\finqa_300_gpt54_direct_rag --preset finqa_300_gpt54_direct_rag
 ```
 
+For the neural retrieval baseline tables after running the optional neural
+manifest:
+
+```powershell
+python .\scripts\build_paper_assets.py --eval-dir .\outputs\eval\finqa_300_neural_retrieval_baselines --output-dir .\paper\generated\finqa_300_neural_retrieval_baselines --preset finqa_300_neural_retrieval_baselines
+```
+
 The draft is intentionally conservative: current FinQA results are oracle-document reasoning baselines, not final open-retrieval benchmark claims.

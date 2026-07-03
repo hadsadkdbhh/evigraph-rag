@@ -1,18 +1,32 @@
 from __future__ import annotations
 
+import os
 import math
 import re
 from collections import Counter, defaultdict
 from hashlib import blake2b
 from pathlib import Path
+from typing import Any
 
 from evigraph.document_loader import DocumentChunk, DocumentLoader, load_chunks_from_index
 from evigraph.schema import EvidenceNode
 
 
-RETRIEVAL_MODES = ("oracle_doc", "open", "open_tfidf", "open_dense", "open_hybrid", "source_rerank")
+RETRIEVAL_MODES = (
+    "oracle_doc",
+    "open",
+    "open_tfidf",
+    "open_dense",
+    "open_hybrid",
+    "open_neural_dense",
+    "open_neural_hybrid",
+    "source_rerank",
+)
 _DENSE_VECTOR_CACHE: dict[tuple[int, tuple[str, ...]], list[dict[int, float]]] = {}
 _TFIDF_CACHE: dict[tuple[str, ...], tuple[object, object]] = {}
+_NEURAL_MODEL_CACHE: dict[str, Any] = {}
+_NEURAL_VECTOR_CACHE: dict[tuple[str, tuple[str, ...]], Any] = {}
+DEFAULT_NEURAL_DENSE_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 
 class MockRetriever:
@@ -336,6 +350,160 @@ class SklearnTfidfRetriever(BM25Retriever):
         return vectorizer, normalize(matrix, norm="l2", copy=False)
 
 
+class NeuralDenseRetriever(BM25Retriever):
+    """Sentence-transformer dense retriever for paper-grade neural baselines."""
+
+    def __init__(
+        self,
+        chunks: list[DocumentChunk],
+        model_name: str | None = None,
+        embedder: Any | None = None,
+    ) -> None:
+        super().__init__(chunks)
+        self.model_name = model_name or os.environ.get("EVIGRAPH_NEURAL_DENSE_MODEL") or DEFAULT_NEURAL_DENSE_MODEL
+        self.embedder = embedder if embedder is not None else self._load_embedder(self.model_name)
+        cache_key = (self.model_name, tuple(chunk.chunk_id for chunk in chunks))
+        cached_vectors = _NEURAL_VECTOR_CACHE.get(cache_key)
+        if cached_vectors is None or embedder is not None:
+            cached_vectors = self._encode([chunk.text for chunk in chunks])
+            if embedder is None:
+                _NEURAL_VECTOR_CACHE[cache_key] = cached_vectors
+        self.chunk_vectors = cached_vectors
+
+    def retrieve(self, query: str, top_k: int = 8) -> list[EvidenceNode]:
+        query_vector = self._encode([query])[0]
+        scores = self._scores(query_vector, self.chunk_vectors)
+        scored = [(float(score), chunk) for score, chunk in zip(scores, self.chunks) if float(score) > 0]
+        if not scored:
+            scored = [(0.0, chunk) for chunk in self.chunks]
+
+        nodes = []
+        for rank, (score, chunk) in enumerate(sorted(scored, key=lambda item: item[0], reverse=True)[:top_k], start=1):
+            nodes.append(
+                self._node_from_chunk(
+                    rank,
+                    score,
+                    chunk,
+                    {"retrieval_model": "sentence_transformer_dense", "embedding_model": self.model_name},
+                )
+            )
+        return nodes
+
+    def _load_embedder(self, model_name: str) -> Any:
+        cached = _NEURAL_MODEL_CACHE.get(model_name)
+        if cached is not None:
+            return cached
+        try:
+            from sentence_transformers import SentenceTransformer
+        except ImportError as exc:
+            raise RuntimeError(
+                "open_neural_dense/open_neural_hybrid require sentence-transformers. "
+                "Install with: python -m pip install -r requirements-neural-retrieval.txt"
+            ) from exc
+        model = SentenceTransformer(model_name)
+        _NEURAL_MODEL_CACHE[model_name] = model
+        return model
+
+    def _encode(self, texts: list[str]) -> Any:
+        return self.embedder.encode(
+            texts,
+            normalize_embeddings=True,
+            convert_to_numpy=True,
+            show_progress_bar=False,
+        )
+
+    def _scores(self, query_vector: Any, chunk_vectors: Any) -> list[float]:
+        return [
+            sum(float(left) * float(right) for left, right in zip(vector, query_vector))
+            for vector in chunk_vectors
+        ]
+
+
+class NeuralHybridRetriever(NeuralDenseRetriever):
+    """Hybrid neural dense, BM25, and numeric/table feature retriever."""
+
+    def retrieve(self, query: str, top_k: int = 8) -> list[EvidenceNode]:
+        query_terms = _tokens(query)
+        query_term_set = set(query_terms)
+        query_years = set(_years(query))
+        query_numbers = set(_numbers(query))
+        query_operations = _operation_cues(query)
+        query_vector = self._encode([query])[0]
+        neural_scores = self._scores(query_vector, self.chunk_vectors)
+        bm25_scores = [self._score(query_terms, doc_terms) for doc_terms in self.tokenized]
+        max_bm25 = max([score for score in bm25_scores if score > 0] or [1.0])
+        scored = []
+
+        for chunk, doc_terms, neural_score, bm25_score in zip(
+            self.chunks,
+            self.tokenized,
+            neural_scores,
+            bm25_scores,
+        ):
+            doc_text = chunk.text
+            doc_term_set = set(doc_terms)
+            doc_years = set(_years(doc_text))
+            doc_numbers = set(_numbers(doc_text))
+            doc_operations = _operation_cues(doc_text)
+
+            lexical_overlap = len(query_term_set & doc_term_set) / max(1, len(query_term_set))
+            year_overlap = len(query_years & doc_years) / max(1, len(query_years)) if query_years else 0.0
+            number_overlap = (
+                len(query_numbers & doc_numbers) / max(1, len(query_numbers)) if query_numbers else 0.0
+            )
+            operation_overlap = 1.0 if query_operations & doc_operations else 0.0
+            table_prior = 1.0 if _looks_like_table(doc_text) and _asks_numeric_table_question(query) else 0.0
+            normalized_bm25 = bm25_score / max_bm25 if max_bm25 else 0.0
+            hybrid_score = (
+                0.55 * neural_score
+                + 0.30 * normalized_bm25
+                + 0.05 * lexical_overlap
+                + 0.05 * year_overlap
+                + 0.025 * number_overlap
+                + 0.015 * operation_overlap
+                + 0.01 * table_prior
+            )
+            if hybrid_score > 0:
+                scored.append(
+                    (
+                        hybrid_score,
+                        neural_score,
+                        bm25_score,
+                        {
+                            "hybrid_lexical_overlap": round(lexical_overlap, 4),
+                            "hybrid_year_overlap": round(year_overlap, 4),
+                            "hybrid_number_overlap": round(number_overlap, 4),
+                            "hybrid_operation_overlap": round(operation_overlap, 4),
+                            "hybrid_table_prior": round(table_prior, 4),
+                        },
+                        chunk,
+                    )
+                )
+        if not scored:
+            scored = [(0.0, 0.0, 0.0, {}, chunk) for chunk in self.chunks]
+
+        nodes = []
+        for rank, (hybrid_score, neural_score, bm25_score, features, chunk) in enumerate(
+            sorted(scored, key=lambda item: item[0], reverse=True)[:top_k],
+            start=1,
+        ):
+            nodes.append(
+                self._node_from_chunk(
+                    rank,
+                    hybrid_score,
+                    chunk,
+                    {
+                        "retrieval_model": "sentence_transformer_bm25_hybrid",
+                        "embedding_model": self.model_name,
+                        "neural_score": round(float(neural_score), 4),
+                        "bm25_score": round(float(bm25_score), 4),
+                        **features,
+                    },
+                )
+            )
+        return nodes
+
+
 class CorpusRetriever:
     def retrieve(
         self,
@@ -367,6 +535,14 @@ class CorpusRetriever:
 
         if retrieval_mode == "open_hybrid":
             nodes = HybridRetriever(chunks).retrieve(query, top_k=top_k)
+            return self._with_adjacent_context(nodes, chunks)
+
+        if retrieval_mode == "open_neural_dense":
+            nodes = NeuralDenseRetriever(chunks).retrieve(query, top_k=top_k)
+            return self._with_adjacent_context(nodes, chunks)
+
+        if retrieval_mode == "open_neural_hybrid":
+            nodes = NeuralHybridRetriever(chunks).retrieve(query, top_k=top_k)
             return self._with_adjacent_context(nodes, chunks)
 
         if source_doc and retrieval_mode == "source_rerank":

@@ -7,9 +7,37 @@ from pathlib import Path
 
 from evigraph.evidence_graph import EvidenceGraph
 from evigraph.document_loader import DocumentChunk
-from evigraph.retrieval import BM25Retriever, CorpusRetriever, DenseRetriever, HybridRetriever, SklearnTfidfRetriever
+from evigraph.retrieval import (
+    BM25Retriever,
+    CorpusRetriever,
+    DenseRetriever,
+    HybridRetriever,
+    NeuralDenseRetriever,
+    NeuralHybridRetriever,
+    SklearnTfidfRetriever,
+)
 from evigraph.schema import EvidenceNode, EvidenceScore
 from evigraph.selector import EvidenceSetSelector
+
+
+class FakeSentenceEmbedder:
+    def encode(
+        self,
+        texts,
+        normalize_embeddings=True,
+        convert_to_numpy=True,
+        show_progress_bar=False,
+    ):
+        vectors = []
+        for text in texts:
+            lowered = text.lower()
+            if "cash" in lowered or "purchase" in lowered or "consideration" in lowered:
+                vectors.append([1.0, 0.0, 0.0])
+            elif "net sales" in lowered or "2023" in lowered:
+                vectors.append([0.0, 1.0, 0.0])
+            else:
+                vectors.append([0.0, 0.0, 1.0])
+        return vectors
 
 
 class RetrievalSelectionTest(unittest.TestCase):
@@ -185,6 +213,43 @@ class RetrievalSelectionTest(unittest.TestCase):
         self.assertEqual(nodes[0].metadata["retrieval_model"], "local_hashed_dense")
         self.assertEqual(nodes[1].metadata.get("chunk_id"), "case_0_1")
         self.assertTrue(nodes[1].metadata.get("neighbor_context"))
+
+    def test_neural_dense_retrieval_records_sentence_transformer_metadata(self) -> None:
+        chunks = [
+            DocumentChunk("noise", "generic discussion of revenue and operating expenses", "noise.md"),
+            DocumentChunk("target", "cash paid acquisition purchase consideration total", "target.md"),
+        ]
+
+        nodes = NeuralDenseRetriever(chunks, model_name="fake-mini", embedder=FakeSentenceEmbedder()).retrieve(
+            "cash purchase consideration",
+            top_k=2,
+        )
+
+        self.assertEqual(nodes[0].metadata["chunk_id"], "target")
+        self.assertEqual(nodes[0].metadata["retrieval_model"], "sentence_transformer_dense")
+        self.assertEqual(nodes[0].metadata["embedding_model"], "fake-mini")
+
+    def test_neural_hybrid_retrieval_combines_dense_bm25_and_numeric_features(self) -> None:
+        chunks = [
+            DocumentChunk("dense_only", "cash purchase consideration but no relevant table years", "dense.md"),
+            DocumentChunk(
+                "table_hit",
+                "| year | net sales |\n| 2022 | 100 |\n| 2023 | 125 |\nnet sales increase table",
+                "table.md",
+            ),
+        ]
+
+        nodes = NeuralHybridRetriever(chunks, model_name="fake-mini", embedder=FakeSentenceEmbedder()).retrieve(
+            "what was the percentage increase in net sales from 2022 to 2023",
+            top_k=2,
+        )
+
+        self.assertEqual(nodes[0].metadata["chunk_id"], "table_hit")
+        self.assertEqual(nodes[0].metadata["retrieval_model"], "sentence_transformer_bm25_hybrid")
+        self.assertEqual(nodes[0].metadata["embedding_model"], "fake-mini")
+        self.assertIn("neural_score", nodes[0].metadata)
+        self.assertIn("bm25_score", nodes[0].metadata)
+        self.assertEqual(nodes[0].metadata["hybrid_table_prior"], 1.0)
 
     def test_tfidf_retrieval_records_sklearn_metadata(self) -> None:
         chunks = [

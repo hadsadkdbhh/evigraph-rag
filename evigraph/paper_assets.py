@@ -149,6 +149,24 @@ FINQA_300_LOCAL_STRONG_RETRIEVAL_BASELINE_RESULT_SPECS = (
     ),
 )
 
+FINQA_300_NEURAL_RETRIEVAL_BASELINE_RESULT_SPECS = (
+    ResultSpec(
+        "Open BM25",
+        "finqa_300_subset_open_bm25_baseline.csv",
+        ("direct_rag", "retrieve_then_program", "full_evigraph"),
+    ),
+    ResultSpec(
+        "Open neural dense",
+        "finqa_300_subset_open_neural_dense_baseline.csv",
+        ("direct_rag", "retrieve_then_program", "full_evigraph"),
+    ),
+    ResultSpec(
+        "Open neural hybrid",
+        "finqa_300_subset_open_neural_hybrid_baseline.csv",
+        ("direct_rag", "retrieve_then_program", "full_evigraph"),
+    ),
+)
+
 FINQA_300_LLM_DIRECT_RAG_RESULT_SPECS = (
     ResultSpec(
         "Oracle-doc",
@@ -227,6 +245,7 @@ RESULT_SPEC_PRESETS = {
     "finqa_300_local_ablation": FINQA_300_LOCAL_ABLATION_RESULT_SPECS,
     "finqa_300_local_retrieval_baselines": FINQA_300_LOCAL_RETRIEVAL_BASELINE_RESULT_SPECS,
     "finqa_300_local_strong_retrieval_baselines": FINQA_300_LOCAL_STRONG_RETRIEVAL_BASELINE_RESULT_SPECS,
+    "finqa_300_neural_retrieval_baselines": FINQA_300_NEURAL_RETRIEVAL_BASELINE_RESULT_SPECS,
     "finqa_300_llm_direct_rag": FINQA_300_LLM_DIRECT_RAG_RESULT_SPECS,
     "finqa_300_gpt54_direct_rag": FINQA_300_GPT54_DIRECT_RAG_RESULT_SPECS,
     "finqa_600_local": FINQA_600_LOCAL_RESULT_SPECS,

@@ -258,6 +258,18 @@ python scripts/run_manifest.py --manifest configs/experiments.finqa_300.local_pl
 python scripts/build_paper_assets.py --eval-dir outputs/eval/finqa_300_local_planner_strong_retrieval_baselines --output-dir paper/generated/finqa_300_local_planner_strong_retrieval_baselines --preset finqa_300_local_strong_retrieval_baselines
 ```
 
+Run the neural open-retrieval baseline suite after installing the optional
+sentence-transformer dependency. By default this uses
+`sentence-transformers/all-MiniLM-L6-v2`; set `EVIGRAPH_NEURAL_DENSE_MODEL` to
+swap in a stronger embedding model.
+
+```powershell
+python -m pip install -r requirements-neural-retrieval.txt
+$env:EVIGRAPH_NEURAL_DENSE_MODEL="sentence-transformers/all-MiniLM-L6-v2"
+python scripts/run_manifest.py --manifest configs/experiments.finqa_300.neural_retrieval_baselines.json
+python scripts/build_paper_assets.py --eval-dir outputs/eval/finqa_300_neural_retrieval_baselines --output-dir paper/generated/finqa_300_neural_retrieval_baselines --preset finqa_300_neural_retrieval_baselines
+```
+
 Run the external LLM Direct RAG baseline after setting an OpenAI-compatible
 chat-completions endpoint:
 

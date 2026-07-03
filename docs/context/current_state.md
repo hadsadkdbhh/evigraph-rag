@@ -30,6 +30,8 @@ Use the 300-example FinQA validation subset as the current reality check.
 - Local-planner retrieval-baseline artifacts: `paper/generated/finqa_300_local_planner_retrieval_baselines/`
 - Strong non-API retrieval-control manifest: `configs/experiments.finqa_300.local_planner_strong_retrieval_baselines.json`
 - Strong non-API retrieval-control artifacts: `paper/generated/finqa_300_local_planner_strong_retrieval_baselines/`
+- Neural retrieval baseline manifest: `configs/experiments.finqa_300.neural_retrieval_baselines.json`
+- Neural retrieval optional requirements: `requirements-neural-retrieval.txt`
 - LLM Direct RAG manifest: `configs/experiments.finqa_300.llm_direct_rag.json`
 - LLM Direct RAG config: `configs/default_llm_direct_rag.yaml`
 - Kimi K2.6 Open BM25 Direct RAG pilot manifest: `configs/experiments.finqa_300.open_bm25.kimi_k26_direct_rag.json`
@@ -381,11 +383,11 @@ Required additions for the next paper-quality phase:
 
 - Baselines: Direct RAG, internal Top-k Program, Retrieve-then-program, Full
   context, Utility-only, top-k plus local numeric executor, local hashed dense
-  retrieval, open hybrid retrieval, and LLM Direct RAG are now wired into
+  retrieval, open hybrid retrieval, neural dense retrieval, neural BM25+dense
+  hybrid retrieval, and LLM Direct RAG are now wired into
   FinQA-300 manifests. GPT-5.4 Direct RAG has an API-backed 300-example run;
-  Kimi K2.6 has a weaker one-setting pilot. A true
-  neural dense retriever is still required before making paper-level benchmark
-  claims.
+  Kimi K2.6 has a weaker one-setting pilot. The neural retrieval manifest still
+  needs to be run after installing `sentence-transformers`.
 - Ablations: no risk scoring, no verifier, no evidence-graph support selection,
   no operation planner, and no verifier-grounded rejection are now wired into
   the FinQA-300 ablation manifest. Open-retrieval-safe repair ablations are
