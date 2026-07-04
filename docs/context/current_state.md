@@ -58,17 +58,17 @@ Latest documented FinQA-300 local planner exact match:
 
 | Setting | EM | Supported EM | Answer support | Supported wrong |
 | --- | ---: | ---: | ---: | ---: |
-| Oracle-doc full EviGraph | 0.547 | 0.503 | 0.793 | 0.290 |
-| Open BM25 full EviGraph | 0.427 | 0.393 | 0.800 | 0.407 |
-| BM25 + source-rerank full EviGraph | 0.547 | 0.503 | 0.793 | 0.290 |
+| Oracle-doc full EviGraph | 0.550 | 0.507 | 0.793 | 0.287 |
+| Open BM25 full EviGraph | 0.430 | 0.397 | 0.803 | 0.407 |
+| BM25 + source-rerank full EviGraph | 0.550 | 0.507 | 0.793 | 0.287 |
 
 Current local-planner run:
 
-- Manifest: `configs/experiments.finqa_300.local_planner_absolute_change_v10.json`
-- Output directory: `outputs/eval/finqa_300_local_planner_absolute_change_v10`
-- Paper artifacts: `paper/generated/finqa_300_local_planner_absolute_change_v10/`
-- Delta against deferred-compensation v9: +2 correct examples in oracle-doc, +1 in Open BM25, and +2 in source-rerank; no regressions.
-- Closed examples: directionless between-year prose changes where the benchmark asks for change magnitude rather than a signed delta, plus one net-change prose case that is now reached before a weaker fallback. The v10 delta file is `outputs/eval/finqa_300_local_planner_absolute_change_v10/v9_to_v10_delta.md`.
+- Manifest: `configs/experiments.finqa_300.local_planner_source_match_v11.json`
+- Output directory: `outputs/eval/finqa_300_local_planner_source_match_v11`
+- Paper artifacts: `paper/generated/finqa_300_local_planner_source_match_v11/`
+- Delta against absolute-change v10: +1 correct example in oracle-doc, +1 in Open BM25, and +1 in source-rerank; no regressions.
+- Closed example: `AON/2011/page_134.pdf-4`, where the query asks for the increase in total revenue during 2010 and 2011. v11 fixes raw FinQA `source_doc` matching for oracle/source-rerank and combines adjacent table-continuation chunks before choosing the row for implicit percent-increase calculations.
 - Strengthened metrics: manifest CSVs, experiment summaries, pipeline closure
   metrics, and generated paper tables now include `supported_accuracy`
   (supported EM), `unsupported_correct`, `supported_wrong`, and
@@ -389,9 +389,9 @@ story:
 
 | Setting | Current | Target |
 | --- | ---: | ---: |
-| Oracle-doc full EviGraph | 0.547 | 0.60+ stretch |
-| BM25 + source-rerank full EviGraph | 0.547 | 0.60+ stretch |
-| Open BM25 full EviGraph | 0.427 | 0.35+ floor met |
+| Oracle-doc full EviGraph | 0.550 | 0.60+ stretch |
+| BM25 + source-rerank full EviGraph | 0.550 | 0.60+ stretch |
+| Open BM25 full EviGraph | 0.430 | 0.35+ floor met |
 
 Required additions for the next paper-quality phase:
 
@@ -474,6 +474,15 @@ Required additions for the next paper-quality phase:
   Current FinQA-300 Full EviGraph: 0.547 oracle-doc, 0.427 Open BM25, and
   0.547 source-rerank. Remaining row/operation failures: oracle-doc 34, Open
   BM25 47, source-rerank 33; operand support remains the main bottleneck.
+- Source-match v11 on 2026-07-04 fixes the oracle/source-rerank source-document
+  matcher so raw FinQA source ids in chunk headers map to all chunks from the
+  same local corpus file. It also lets implicit percent-increase execution
+  combine adjacent continuation chunks and prefer exact row labels across
+  candidate tables. This closes `AON/2011/page_134.pdf-4` across oracle-doc,
+  Open BM25, and source-rerank with no regressions. Current FinQA-300 Full
+  EviGraph: 0.550 oracle-doc, 0.430 Open BM25, and 0.550 source-rerank.
+  Remaining row/operation failures: oracle-doc 33, Open BM25 47,
+  source-rerank 32.
 - Stronger baseline and storytelling pass on 2026-07-01. The method set now
   includes `direct_rag`, `retrieve_then_program`, and
   `evigraph_wo_verifier_grounded_rejection`. Direct RAG disables the local

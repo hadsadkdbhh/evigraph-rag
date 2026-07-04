@@ -562,9 +562,15 @@ class CorpusRetriever:
 
         if source_doc:
             source_name = Path(source_doc).name
-            filtered = [chunk for chunk in chunks if Path(chunk.source_doc).name == source_name]
+            filtered = self._source_doc_chunks(chunks, source_doc, source_name)
             if filtered:
-                chunks = [self._combined_source_chunk(filtered, source_name)] + filtered
+                combined = self._combined_source_chunk(filtered, source_name)
+                nodes = BM25Retriever([combined, *filtered]).retrieve(query, top_k=top_k)
+                if not any(node.metadata.get("chunk_id") == combined.chunk_id for node in nodes):
+                    oracle_node = BM25Retriever([combined]).retrieve(query, top_k=1)[0]
+                    oracle_node.metadata["retrieval_rank"] = 0
+                    nodes = [oracle_node, *nodes]
+                return nodes
         return BM25Retriever(chunks).retrieve(query, top_k=top_k)
 
     def _combined_source_chunk(self, chunks: list[DocumentChunk], source_name: str) -> DocumentChunk:
@@ -585,7 +591,7 @@ class CorpusRetriever:
     ) -> list[EvidenceNode]:
         source_name = Path(source_doc).name
         open_candidates = BM25Retriever(chunks).retrieve(query, top_k=max(top_k * 4, top_k))
-        source_chunks = [chunk for chunk in chunks if Path(chunk.source_doc).name == source_name]
+        source_chunks = self._source_doc_chunks(chunks, source_doc, source_name)
         source_candidates = []
         if source_chunks:
             source_candidates = BM25Retriever(
@@ -602,7 +608,7 @@ class CorpusRetriever:
             reverse=True,
         )
         for node in reranked:
-            if Path(str(node.source_doc)).name == source_name:
+            if Path(str(node.source_doc)).name == source_name or str(source_doc).lower() in node.text().lower():
                 node.metadata["rerank_boost"] = "source_doc_match"
         return self._with_adjacent_context(
             reranked[:top_k],
@@ -610,6 +616,31 @@ class CorpusRetriever:
             promote_existing=True,
             neighbor_rank_from_anchor=False,
         )
+
+    def _matches_source_doc(self, chunk: DocumentChunk, source_doc: str, source_name: str) -> bool:
+        if Path(chunk.source_doc).name == source_name:
+            return True
+        normalized_source = str(source_doc).replace("\\", "/").lower()
+        text_lower = chunk.text.lower().replace("\\", "/")
+        return normalized_source in text_lower
+
+    def _source_doc_chunks(
+        self,
+        chunks: list[DocumentChunk],
+        source_doc: str,
+        source_name: str,
+    ) -> list[DocumentChunk]:
+        direct = [chunk for chunk in chunks if Path(chunk.source_doc).name == source_name]
+        if direct:
+            return direct
+        matching_sources = {
+            chunk.source_doc
+            for chunk in chunks
+            if self._matches_source_doc(chunk, source_doc, source_name)
+        }
+        if not matching_sources:
+            return []
+        return [chunk for chunk in chunks if chunk.source_doc in matching_sources]
 
     def _with_adjacent_context(
         self,

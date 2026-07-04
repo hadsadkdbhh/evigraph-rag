@@ -294,6 +294,26 @@ class ClaimVerifierTest(unittest.TestCase):
         self.assertTrue(verification["operation_semantics_checked"])
         self.assertTrue(verification["answer_supported"])
 
+    def test_operation_semantics_accepts_implicit_percent_increase(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(EvidenceNode("table", "text", "total revenue 2011 11287 2010 8512 32.6", source_doc="report.md"))
+        answer = Answer(
+            text="32.6%",
+            citations=["table"],
+            calculations=[
+                "implicit_percent_increase row=total revenue years=2010->2011: (11287 - 8512) / 8512 * 100 = 32.6%"
+            ],
+        )
+
+        verification = ClaimVerifier().verify(
+            "what is the increase observed in the total revenue during 2010 and 2011?",
+            answer,
+            graph,
+        )
+
+        self.assertTrue(verification["operation_semantics_checked"])
+        self.assertTrue(verification["answer_supported"])
+
     def test_operation_semantics_accepts_ratio_for_portion_query(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(EvidenceNode("table", "text", "mutual funds 9223 total investments 26410 34.9", source_doc="report.md"))

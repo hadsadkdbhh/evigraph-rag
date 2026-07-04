@@ -87,6 +87,62 @@ class RetrievalSelectionTest(unittest.TestCase):
         self.assertTrue(nodes[1].metadata.get("neighbor_context"))
         self.assertEqual(nodes[1].metadata.get("retrieval_rank"), 1)
 
+    def test_oracle_doc_keeps_full_source_chunk(self) -> None:
+        chunks = [
+            DocumentChunk("case_0_0", "short query hit", "case.md", metadata={"char_start": 0}),
+            DocumentChunk("case_0_1", "continuation value 10", "case.md", metadata={"char_start": 1000}),
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            index_path = Path(tmpdir) / "index.json"
+            index_path.write_text(
+                json.dumps({"chunks": [chunk.to_dict() for chunk in chunks]}),
+                encoding="utf-8",
+            )
+
+            nodes = CorpusRetriever().retrieve(
+                "short query",
+                str(index_path),
+                top_k=1,
+                source_doc="case.md",
+                retrieval_mode="oracle_doc",
+            )
+
+        self.assertTrue(any(node.metadata.get("loader") == "source_doc_oracle" for node in nodes))
+
+    def test_oracle_doc_matches_raw_source_id_in_chunk_text(self) -> None:
+        chunks = [
+            DocumentChunk(
+                "case_0_0",
+                "# FinQA Evidence AON/2011/page_134.pdf-4\nshort query hit",
+                "finqa_233_aon_2011_page_134_pdf_4.md",
+                metadata={"char_start": 0},
+            ),
+            DocumentChunk(
+                "case_0_1",
+                "# FinQA Evidence AON/2011/page_134.pdf-4\ncontinuation value 10",
+                "finqa_233_aon_2011_page_134_pdf_4.md",
+                metadata={"char_start": 1000},
+            ),
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            index_path = Path(tmpdir) / "index.json"
+            index_path.write_text(
+                json.dumps({"chunks": [chunk.to_dict() for chunk in chunks]}),
+                encoding="utf-8",
+            )
+
+            nodes = CorpusRetriever().retrieve(
+                "short query",
+                str(index_path),
+                top_k=1,
+                source_doc="AON/2011/page_134.pdf-4",
+                retrieval_mode="oracle_doc",
+            )
+
+        oracle_nodes = [node for node in nodes if node.metadata.get("loader") == "source_doc_oracle"]
+        self.assertTrue(oracle_nodes)
+        self.assertIn("continuation value 10", oracle_nodes[0].text())
+
     def test_source_rerank_adds_adjacent_chunk_context(self) -> None:
         chunks = [
             DocumentChunk("case_0_0", "setup paragraph", "case.md", metadata={"char_start": 0}),

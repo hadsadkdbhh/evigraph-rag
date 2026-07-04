@@ -1214,22 +1214,51 @@ class NumericReasoner:
         if len(years) < 2:
             return None
         base_year, target_year = self._percent_change_years(query_lower, years)
-        for node_id, text in contexts:
+        query_terms = set(self._keywords(query_lower))
+        best: tuple[int, int, NumericAnswer] | None = None
+
+        def consider(node_ids: list[str], text: str, order: int) -> None:
+            nonlocal best
             values = self._table_year_values(query_lower, text, base_year, target_year)
             if not values or base_year not in values or target_year not in values:
-                continue
+                return
             operation = self.executor.percent_change(values[target_year], values[base_year])
             if operation is None:
-                continue
-            return NumericAnswer(
+                return
+            row_label = str(values.get("__row_label__", ""))
+            label_lower = row_label.lower()
+            label_terms = set(re.findall(r"[a-z0-9]+", label_lower))
+            coverage = len(query_terms & label_terms)
+            lexical_score = sum(len(term) for term in query_terms if term in label_lower)
+            intent_score = self._row_intent_score(query_lower, label_lower)
+            candidate_score = coverage * 20 + lexical_score + intent_score
+            if coverage == 0 and query_terms:
+                candidate_score -= 20
+            answer = NumericAnswer(
                 text=self._format_percent(operation.value),
                 calculation=(
-                    f"implicit_percent_increase row={values.get('__row_label__', '')} "
+                    f"implicit_percent_increase row={row_label} "
                     f"years={base_year}->{target_year}: {operation.expression}"
                 ),
-                cited_node_ids=[node_id],
+                cited_node_ids=node_ids,
             )
-        return None
+            candidate = (candidate_score, -order, answer)
+            if best is None or candidate[:2] > best[:2]:
+                best = candidate
+
+        groups: dict[str, list[tuple[str, str]]] = {}
+        for node_id, text in contexts:
+            groups.setdefault(self._context_source_key(node_id), []).append((node_id, text))
+        for grouped_contexts in groups.values():
+            if len(grouped_contexts) < 2:
+                continue
+            ordered = sorted(grouped_contexts, key=lambda item: self._context_chunk_order(item[0]))
+            combined_text = "\n".join(text for _node_id, text in ordered)
+            consider([node_id for node_id, _text in ordered], combined_text, 0)
+
+        for order, (node_id, text) in enumerate(contexts, start=1):
+            consider([node_id], text, order)
+        return best[2] if best else None
 
     def _percent_change(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
         years = re.findall(r"\b(20\d{2})\b", query_lower)
@@ -2440,16 +2469,18 @@ class NumericReasoner:
         base_year: str,
         target_year: str,
     ) -> dict[str, float] | None:
-        best: tuple[int, int, dict[str, float]] | None = None
+        best: tuple[int, int, int, dict[str, float]] | None = None
         for table_index, (headers, rows) in enumerate(self._year_table_candidates(text, base_year, target_year)):
             values = self._table_year_values_from_rows(query_lower, text, headers, rows, base_year, target_year)
             if values is None:
                 continue
-            row_score = self._row_intent_score(query_lower, str(values.get("__row_label__", "")))
-            candidate = (row_score, -table_index, values)
+            row_label = str(values.get("__row_label__", ""))
+            row_score = self._row_query_alignment_score(query_lower, row_label)
+            intent_score = self._row_intent_score(query_lower, row_label.lower())
+            candidate = (row_score + intent_score, row_score, intent_score, -table_index, values)
             if best is None or candidate > best:
                 best = candidate
-        return best[2] if best else None
+        return best[4] if best else None
 
     def _table_year_values_from_rows(
         self,
@@ -5274,6 +5305,14 @@ class NumericReasoner:
         if "balance" in query_lower and "balance" in label:
             score += 4
         return score
+
+    def _row_query_alignment_score(self, query_lower: str, label: str) -> int:
+        label_lower = label.lower()
+        label_terms = set(re.findall(r"[a-z0-9]+", label_lower))
+        query_terms = set(self._keywords(query_lower))
+        coverage = len(query_terms & label_terms)
+        lexical_score = sum(len(term) for term in query_terms if term in label_lower)
+        return coverage * 20 + lexical_score
 
     def _change_period_preference(self, query_lower: str, label: str) -> int:
         """Tiebreaker for change queries between period-beginning and period-end

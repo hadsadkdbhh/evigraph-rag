@@ -354,6 +354,7 @@ def _calculation_operation(calculation: str) -> str | None:
         "percent_change": "percent_change",
         "percent_change_from_to": "percent_change",
         "planned_percent_change": "percent_change",
+        "implicit_percent_increase": "percent_change",
         "prose_current_balance_change": "percent_change",
         "planned_percent_of_increase": "percent_of_increase",
         "percent_delta": "percent_delta",

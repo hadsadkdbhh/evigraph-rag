@@ -26,8 +26,8 @@ Last updated: 2026-07-04
   quick path after generated CSVs exist.
 - AAAI readiness: early research prototype; the system is not yet at submission-quality benchmark performance.
 - Next phase goals are fixed in `docs/next_phase_goals.md`: Oracle-doc has
-  reached the `0.50+` target at `0.547`, source-rerank has cleared the `0.45+`
-  target at `0.547`, and open BM25 has cleared the `0.35+` target at `0.427`.
+  reached the `0.50+` target at `0.550`, source-rerank has cleared the `0.45+`
+  target at `0.550`, and open BM25 has cleared the `0.35+` target at `0.430`.
   Local-planner baselines/ablations have been added and run on the 300-example
   subset, including Direct RAG, retrieve-then-program, and no-verifier-grounded
   rejection. Open retrieval baselines have also been run for BM25, local hashed
@@ -62,21 +62,21 @@ Last updated: 2026-07-04
   This is useful as evidence that a direct external reader over the same Open
   BM25 context is not enough; it should not be presented as a strong model
   result without a better prompt/model sweep.
-- The latest local planner mechanism pass is absolute-change v10. The manifest
-  is `configs/experiments.finqa_300.local_planner_absolute_change_v10.json`,
-  outputs are in `outputs/eval/finqa_300_local_planner_absolute_change_v10`,
-  and generated paper tables are in
-  `paper/generated/finqa_300_local_planner_absolute_change_v10/`. It preserves
-  the deferred-compensation v9 fix and adds a bounded treatment for
-  directionless between-year prose change questions. The v9-to-v10 delta is +2
-  correct examples in oracle-doc, +1 in Open BM25, and +2 in source-rerank,
-  with no regressions. FinQA-300 Full EviGraph is now Oracle-doc `0.547`, Open
-  BM25 `0.427`, and source-rerank `0.547`.
+- The latest local planner mechanism pass is source-match v11. The manifest is
+  `configs/experiments.finqa_300.local_planner_source_match_v11.json`, outputs
+  are in `outputs/eval/finqa_300_local_planner_source_match_v11`, and generated
+  paper tables are in `paper/generated/finqa_300_local_planner_source_match_v11/`.
+  It preserves absolute-change v10 and fixes raw FinQA source-doc matching for
+  oracle/source-rerank retrieval. It also combines adjacent table-continuation
+  chunks for implicit percent-increase calculations and prefers exact row labels
+  across candidate tables. The v10-to-v11 delta is +1 correct example in each
+  retrieval setting with no regressions. FinQA-300 Full EviGraph is now
+  Oracle-doc `0.550`, Open BM25 `0.430`, and source-rerank `0.550`.
 - The metric suite has been strengthened beyond raw exact match. Manifest CSVs,
   experiment summaries, pipeline closure metrics, and generated paper tables now
   report supported exact match, unsupported-correct predictions, supported-wrong
-  predictions, and the EM-support gap. Current supported EM is `0.503` for
-  oracle-doc, `0.393` for Open BM25, and `0.503` for source-rerank. This gives
+  predictions, and the EM-support gap. Current supported EM is `0.507` for
+  oracle-doc, `0.397` for Open BM25, and `0.507` for source-rerank. This gives
   the paper a cleaner distinction between "numerically correct" and "correct
   with verifier-backed evidence."
 

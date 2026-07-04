@@ -3490,6 +3490,45 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "32.6%")
         self.assertIn("implicit_percent_increase", answer.calculations[0])
 
+    def test_implicit_percent_increase_prefers_exact_neighbor_row_over_truncated_total(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="retrieved_1_case_0_2",
+                node_type="text",
+                content=(
+                    "aon total revenue is as follows ( in millions ) :\n"
+                    "| years ended december 31 | 2011 | 2010 | 2009 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| total operating segments | 11287 | 8512 | 7546 |\n"
+                    "| unallocated | 2014 |"
+                ),
+                source_doc="report.md",
+                metadata={"retrieval_rank": 1},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="neighbor_1_case_0_3",
+                node_type="text",
+                content=(
+                    "| total operating segments | 11287 | 8512 | 7546 |\n"
+                    "| unallocated | 2014 | 2014 | 49 |\n"
+                    "| total revenue | $ 11287 | $ 8512 | $ 7595 |"
+                ),
+                source_doc="report.md",
+                metadata={"retrieval_rank": 1, "neighbor_context": True},
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the increase observed in the total revenue during 2010 and 2011?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "32.6%")
+        self.assertIn("row=total revenue", answer.calculations[0])
+
     def test_respectively_prose_sum_for_total_values_across_years(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
