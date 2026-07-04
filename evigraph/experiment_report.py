@@ -10,6 +10,10 @@ from typing import Any
 DEFAULT_METRICS = [
     "accuracy",
     "answer_supported",
+    "supported_accuracy",
+    "unsupported_correct",
+    "supported_wrong",
+    "answer_support_gap",
     "arithmetically_supported",
     "calculation_supported",
     "operation_semantics_checked",

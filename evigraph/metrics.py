@@ -24,9 +24,15 @@ def summarize_result(result: dict[str, Any], gold: str | None = None) -> dict[st
     selected_ids = list(result.get("selected_ids", []))
     cost = result.get("cost", {})
     prediction = result.get("answer", {}).get("text", "")
+    accuracy = numeric_exact_match(prediction, gold)
+    answer_supported = bool(result.get("verification", {}).get("answer_supported", False))
     return {
-        "accuracy": numeric_exact_match(prediction, gold),
-        "answer_supported": bool(result.get("verification", {}).get("answer_supported", False)),
+        "accuracy": accuracy,
+        "answer_supported": answer_supported,
+        "supported_accuracy": bool(accuracy and answer_supported),
+        "unsupported_correct": bool(accuracy and not answer_supported),
+        "supported_wrong": bool((not accuracy) and answer_supported),
+        "answer_support_gap": accuracy - float(answer_supported),
         "arithmetically_supported": bool(result.get("verification", {}).get("arithmetically_supported", False)),
         "calculation_supported": bool(result.get("verification", {}).get("calculation_supported", False)),
         "operation_semantics_checked": bool(result.get("verification", {}).get("operation_semantics_checked", False)),

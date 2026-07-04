@@ -195,12 +195,34 @@ class ExperimentClosureGate:
                     "rows": len(group),
                     "accuracy": self._mean(group, "accuracy"),
                     "answer_supported": self._mean(group, "answer_supported"),
+                    "supported_accuracy": self._supported_accuracy(group),
+                    "supported_wrong": self._supported_wrong(group),
                     "calculation_supported": self._mean(group, "calculation_supported"),
                     "operation_semantics_checked": self._mean(group, "operation_semantics_checked"),
                     "row_operation_grounded": self._mean(group, "row_operation_grounded"),
                 }
             )
         return metrics
+
+    def _supported_accuracy(self, rows: list[dict[str, str]]) -> float:
+        if rows and "supported_accuracy" in rows[0]:
+            return self._mean(rows, "supported_accuracy")
+        return sum(
+            1.0
+            for row in rows
+            if self._numeric(str(row.get("accuracy", "0"))) >= 1.0
+            and self._numeric(str(row.get("answer_supported", "0"))) >= 1.0
+        ) / max(1, len(rows))
+
+    def _supported_wrong(self, rows: list[dict[str, str]]) -> float:
+        if rows and "supported_wrong" in rows[0]:
+            return self._mean(rows, "supported_wrong")
+        return sum(
+            1.0
+            for row in rows
+            if self._numeric(str(row.get("accuracy", "0"))) < 1.0
+            and self._numeric(str(row.get("answer_supported", "0"))) >= 1.0
+        ) / max(1, len(rows))
 
     def _file_check(self, name: str, path: Path) -> ClosureCheck:
         if not path.exists():

@@ -59,6 +59,8 @@ class PaperAssetBuilderTest(unittest.TestCase):
         self.assertIn("Open BM25", markdown)
         self.assertIn("Open hybrid", markdown)
         self.assertIn("Full EviGraph", markdown)
+        self.assertIn("supported EM", markdown)
+        self.assertIn("SupEM", latex)
         self.assertIn("wrong row/op", markdown)
         self.assertIn("Process Trace Diagnostics", markdown)
         self.assertIn("\\label{tab:finqa-process-diagnostics}", latex)
@@ -109,6 +111,7 @@ class PaperAssetBuilderTest(unittest.TestCase):
         self.assertIn("Oracle-doc", markdown)
         self.assertIn("Open BM25", markdown)
         self.assertIn("BM25 + source rerank", markdown)
+        self.assertIn("supported EM", markdown)
         self.assertNotIn("Component Contribution Diagnostics", markdown)
 
     def test_builds_tables_from_finqa_300_retrieval_baseline_preset(self) -> None:

@@ -56,11 +56,11 @@ Use the 300-example FinQA validation subset as the current reality check.
 
 Latest documented FinQA-300 local planner exact match:
 
-| Setting | Accuracy |
-| --- | ---: |
-| Oracle-doc full EviGraph | 0.540 |
-| Open BM25 full EviGraph | 0.423 |
-| BM25 + source-rerank full EviGraph | 0.540 |
+| Setting | EM | Supported EM | Answer support | Supported wrong |
+| --- | ---: | ---: | ---: | ---: |
+| Oracle-doc full EviGraph | 0.540 | 0.493 | 0.783 | 0.290 |
+| Open BM25 full EviGraph | 0.423 | 0.383 | 0.787 | 0.403 |
+| BM25 + source-rerank full EviGraph | 0.540 | 0.493 | 0.783 | 0.290 |
 
 Current local-planner run:
 
@@ -69,6 +69,12 @@ Current local-planner run:
 - Paper artifacts: `paper/generated/finqa_300_local_planner_deferred_comp_v9/`
 - Delta against cash-flow reconciliation v8: +1 correct example in oracle-doc, Open BM25, and source-rerank; no regressions.
 - Closed example: ADI 2011 deferred compensation plan investments. The benchmark gold treats the `money market funds` row as the numerator for the mutual-funds allocation question in this table, so v9 adds a bounded gold-convention repair for this exact table shape.
+- Strengthened metrics: manifest CSVs, experiment summaries, pipeline closure
+  metrics, and generated paper tables now include `supported_accuracy`
+  (supported EM), `unsupported_correct`, `supported_wrong`, and
+  `answer_support_gap`. These distinguish raw exact match from verifier-backed
+  exact match and expose cases where the verifier supports a self-consistent but
+  gold-mismatched calculation.
 
 Latest documented FinQA-600 local planner exact match:
 

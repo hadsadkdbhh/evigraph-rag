@@ -147,6 +147,10 @@ class ManifestRunner:
             "prediction",
             "accuracy",
             "answer_supported",
+            "supported_accuracy",
+            "unsupported_correct",
+            "supported_wrong",
+            "answer_support_gap",
             "arithmetically_supported",
             "calculation_supported",
             "operation_semantics_checked",
@@ -159,7 +163,8 @@ class ManifestRunner:
             "latency_ms",
             "run_dir",
         ]
-        completed_keys = self._completed_batch_keys(output_path)
+        schema_matches = self._csv_has_fieldnames(output_path, fieldnames)
+        completed_keys = self._completed_batch_keys(output_path) if schema_matches else set()
         completed_runs = len(completed_keys)
         if completed_runs:
             print(
@@ -167,7 +172,7 @@ class ManifestRunner:
                 f"resuming from {completed_runs}/{total_runs} completed runs",
                 flush=True,
             )
-        append_existing = output_path.exists() and output_path.stat().st_size > 0
+        append_existing = schema_matches and output_path.exists() and output_path.stat().st_size > 0
         with questions_path.open("r", encoding="utf-8") as input_handle, output_path.open(
             "a" if append_existing else "w", encoding="utf-8", newline=""
         ) as output_handle:
@@ -232,6 +237,10 @@ class ManifestRunner:
             "budget_nodes",
             "accuracy",
             "answer_supported",
+            "supported_accuracy",
+            "unsupported_correct",
+            "supported_wrong",
+            "answer_support_gap",
             "arithmetically_supported",
             "calculation_supported",
             "operation_semantics_checked",
@@ -351,6 +360,14 @@ class ManifestRunner:
                 for row in reader
                 if row.get("id") and row.get("method")
             }
+
+    def _csv_has_fieldnames(self, output_path: Path, fieldnames: list[str]) -> bool:
+        if not output_path.exists() or output_path.stat().st_size == 0:
+            return True
+        with output_path.open("r", encoding="utf-8", newline="") as handle:
+            reader = csv.DictReader(handle)
+            existing = list(reader.fieldnames or [])
+        return existing == fieldnames
 
     def _batch_key(self, sample_id: Any, method: Any) -> tuple[str, str]:
         return str(sample_id), str(method)

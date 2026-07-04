@@ -307,9 +307,9 @@ class PaperAssetBuilder:
             "\\begin{table}[t]",
             "\\centering",
             "\\small",
-            "\\begin{tabular}{llrrrrrr}",
+            "\\begin{tabular}{llrrrrrrrr}",
             "\\toprule",
-            "Setting & Method & EM & Ans. & Calc. & OpSem & Row & Tokens \\\\",
+            "Setting & Method & EM & SupEM & Ans. & SupWrong & Gap & Calc. & OpSem & Row \\\\",
             "\\midrule",
         ]
         for row in result_rows:
@@ -319,11 +319,13 @@ class PaperAssetBuilder:
                         self._latex_escape(row["setting"]),
                         self._method_label(row["method"]),
                         self._fmt(row["accuracy"]),
+                        self._fmt(row["supported_accuracy"]),
                         self._fmt(row["answer_supported"]),
+                        self._fmt(row["supported_wrong"]),
+                        self._signed_fmt(row["answer_support_gap"]),
                         self._fmt(row["calculation_supported"]),
                         self._fmt(row["operation_semantics_checked"]),
                         self._fmt(row["row_operation_grounded"]),
-                        self._fmt(row["input_tokens"]),
                     ]
                 )
                 + " \\\\"
@@ -332,7 +334,7 @@ class PaperAssetBuilder:
             [
                 "\\bottomrule",
                 "\\end{tabular}",
-                "\\caption{FinQA diagnostic results. EM is numeric exact match. Ans., Calc., OpSem, and Row are verifier diagnostics for answer support, calculation-result support, operation-semantics checking, and row grounding. Source rerank uses the provided source document and is an analysis setting rather than a deployable open-retrieval claim.}",
+                "\\caption{FinQA diagnostic results. EM is numeric exact match. SupEM is the fraction that is both exact-match correct and verifier-supported. Ans. is verifier answer support. SupWrong is verifier-supported but exact-match wrong. Gap is EM minus answer support. Calc., OpSem, and Row are calculation-result support, operation-semantics checking, and row grounding. Source rerank uses the provided source document and is an analysis setting rather than a deployable open-retrieval claim.}",
                 "\\label{tab:finqa-diagnostic-results}",
                 "\\end{table}",
                 "",
@@ -497,8 +499,8 @@ class PaperAssetBuilder:
             "",
             "## Main Diagnostic Table",
             "",
-            "| setting | method | EM | answer supported | calculation supported | operation semantics | row grounded | tokens |",
-            "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+            "| setting | method | EM | supported EM | answer supported | supported wrong | support gap | calculation supported | operation semantics | row grounded | tokens |",
+            "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
         ]
         for row in result_rows:
             lines.append(
@@ -508,7 +510,10 @@ class PaperAssetBuilder:
                         row["setting"],
                         self._plain_method_label(row["method"]),
                         self._fmt(row["accuracy"]),
+                        self._fmt(row["supported_accuracy"]),
                         self._fmt(row["answer_supported"]),
+                        self._fmt(row["supported_wrong"]),
+                        self._signed_fmt(row["answer_support_gap"]),
                         self._fmt(row["calculation_supported"]),
                         self._fmt(row["operation_semantics_checked"]),
                         self._fmt(row["row_operation_grounded"]),
@@ -657,6 +662,11 @@ class PaperAssetBuilder:
                         "method": method,
                         "accuracy": self._mean(method_rows, "accuracy"),
                         "answer_supported": self._mean(method_rows, "answer_supported"),
+                        "supported_accuracy": self._supported_accuracy(method_rows),
+                        "unsupported_correct": self._unsupported_correct(method_rows),
+                        "supported_wrong": self._supported_wrong(method_rows),
+                        "answer_support_gap": self._mean(method_rows, "accuracy")
+                        - self._mean(method_rows, "answer_supported"),
                         "calculation_supported": self._mean(method_rows, "calculation_supported"),
                         "operation_semantics_checked": self._mean(method_rows, "operation_semantics_checked"),
                         "row_operation_grounded": self._mean(method_rows, "row_operation_grounded"),
@@ -774,6 +784,36 @@ class PaperAssetBuilder:
 
     def _mean(self, rows: list[dict[str, str]], metric: str) -> float:
         return mean(self._to_float(row.get(metric)) for row in rows)
+
+    def _supported_accuracy(self, rows: list[dict[str, str]]) -> float:
+        if rows and "supported_accuracy" in rows[0]:
+            return self._mean(rows, "supported_accuracy")
+        return mean(
+            1.0
+            if self._to_float(row.get("accuracy")) >= 1.0 and self._to_float(row.get("answer_supported")) >= 1.0
+            else 0.0
+            for row in rows
+        )
+
+    def _unsupported_correct(self, rows: list[dict[str, str]]) -> float:
+        if rows and "unsupported_correct" in rows[0]:
+            return self._mean(rows, "unsupported_correct")
+        return mean(
+            1.0
+            if self._to_float(row.get("accuracy")) >= 1.0 and self._to_float(row.get("answer_supported")) < 1.0
+            else 0.0
+            for row in rows
+        )
+
+    def _supported_wrong(self, rows: list[dict[str, str]]) -> float:
+        if rows and "supported_wrong" in rows[0]:
+            return self._mean(rows, "supported_wrong")
+        return mean(
+            1.0
+            if self._to_float(row.get("accuracy")) < 1.0 and self._to_float(row.get("answer_supported")) >= 1.0
+            else 0.0
+            for row in rows
+        )
 
     def _to_float(self, value: Any) -> float:
         if value in (None, ""):

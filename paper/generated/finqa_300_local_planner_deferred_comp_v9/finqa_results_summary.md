@@ -4,11 +4,11 @@ Generated from `outputs\eval\finqa_300_local_planner_deferred_comp_v9` after the
 
 ## Main Diagnostic Table
 
-| setting | method | EM | answer supported | calculation supported | operation semantics | row grounded | tokens |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Oracle-doc | Full EviGraph | 0.54 | 0.78 | 0.60 | 0.81 | 0.81 | 1178.88 |
-| Open BM25 | Full EviGraph | 0.42 | 0.79 | 0.55 | 0.82 | 0.79 | 859.50 |
-| BM25 + source rerank | Full EviGraph | 0.54 | 0.78 | 0.59 | 0.81 | 0.81 | 985.49 |
+| setting | method | EM | supported EM | answer supported | supported wrong | support gap | calculation supported | operation semantics | row grounded | tokens |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Oracle-doc | Full EviGraph | 0.54 | 0.49 | 0.78 | 0.29 | -0.24 | 0.60 | 0.81 | 0.81 | 1178.88 |
+| Open BM25 | Full EviGraph | 0.42 | 0.38 | 0.79 | 0.40 | -0.36 | 0.55 | 0.82 | 0.79 | 859.50 |
+| BM25 + source rerank | Full EviGraph | 0.54 | 0.49 | 0.78 | 0.29 | -0.24 | 0.59 | 0.81 | 0.81 | 985.49 |
 
 ## Full EviGraph Failure Categories
 

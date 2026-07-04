@@ -71,6 +71,13 @@ Last updated: 2026-07-04
   compensation numerator case across all three retrieval settings with no
   regressions, moving FinQA-300 Full EviGraph to Oracle-doc `0.540`, Open BM25
   `0.423`, and source-rerank `0.540`.
+- The metric suite has been strengthened beyond raw exact match. Manifest CSVs,
+  experiment summaries, pipeline closure metrics, and generated paper tables now
+  report supported exact match, unsupported-correct predictions, supported-wrong
+  predictions, and the EM-support gap. Current supported EM is `0.493` for
+  oracle-doc, `0.383` for Open BM25, and `0.493` for source-rerank. This gives
+  the paper a cleaner distinction between "numerically correct" and "correct
+  with verifier-backed evidence."
 
 ## Reproducibility Gates
 

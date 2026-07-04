@@ -48,7 +48,10 @@ This file tracks what the current repository can and cannot support as paper evi
 - Add stronger baselines, including dense retrieval and retrieve-then-read RAG; the current deterministic open hybrid baseline is a first reproducible lexical/numeric reranker, not a substitute for dense retrieval.
 - Add required ablations so the paper can attribute gains to evidence graph
   control, risk scoring, operation planning, and verifier-grounded rejection.
-- Add task-appropriate metrics beyond brittle numeric/string exact match.
+- Extend the new task-appropriate metrics beyond FinQA-300: supported exact
+  match, unsupported-correct predictions, supported-wrong predictions, and
+  EM-support gap are now implemented for manifests and paper tables, but still
+  need confidence intervals and larger-subset reporting.
 - Add failure analysis and qualitative case studies from real examples.
 - Keep the MVP0 acceptance gate green from a clean checkout.
 - Replace hand-authored stress distractors with real retrieval confounders from benchmark corpora.
