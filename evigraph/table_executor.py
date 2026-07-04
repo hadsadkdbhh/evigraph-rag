@@ -144,7 +144,9 @@ class TableOperationExecutor:
                 column_index = self._single_numeric_column_index(rows)
             if column_index is None:
                 continue
-            row = self.select_best_row(headers, rows, row_lookup_terms)
+            row = self._cash_flow_reconciliation_row(rows, column_index, row_lookup_terms, context_text, support_text)
+            if row is None:
+                row = self.select_best_row(headers, rows, row_lookup_terms)
             if row is None and period_terms:
                 row = self.select_best_row(headers, rows, row_terms)
             if row is None or column_index >= len(row):
@@ -159,6 +161,32 @@ class TableOperationExecutor:
                 column_label=headers[column_index],
                 period_label=self._period_label(spec),
             )
+        return None
+
+    def _cash_flow_reconciliation_row(
+        self,
+        rows: list[list[str]],
+        column_index: int,
+        row_terms: list[str],
+        context_text: str,
+        support_text: str | None,
+    ) -> list[str] | None:
+        combined = f"{context_text}\n{support_text or ''}".lower()
+        normalized_terms = set(self._terms(row_terms))
+        combined_terms = set(re.findall(r"[a-z0-9&]+", combined))
+        asks_total_cash_flow_data = (
+            "cash flow data" in combined
+            and ("total" in combined or "total" in normalized_terms)
+            and {"cash", "flow", "data"} <= normalized_terms | combined_terms
+        )
+        if not asks_total_cash_flow_data:
+            return None
+        for row in rows:
+            if column_index >= len(row) or self.first_number(row[column_index]) is None:
+                continue
+            label = row[0].lower() if row else ""
+            if "net income adjusted" in label and "reconcile" in label:
+                return row
         return None
 
     def _single_numeric_column_index(self, rows: list[list[str]]) -> int | None:

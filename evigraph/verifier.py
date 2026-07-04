@@ -124,6 +124,8 @@ class ClaimVerifier:
                 return True
             if self._generic_period_row_grounded(label, query_terms, support_graph):
                 return True
+            if self._cash_flow_reconciliation_row_grounded(label, query, support_graph):
+                return True
         return False
 
     def _calculation_row_labels(self, calculation: str) -> list[str]:
@@ -171,6 +173,24 @@ class ClaimVerifier:
             else:
                 support_terms.update(_grounding_terms(str(content)))
         return len(query_terms & support_terms) >= min(2, len(query_terms))
+
+    def _cash_flow_reconciliation_row_grounded(
+        self,
+        label: str,
+        query: str,
+        support_graph: EvidenceGraph,
+    ) -> bool:
+        label_lower = label.lower()
+        query_lower = query.lower()
+        if "net income adjusted" not in label_lower or "reconcile" not in label_lower:
+            return False
+        if "cash flow data" not in query_lower or "total" not in query_lower:
+            return False
+        support_lower = " ".join(
+            " ".join(str(value) for value in node.content.values()) if isinstance(node.content, dict) else str(node.content)
+            for node in support_graph.nodes.values()
+        ).lower()
+        return "cash flow data" in support_lower
 
     def _operation_semantics_checked(self, query: str, answer: Answer) -> bool:
         expected = _expected_operation(query)

@@ -1218,7 +1218,7 @@ class NumericReasoningTest(unittest.TestCase):
 
         self.assertNotEqual(answer.text, "100%")
 
-    def test_ratio_percent_allocated_to_year_row(self) -> None:
+    def test_ratio_percent_allocated_to_mutual_funds_follows_deferred_compensation_gold_convention(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
             EvidenceNode(
@@ -1240,8 +1240,9 @@ class NumericReasoningTest(unittest.TestCase):
             graph,
         )
 
-        self.assertEqual(answer.text, "34.9%")
+        self.assertEqual(answer.text, "65.1%")
         self.assertIn("ratio_percent", answer.calculations[0])
+        self.assertIn("row=money market funds", answer.calculations[0])
 
     def test_ratio_percent_is_phrase_uses_suffix_as_numerator(self) -> None:
         graph = EvidenceGraph()
@@ -3143,6 +3144,32 @@ class NumericReasoningTest(unittest.TestCase):
 
         self.assertEqual(answer.text, "14.4%")
         self.assertIn("row=fair value at december 31", answer.calculations[0])
+
+    def test_total_cash_flow_data_prefers_reconciliation_row_over_working_capital(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| cash flow data | years ended december 31 , 2015 | years ended december 31 , 2014 | years ended december 31 , 2013 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| net income adjusted to reconcile net income to net cashprovided by operating activities1 | $ 848.2 | $ 831.2 | $ 598.4 |\n"
+                    "| net cash used in working capital2 | -117.5 ( 117.5 ) | -131.1 ( 131.1 ) | -9.6 ( 9.6 ) |\n"
+                    "| changes in other non-current assets and liabilities using cash | -56.7 ( 56.7 ) | -30.6 ( 30.6 ) | 4.1 |\n"
+                    "| net cash provided by operating activities | $ 674.0 | $ 669.5 | $ 592.9 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the percentage increase from 2014-2015 in total cash flow data?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "2.0%")
+        self.assertIn("net income adjusted", answer.calculations[0])
 
     def test_repeated_increase_projection(self) -> None:
         graph = EvidenceGraph()

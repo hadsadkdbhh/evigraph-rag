@@ -85,6 +85,41 @@ class ClaimVerifierTest(unittest.TestCase):
         self.assertTrue(verification["row_operation_grounded"])
         self.assertTrue(verification["answer_supported"])
 
+    def test_row_grounding_accepts_cash_flow_reconciliation_row_when_table_header_names_measure(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                "table",
+                "text",
+                (
+                    "cash flow data\n"
+                    "| metric | 2015 | 2014 |\n"
+                    "| --- | ---: | ---: |\n"
+                    "| net cash used in working capital2 | 505.3 | 457.7 |\n"
+                    "| net income adjusted to reconcile net income to net cashprovided by operating activities1 | 848.2 | 831.2 |"
+                ),
+                source_doc="report.md",
+            )
+        )
+        answer = Answer(
+            text="2.0%",
+            citations=["table"],
+            calculations=[
+                "percent_change row=net income adjusted to reconcile net income to net cashprovided by operating activities1 "
+                "years=2014->2015: (848.2 - 831.2) / 831.2 * 100 = 2.0%"
+            ],
+        )
+
+        verification = ClaimVerifier().verify(
+            "what is the percentage increase from 2014-2015 in total cash flow data?",
+            answer,
+            graph,
+        )
+
+        self.assertTrue(verification["row_grounded"])
+        self.assertTrue(verification["row_operation_grounded"])
+        self.assertTrue(verification["answer_supported"])
+
     def test_row_grounding_rejects_unmatched_calculation_row(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(EvidenceNode("table", "text", "interest rates net 2017 47 2016 73 -35.6", source_doc="report.md"))

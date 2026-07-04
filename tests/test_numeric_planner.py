@@ -638,6 +638,25 @@ class NumericPlannerFallbackTest(unittest.TestCase):
         self.assertIn("entergy arkansas/payments", answer.calculation)
         self.assertIn("entergy louisiana/payments", answer.calculation)
 
+    def test_heuristic_cash_flow_data_prefers_reconciliation_row_over_working_capital(self) -> None:
+        context = (
+            "cash flow data\n"
+            "| metric | 2015 | 2014 |\n"
+            "| --- | ---: | ---: |\n"
+            "| net cash used in working capital2 | 505.3 | 457.7 |\n"
+            "| net income adjusted to reconcile net income to net cashprovided by operating activities1 | 848.2 | 831.2 |\n"
+        )
+        planner = NumericPlannerFallback(HeuristicNumericPlanClient())
+
+        answer = planner.answer(
+            "what is the percentage increase from 2014-2015 in total cash flow data?",
+            [("table", context)],
+        )
+
+        self.assertIsNotNone(answer)
+        self.assertEqual(answer.text, "2.0%")
+        self.assertIn("net income adjusted", answer.calculation)
+
 
 if __name__ == "__main__":
     unittest.main()

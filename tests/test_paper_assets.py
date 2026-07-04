@@ -109,6 +109,7 @@ class PaperAssetBuilderTest(unittest.TestCase):
         self.assertIn("Oracle-doc", markdown)
         self.assertIn("Open BM25", markdown)
         self.assertIn("BM25 + source rerank", markdown)
+        self.assertNotIn("Component Contribution Diagnostics", markdown)
 
     def test_builds_tables_from_finqa_300_retrieval_baseline_preset(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

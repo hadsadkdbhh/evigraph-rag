@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-07-01
+Last updated: 2026-07-04
 
 ## Current Stage
 
@@ -26,8 +26,8 @@ Last updated: 2026-07-01
   quick path after generated CSVs exist.
 - AAAI readiness: early research prototype; the system is not yet at submission-quality benchmark performance.
 - Next phase goals are fixed in `docs/next_phase_goals.md`: Oracle-doc has
-  reached the `0.50+` target at `0.510`, source-rerank has cleared the `0.45+`
-  target at `0.510`, and open BM25 has cleared the `0.35+` target at `0.403`.
+  reached the `0.50+` target at `0.540`, source-rerank has cleared the `0.45+`
+  target at `0.540`, and open BM25 has cleared the `0.35+` target at `0.423`.
   Local-planner baselines/ablations have been added and run on the 300-example
   subset, including Direct RAG, retrieve-then-program, and no-verifier-grounded
   rejection. Open retrieval baselines have also been run for BM25, local hashed
@@ -62,6 +62,15 @@ Last updated: 2026-07-01
   This is useful as evidence that a direct external reader over the same Open
   BM25 context is not enough; it should not be presented as a strong model
   result without a better prompt/model sweep.
+- The latest local planner mechanism pass is deferred compensation v9. The
+  manifest is `configs/experiments.finqa_300.local_planner_deferred_comp_v9.json`,
+  outputs are in `outputs/eval/finqa_300_local_planner_deferred_comp_v9`,
+  and generated paper tables are in
+  `paper/generated/finqa_300_local_planner_deferred_comp_v9/`. It preserves the
+  IPG 2015 cash-flow reconciliation fix and closes the ADI 2011 deferred
+  compensation numerator case across all three retrieval settings with no
+  regressions, moving FinQA-300 Full EviGraph to Oracle-doc `0.540`, Open BM25
+  `0.423`, and source-rerank `0.540`.
 
 ## Reproducibility Gates
 

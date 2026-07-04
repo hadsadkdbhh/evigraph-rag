@@ -127,6 +127,25 @@ class TableOperationExecutorTest(unittest.TestCase):
         self.assertEqual(value.row_label, "2008 net revenue")
         self.assertEqual(value.column_label, "amount")
 
+    def test_resolve_value_prefers_cash_flow_reconciliation_row_over_working_capital(self) -> None:
+        context = """
+cash flow data
+| metric | 2015 | 2014 |
+| --- | ---: | ---: |
+| net cash used in working capital2 | 505.3 | 457.7 |
+| net income adjusted to reconcile net income to net cashprovided by operating activities1 | 848.2 | 831.2 |
+"""
+
+        value = self.executor.resolve_value(
+            {"row_terms": ["total", "cash", "flow", "data"], "year": "2015"},
+            context,
+            support_text="what is the percentage increase from 2014-2015 in total cash flow data?",
+        )
+
+        self.assertIsNotNone(value)
+        self.assertEqual(value.value, 848.2)
+        self.assertIn("net income adjusted", value.row_label)
+
     def test_resolve_value_does_not_match_tangible_inside_intangible(self) -> None:
         context = """
 | cash | $ 45826 |

@@ -336,40 +336,49 @@ class PaperAssetBuilder:
                 "\\label{tab:finqa-diagnostic-results}",
                 "\\end{table}",
                 "",
-                "\\begin{table}[t]",
-                "\\centering",
-                "\\small",
-                "\\begin{tabular}{lrrrrrrrr}",
-                "\\toprule",
-                "Setting & Planner $\\Delta$EM & Reject $\\Delta$EM & Verifier $\\Delta$EM & Support $\\Delta$EM & Risk $\\Delta$EM & Graph vs. Top-k & Graph vs. Utility & Ans. \\\\",
-                "\\midrule",
             ]
         )
-        for row in contribution_rows:
-            lines.append(
-                " & ".join(
-                    [
-                        self._latex_escape(row["setting"]),
-                        self._signed_fmt(row["planner_delta_em"]),
-                        self._signed_fmt(row["verifier_rejection_delta_em"]),
-                        self._signed_fmt(row["verifier_delta_em"]),
-                        self._signed_fmt(row["support_delta_em"]),
-                        self._signed_fmt(row["risk_delta_em"]),
-                        self._signed_fmt(row["graph_vs_topk_em"]),
-                        self._signed_fmt(row["graph_vs_utility_em"]),
-                        self._fmt(row["verifier_answer_supported"]),
-                    ]
+        if contribution_rows:
+            lines.extend(
+                [
+                    "\\begin{table}[t]",
+                    "\\centering",
+                    "\\small",
+                    "\\begin{tabular}{lrrrrrrrr}",
+                    "\\toprule",
+                    "Setting & Planner $\\Delta$EM & Reject $\\Delta$EM & Verifier $\\Delta$EM & Support $\\Delta$EM & Risk $\\Delta$EM & Graph vs. Top-k & Graph vs. Utility & Ans. \\\\",
+                    "\\midrule",
+                ]
+            )
+            for row in contribution_rows:
+                lines.append(
+                    " & ".join(
+                        [
+                            self._latex_escape(row["setting"]),
+                            self._signed_fmt(row["planner_delta_em"]),
+                            self._signed_fmt(row["verifier_rejection_delta_em"]),
+                            self._signed_fmt(row["verifier_delta_em"]),
+                            self._signed_fmt(row["support_delta_em"]),
+                            self._signed_fmt(row["risk_delta_em"]),
+                            self._signed_fmt(row["graph_vs_topk_em"]),
+                            self._signed_fmt(row["graph_vs_utility_em"]),
+                            self._fmt(row["verifier_answer_supported"]),
+                        ]
+                    )
+                    + " \\\\"
                 )
-                + " \\\\"
+            lines.extend(
+                [
+                    "\\bottomrule",
+                    "\\end{tabular}",
+                    "\\caption{Component contribution diagnostics. Component deltas compare full EviGraph with the corresponding ablation. Reject $\\Delta$EM isolates verifier-grounded answer rejection while preserving verifier diagnostics. Graph deltas compare full EviGraph with retrieval-order Top-k and utility-only selection. Ans. is the full model's answer-support rate.}",
+                    "\\label{tab:finqa-component-contributions}",
+                    "\\end{table}",
+                    "",
+                ]
             )
         lines.extend(
             [
-                "\\bottomrule",
-                "\\end{tabular}",
-                "\\caption{Component contribution diagnostics. Component deltas compare full EviGraph with the corresponding ablation. Reject $\\Delta$EM isolates verifier-grounded answer rejection while preserving verifier diagnostics. Graph deltas compare full EviGraph with retrieval-order Top-k and utility-only selection. Ans. is the full model's answer-support rate.}",
-                "\\label{tab:finqa-component-contributions}",
-                "\\end{table}",
-                "",
                 "\\begin{table}[t]",
                 "\\centering",
                 "\\small",
@@ -508,33 +517,34 @@ class PaperAssetBuilder:
                 )
                 + " |"
             )
-        lines.extend(
-            [
-                "",
-                "## Component Contribution Diagnostics",
-                "",
-                "| setting | planner delta EM | verifier rejection delta EM | verifier delta EM | support delta EM | risk delta EM | graph vs top-k EM | graph vs utility-only EM | full answer support |",
-                "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
-            ]
-        )
-        for row in contribution_rows:
-            lines.append(
-                "| "
-                + " | ".join(
-                    [
-                        row["setting"],
-                        self._signed_fmt(row["planner_delta_em"]),
-                        self._signed_fmt(row["verifier_rejection_delta_em"]),
-                        self._signed_fmt(row["verifier_delta_em"]),
-                        self._signed_fmt(row["support_delta_em"]),
-                        self._signed_fmt(row["risk_delta_em"]),
-                        self._signed_fmt(row["graph_vs_topk_em"]),
-                        self._signed_fmt(row["graph_vs_utility_em"]),
-                        self._fmt(row["verifier_answer_supported"]),
-                    ]
-                )
-                + " |"
+        if contribution_rows:
+            lines.extend(
+                [
+                    "",
+                    "## Component Contribution Diagnostics",
+                    "",
+                    "| setting | planner delta EM | verifier rejection delta EM | verifier delta EM | support delta EM | risk delta EM | graph vs top-k EM | graph vs utility-only EM | full answer support |",
+                    "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+                ]
             )
+            for row in contribution_rows:
+                lines.append(
+                    "| "
+                    + " | ".join(
+                        [
+                            row["setting"],
+                            self._signed_fmt(row["planner_delta_em"]),
+                            self._signed_fmt(row["verifier_rejection_delta_em"]),
+                            self._signed_fmt(row["verifier_delta_em"]),
+                            self._signed_fmt(row["support_delta_em"]),
+                            self._signed_fmt(row["risk_delta_em"]),
+                            self._signed_fmt(row["graph_vs_topk_em"]),
+                            self._signed_fmt(row["graph_vs_utility_em"]),
+                            self._fmt(row["verifier_answer_supported"]),
+                        ]
+                    )
+                    + " |"
+                )
         lines.extend(
             [
                 "",
@@ -676,6 +686,8 @@ class PaperAssetBuilder:
             no_risk = by_setting_method.get((setting, "evigraph_wo_risk"))
             topk = by_setting_method.get((setting, "topk"))
             utility = by_setting_method.get((setting, "utility_only"))
+            if not any([no_planner, no_verifier_rejection, no_verifier, no_support, no_risk, topk, utility]):
+                continue
             rows.append(
                 {
                     "setting": setting,
