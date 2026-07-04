@@ -367,6 +367,7 @@ def _calculation_operation(calculation: str) -> str | None:
         "row_year_difference": "row_year_difference",
         "planned_difference": "difference",
         "planned_absolute_difference": "difference",
+        "respectively_prose_difference": "difference",
         "percentage_point_row_difference": "percentage_point_row_difference",
         "relative_difference_between_rows": "relative_difference_between_rows",
         "pretax_aftertax_difference": "pretax_aftertax_difference",

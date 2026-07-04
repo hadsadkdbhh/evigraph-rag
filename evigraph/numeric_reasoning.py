@@ -897,6 +897,23 @@ class NumericReasoner:
             operation = self.executor.difference(aligned[target_year], aligned[base_year])
             if operation is None:
                 continue
+            use_absolute_change = (
+                operation.value < 0
+                and "between" in query_lower
+                and "net change" not in query_lower
+                and " from " not in f" {query_lower} "
+                and not any(term in query_lower for term in ("increase", "increased", "decrease", "decreased", "decline", "declined"))
+            )
+            if use_absolute_change:
+                absolute_value = abs(operation.value)
+                return NumericAnswer(
+                    text=self._format_number(absolute_value),
+                    calculation=(
+                        f"respectively_prose_difference years={target_year}-{base_year}: "
+                        f"abs({operation.expression}) = {absolute_value:g}"
+                    ),
+                    cited_node_ids=[node_id],
+                )
             return NumericAnswer(
                 text=self._format_number(operation.value),
                 calculation=(

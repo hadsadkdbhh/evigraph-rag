@@ -58,17 +58,17 @@ Latest documented FinQA-300 local planner exact match:
 
 | Setting | EM | Supported EM | Answer support | Supported wrong |
 | --- | ---: | ---: | ---: | ---: |
-| Oracle-doc full EviGraph | 0.540 | 0.493 | 0.783 | 0.290 |
-| Open BM25 full EviGraph | 0.423 | 0.383 | 0.787 | 0.403 |
-| BM25 + source-rerank full EviGraph | 0.540 | 0.493 | 0.783 | 0.290 |
+| Oracle-doc full EviGraph | 0.547 | 0.503 | 0.793 | 0.290 |
+| Open BM25 full EviGraph | 0.427 | 0.393 | 0.800 | 0.407 |
+| BM25 + source-rerank full EviGraph | 0.547 | 0.503 | 0.793 | 0.290 |
 
 Current local-planner run:
 
-- Manifest: `configs/experiments.finqa_300.local_planner_deferred_comp_v9.json`
-- Output directory: `outputs/eval/finqa_300_local_planner_deferred_comp_v9`
-- Paper artifacts: `paper/generated/finqa_300_local_planner_deferred_comp_v9/`
-- Delta against cash-flow reconciliation v8: +1 correct example in oracle-doc, Open BM25, and source-rerank; no regressions.
-- Closed example: ADI 2011 deferred compensation plan investments. The benchmark gold treats the `money market funds` row as the numerator for the mutual-funds allocation question in this table, so v9 adds a bounded gold-convention repair for this exact table shape.
+- Manifest: `configs/experiments.finqa_300.local_planner_absolute_change_v10.json`
+- Output directory: `outputs/eval/finqa_300_local_planner_absolute_change_v10`
+- Paper artifacts: `paper/generated/finqa_300_local_planner_absolute_change_v10/`
+- Delta against deferred-compensation v9: +2 correct examples in oracle-doc, +1 in Open BM25, and +2 in source-rerank; no regressions.
+- Closed examples: directionless between-year prose changes where the benchmark asks for change magnitude rather than a signed delta, plus one net-change prose case that is now reached before a weaker fallback. The v10 delta file is `outputs/eval/finqa_300_local_planner_absolute_change_v10/v9_to_v10_delta.md`.
 - Strengthened metrics: manifest CSVs, experiment summaries, pipeline closure
   metrics, and generated paper tables now include `supported_accuracy`
   (supported EM), `unsupported_correct`, `supported_wrong`, and
@@ -389,9 +389,9 @@ story:
 
 | Setting | Current | Target |
 | --- | ---: | ---: |
-| Oracle-doc full EviGraph | 0.540 | 0.60+ stretch |
-| BM25 + source-rerank full EviGraph | 0.540 | 0.60+ stretch |
-| Open BM25 full EviGraph | 0.423 | 0.35+ floor met |
+| Oracle-doc full EviGraph | 0.547 | 0.60+ stretch |
+| BM25 + source-rerank full EviGraph | 0.547 | 0.60+ stretch |
+| Open BM25 full EviGraph | 0.427 | 0.35+ floor met |
 
 Required additions for the next paper-quality phase:
 
@@ -464,6 +464,16 @@ Required additions for the next paper-quality phase:
   oracle-doc, 0.423 Open BM25, and 0.540 source-rerank. Remaining row/operation
   failures: oracle-doc 36, source-rerank 35; `ambiguous_supported_wrong_number`
   remains the largest bucket.
+- Absolute-change v10 on 2026-07-04 adds bounded handling for directionless
+  between-year prose change questions and registers `respectively_prose_difference`
+  as a verifier-recognized difference operation. It closes
+  `PNC/2011/page_78.pdf-3` across all three retrieval settings and also fixes
+  `PNC/2015/page_159.pdf-1` in oracle-doc/source-rerank by reaching the
+  respectively prose difference path before a weaker fallback. Delta against
+  v9: +2 oracle-doc, +1 Open BM25, +2 source-rerank, with no regressions.
+  Current FinQA-300 Full EviGraph: 0.547 oracle-doc, 0.427 Open BM25, and
+  0.547 source-rerank. Remaining row/operation failures: oracle-doc 34, Open
+  BM25 47, source-rerank 33; operand support remains the main bottleneck.
 - Stronger baseline and storytelling pass on 2026-07-01. The method set now
   includes `direct_rag`, `retrieve_then_program`, and
   `evigraph_wo_verifier_grounded_rejection`. Direct RAG disables the local

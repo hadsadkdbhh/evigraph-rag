@@ -3356,6 +3356,29 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "1")
         self.assertIn("respectively_prose_difference", answer.calculations[0])
 
+    def test_between_years_respectively_change_without_direction_uses_magnitude(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "at december 31 , 2011 and december 31 , 2010 , the unpaid principal balance "
+                    "outstanding of loans sold as a participant in these programs was $ 13.0 billion "
+                    "and $ 13.2 billion , respectively ."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "between december 31 , 2011 and december 31 , 2010 , what was the change in the unpaid principal balance outstanding of loans sold as a participant in these programs in billions?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "0.2")
+        self.assertIn("abs(", answer.calculations[0])
+
     def test_respectively_prose_difference_ignores_duplicate_single_year_query(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
