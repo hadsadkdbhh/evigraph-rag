@@ -4,19 +4,11 @@ Generated from `outputs\eval\finqa_300_local_planner` after the latest manifest 
 
 ## Main Diagnostic Table
 
-| setting | method | EM | answer supported | calculation supported | operation semantics | row grounded | tokens |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Oracle-doc | Full EviGraph | 0.51 | 0.78 | 0.60 | 0.81 | 0.81 | 1176.61 |
-| Open BM25 | Full EviGraph | 0.40 | 0.79 | 0.55 | 0.82 | 0.79 | 859.50 |
-| BM25 + source rerank | Full EviGraph | 0.51 | 0.78 | 0.59 | 0.81 | 0.81 | 983.22 |
-
-## Component Contribution Diagnostics
-
-| setting | planner delta EM | verifier rejection delta EM | verifier delta EM | support delta EM | risk delta EM | graph vs top-k EM | graph vs utility-only EM | full answer support |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Oracle-doc | +0.00 | +0.00 | +0.00 | +0.00 | +0.00 | +0.00 | +0.00 | 0.78 |
-| Open BM25 | +0.00 | +0.00 | +0.00 | +0.00 | +0.00 | +0.00 | +0.00 | 0.79 |
-| BM25 + source rerank | +0.00 | +0.00 | +0.00 | +0.00 | +0.00 | +0.00 | +0.00 | 0.78 |
+| setting | method | EM | supported EM | answer supported | supported wrong | support gap | calculation supported | operation semantics | row grounded | tokens |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Oracle-doc | Full EviGraph | 0.51 | 0.46 | 0.78 | 0.32 | -0.27 | 0.60 | 0.81 | 0.81 | 1176.61 |
+| Open BM25 | Full EviGraph | 0.40 | 0.36 | 0.79 | 0.43 | -0.39 | 0.55 | 0.82 | 0.79 | 859.50 |
+| BM25 + source rerank | Full EviGraph | 0.51 | 0.46 | 0.78 | 0.32 | -0.27 | 0.59 | 0.81 | 0.81 | 983.22 |
 
 ## Full EviGraph Failure Categories
 
@@ -30,9 +22,9 @@ Generated from `outputs\eval\finqa_300_local_planner` after the latest manifest 
 
 | setting | wrong numerator | wrong denominator | wrong year/period | wrong row label | wrong operation type | ambiguous |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Oracle-doc | 5 | 1 | 3 | 3 | 10 | 24 |
-| Open BM25 | 5 | 4 | 5 | 6 | 13 | 26 |
-| BM25 + source rerank | 4 | 1 | 4 | 2 | 9 | 25 |
+| Oracle-doc | 5 | 1 | 3 | 3 | 8 | 26 |
+| Open BM25 | 5 | 4 | 5 | 6 | 11 | 28 |
+| BM25 + source rerank | 4 | 1 | 4 | 2 | 7 | 27 |
 
 ## Process Trace Diagnostics
 

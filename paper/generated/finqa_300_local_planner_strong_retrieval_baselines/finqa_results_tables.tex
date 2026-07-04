@@ -3,31 +3,31 @@
 \begin{table}[t]
 \centering
 \small
-\begin{tabular}{llrrrrrr}
+\begin{tabular}{llrrrrrrrr}
 \toprule
-Setting & Method & EM & Ans. & Calc. & OpSem & Row & Tokens \\
+Setting & Method & EM & SupEM & Ans. & SupWrong & Gap & Calc. & OpSem & Row \\
 \midrule
-Open BM25 & Direct RAG & 0.37 & 0.71 & 0.47 & 0.73 & 0.71 & 858.12 \\
-Open BM25 & Top-k Program & 0.39 & 0.77 & 0.54 & 0.79 & 0.78 & 858.12 \\
-Open BM25 & Retrieve-then-program & 0.39 & 0.77 & 0.54 & 0.79 & 0.78 & 858.12 \\
-Open BM25 & Full context & 0.38 & 0.79 & 0.56 & 0.83 & 0.80 & 3417.26 \\
-Open BM25 & Utility-only & 0.33 & 0.75 & 0.49 & 0.76 & 0.75 & 857.23 \\
-Open BM25 & Full EviGraph & 0.40 & 0.79 & 0.55 & 0.82 & 0.79 & 859.50 \\
-Open TF-IDF & Direct RAG & 0.35 & 0.67 & 0.42 & 0.68 & 0.67 & 806.08 \\
-Open TF-IDF & Top-k Program & 0.38 & 0.72 & 0.47 & 0.73 & 0.72 & 806.08 \\
-Open TF-IDF & Retrieve-then-program & 0.38 & 0.72 & 0.47 & 0.73 & 0.72 & 806.08 \\
-Open TF-IDF & Full context & 0.38 & 0.75 & 0.53 & 0.79 & 0.76 & 3298.74 \\
-Open TF-IDF & Utility-only & 0.31 & 0.67 & 0.42 & 0.69 & 0.68 & 806.57 \\
-Open TF-IDF & Full EviGraph & 0.38 & 0.72 & 0.48 & 0.76 & 0.73 & 810.77 \\
-Open hybrid & Direct RAG & 0.37 & 0.71 & 0.47 & 0.73 & 0.71 & 861.57 \\
-Open hybrid & Top-k Program & 0.39 & 0.78 & 0.55 & 0.79 & 0.78 & 861.57 \\
-Open hybrid & Retrieve-then-program & 0.39 & 0.78 & 0.55 & 0.79 & 0.78 & 861.57 \\
-Open hybrid & Full context & 0.39 & 0.79 & 0.56 & 0.84 & 0.80 & 3425.11 \\
-Open hybrid & Utility-only & 0.33 & 0.75 & 0.49 & 0.77 & 0.75 & 859.49 \\
-Open hybrid & Full EviGraph & 0.40 & 0.79 & 0.55 & 0.82 & 0.79 & 863.71 \\
+Open BM25 & Direct RAG & 0.37 & 0.31 & 0.71 & 0.40 & -0.34 & 0.47 & 0.73 & 0.71 \\
+Open BM25 & Top-k Program & 0.39 & 0.34 & 0.77 & 0.43 & -0.38 & 0.54 & 0.79 & 0.78 \\
+Open BM25 & Retrieve-then-program & 0.39 & 0.34 & 0.77 & 0.43 & -0.38 & 0.54 & 0.79 & 0.78 \\
+Open BM25 & Full context & 0.38 & 0.34 & 0.79 & 0.45 & -0.41 & 0.56 & 0.83 & 0.80 \\
+Open BM25 & Utility-only & 0.33 & 0.29 & 0.75 & 0.46 & -0.41 & 0.49 & 0.76 & 0.75 \\
+Open BM25 & Full EviGraph & 0.40 & 0.36 & 0.79 & 0.43 & -0.39 & 0.55 & 0.82 & 0.79 \\
+Open TF-IDF & Direct RAG & 0.35 & 0.30 & 0.67 & 0.37 & -0.31 & 0.42 & 0.68 & 0.67 \\
+Open TF-IDF & Top-k Program & 0.38 & 0.33 & 0.72 & 0.38 & -0.34 & 0.47 & 0.73 & 0.72 \\
+Open TF-IDF & Retrieve-then-program & 0.38 & 0.33 & 0.72 & 0.38 & -0.34 & 0.47 & 0.73 & 0.72 \\
+Open TF-IDF & Full context & 0.38 & 0.34 & 0.75 & 0.41 & -0.37 & 0.53 & 0.79 & 0.76 \\
+Open TF-IDF & Utility-only & 0.31 & 0.27 & 0.67 & 0.40 & -0.36 & 0.42 & 0.69 & 0.68 \\
+Open TF-IDF & Full EviGraph & 0.38 & 0.34 & 0.72 & 0.38 & -0.34 & 0.48 & 0.76 & 0.73 \\
+Open hybrid & Direct RAG & 0.37 & 0.31 & 0.71 & 0.40 & -0.34 & 0.47 & 0.73 & 0.71 \\
+Open hybrid & Top-k Program & 0.39 & 0.35 & 0.78 & 0.43 & -0.38 & 0.55 & 0.79 & 0.78 \\
+Open hybrid & Retrieve-then-program & 0.39 & 0.35 & 0.78 & 0.43 & -0.38 & 0.55 & 0.79 & 0.78 \\
+Open hybrid & Full context & 0.39 & 0.35 & 0.79 & 0.44 & -0.40 & 0.56 & 0.84 & 0.80 \\
+Open hybrid & Utility-only & 0.33 & 0.29 & 0.75 & 0.46 & -0.41 & 0.49 & 0.77 & 0.75 \\
+Open hybrid & Full EviGraph & 0.40 & 0.36 & 0.79 & 0.43 & -0.39 & 0.55 & 0.82 & 0.79 \\
 \bottomrule
 \end{tabular}
-\caption{FinQA diagnostic results. EM is numeric exact match. Ans., Calc., OpSem, and Row are verifier diagnostics for answer support, calculation-result support, operation-semantics checking, and row grounding. Source rerank uses the provided source document and is an analysis setting rather than a deployable open-retrieval claim.}
+\caption{FinQA diagnostic results. EM is numeric exact match. SupEM is the fraction that is both exact-match correct and verifier-supported. Ans. is verifier answer support. SupWrong is verifier-supported but exact-match wrong. Gap is EM minus answer support. Calc., OpSem, and Row are calculation-result support, operation-semantics checking, and row grounding. Source rerank uses the provided source document and is an analysis setting rather than a deployable open-retrieval claim.}
 \label{tab:finqa-diagnostic-results}
 \end{table}
 
@@ -70,11 +70,27 @@ Open hybrid & 52 & 34 & 40 & 27 & 18 & 9 \\
 \toprule
 Setting & Num. & Den. & Year/period & Row label & Op. type & Ambig. \\
 \midrule
-Open BM25 & 5 & 4 & 5 & 6 & 13 & 26 \\
-Open TF-IDF & 4 & 3 & 4 & 5 & 9 & 19 \\
-Open hybrid & 6 & 3 & 4 & 6 & 13 & 26 \\
+Open BM25 & 5 & 4 & 5 & 6 & 11 & 28 \\
+Open TF-IDF & 4 & 3 & 4 & 5 & 6 & 22 \\
+Open hybrid & 6 & 3 & 4 & 6 & 10 & 29 \\
 \bottomrule
 \end{tabular}
 \caption{Row/operation diagnostics for wrong numeric full EviGraph answers. Counts are multi-label: one failed example can expose more than one diagnostic signal.}
 \label{tab:finqa-row-operation-diagnostics}
+\end{table}
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lrrrrrrrr}
+\toprule
+Setting & Evid. & Period & Row & Operand & Op. & Citation & Support & EM \\
+\midrule
+Open BM25 & 1.00 & 0.98 & 0.99 & 0.52 & 0.87 & 1.00 & 0.79 & 0.40 \\
+Open TF-IDF & 1.00 & 0.95 & 0.98 & 0.46 & 0.80 & 1.00 & 0.72 & 0.38 \\
+Open hybrid & 1.00 & 0.99 & 0.99 & 0.52 & 0.87 & 1.00 & 0.79 & 0.40 \\
+\bottomrule
+\end{tabular}
+\caption{Hop-wise process diagnostics for full EviGraph. Evid., Period, Row, Operand, Op., Citation, Support, and EM separate evidence availability, temporal alignment, row grounding, operand support, operation semantics, citation checking, answer support, and final exact match.}
+\label{tab:finqa-process-diagnostics}
 \end{table}
