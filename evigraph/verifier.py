@@ -334,12 +334,21 @@ def _expected_operation(query: str) -> set[str] | None:
         ]
     ):
         return {"ratio_percent", "ratio_between_years"}
-    if "ratio" in query_lower and len(re.findall(r"\b20\d{2}\b", query_lower)) >= 2:
+    if "ratio" in query_lower and (
+        len(re.findall(r"\b20\d{2}\b", query_lower)) >= 2
+        or (
+            "return" in query_lower
+            and ("stock" in query_lower or "shareholder" in query_lower or "s&p" in query_lower)
+        )
+        or ("performance" in query_lower and ("s&p" in query_lower or "standard & poor" in query_lower))
+    ):
         return {"ratio", "ratio_between_years"}
     if "average" in query_lower:
         return {"average", "row_average", "row_values_average", "year_range_average"}
-    if any(phrase in query_lower for phrase in ["difference", "net change", "how much higher", "change in", "changed in"]):
+    if any(phrase in query_lower for phrase in ["difference", "net change", "how much higher", "change in", "changed in", "five year change"]):
         return {"difference", "row_year_difference", "pretax_aftertax_difference"}
+    if "cash flow" in query_lower and "result" in query_lower:
+        return {"sum"}
     return None
 
 
@@ -360,12 +369,21 @@ def _calculation_operation(calculation: str) -> str | None:
         "percent_delta": "percent_delta",
         "ratio_percent": "ratio_percent",
         "increase_component_ratio_percent": "ratio_percent",
+        "future_minimum_payment_next_period_ratio": "ratio_percent",
+        "component_amount_ratio": "ratio_percent",
         "ratio_between_years": "ratio_between_years",
+        "stock_return_graph_ratio": "ratio",
+        "stock_return_graph_growth": "percent_change",
+        "stock_return_graph_difference": "difference",
+        "component_value_from_total_percent": "ratio_percent",
+        "shares_issued_from_dividend_table": "ratio",
         "row_average": "row_average",
+        "average_high_low_price": "average",
         "row_values_average": "row_values_average",
         "year_range_average": "year_range_average",
         "planned_average": "average",
         "row_year_difference": "row_year_difference",
+        "waterfall_table_change": "difference",
         "planned_difference": "difference",
         "planned_absolute_difference": "difference",
         "respectively_prose_difference": "difference",
@@ -374,6 +392,12 @@ def _calculation_operation(calculation: str) -> str | None:
         "pretax_aftertax_difference": "pretax_aftertax_difference",
         "difference": "difference",
         "planned_sum": "sum",
+        "cash_flow_result": "sum",
+        "next_months_debt_due": "sum",
+        "square_feet_expiring_in_year": "sum",
+        "options_available_under_plan": "difference",
+        "contractual_commitments_total_column_sum": "sum",
+        "spread_from_dropped_below_and_ending": "difference",
         "planned_lookup": "lookup",
         "repeated_increase_projection": "difference",
     }

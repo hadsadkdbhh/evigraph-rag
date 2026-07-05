@@ -245,7 +245,7 @@ class RowOperationDiagnosticAnalyzer:
                 return "percent_change"
         if any(token in lowered for token in ("portion", "percent of", "percentage of", "represented", "allocated", "comes from", "ratio")):
             return "ratio_percent"
-        if any(token in lowered for token in ("difference", "change in", "higher", "lower")):
+        if any(token in lowered for token in ("difference", "change in", "higher", "lower", "five year change")):
             return "difference"
         if any(token in lowered for token in ("total", "sum", "combined")):
             return "sum_or_lookup"
@@ -253,18 +253,43 @@ class RowOperationDiagnosticAnalyzer:
 
     def _operation_matches(self, expected: str, actual: str) -> bool:
         compatible = {
-            "average": {"average", "planned_average", "row_values_average", "year_range_average"},
-            "percent_change": {"percent_change", "planned_percent_change", "implicit_percent_increase", "roi"},
+            "average": {"average", "planned_average", "row_values_average", "year_range_average", "average_high_low_price"},
+            "percent_change": {
+                "percent_change",
+                "planned_percent_change",
+                "implicit_percent_increase",
+                "roi",
+                "stock_return_graph_growth",
+            },
             "percent_of_increase": {"planned_percent_of_increase"},
-            "ratio_percent": {"ratio_percent"},
+            "ratio_percent": {
+                "ratio_percent",
+                "future_minimum_payment_next_period_ratio",
+                "component_amount_ratio",
+                "component_value_from_total_percent",
+                "stock_return_graph_ratio",
+            },
             "difference": {
                 "difference",
                 "planned_difference",
                 "planned_absolute_difference",
                 "respectively_prose_difference",
                 "row_year_difference",
+                "waterfall_table_change",
+                "stock_return_graph_difference",
+                "spread_from_dropped_below_and_ending",
             },
-            "sum_or_lookup": {"sum", "planned_sum", "lookup", "planned_lookup", "row_lookup"},
+            "sum_or_lookup": {
+                "sum",
+                "planned_sum",
+                "cash_flow_result",
+                "next_months_debt_due",
+                "square_feet_expiring_in_year",
+                "contractual_commitments_total_column_sum",
+                "lookup",
+                "planned_lookup",
+                "row_lookup",
+            },
         }
         return actual in compatible.get(expected, {expected})
 

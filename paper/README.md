@@ -5,9 +5,9 @@ This folder contains the working AAAI-style paper skeleton.
 Current status:
 
 - Title, abstract, introduction, related work, method, experiments, failure analysis, and conclusion draft sections are present.
-- The current main results and failure-analysis tables are generated from
-  the FinQA-300 local planner source-match v11 outputs and the split GPT-5.4 Direct RAG
-  baseline outputs.
+- The current main local-planner results and failure-analysis tables are
+  generated from the FinQA-300 local planner table-ops v21 outputs. GPT-5.4
+  Direct RAG baseline outputs remain available as separate generated assets.
 - The method figure is a lightweight LaTeX diagram; replace it with a polished graph diagram before final submission if space allows.
 
 Refresh paper assets after each manifest run:
@@ -19,7 +19,7 @@ python .\scripts\build_paper_assets.py --eval-dir .\outputs\eval\finqa --output-
 For the current FinQA-300 local-planner tables:
 
 ```powershell
-python .\scripts\build_paper_assets.py --eval-dir .\outputs\eval\finqa_300_local_planner_source_match_v11 --output-dir .\paper\generated\finqa_300_local_planner_source_match_v11 --preset finqa_300_local
+python .\scripts\build_paper_assets.py --eval-dir .\outputs\eval\finqa_300_local_planner_table_ops_v21 --output-dir .\paper\generated\finqa_300_local_planner_table_ops_v21 --preset finqa_300_local
 ```
 
 For the GPT-5.4 Direct RAG baseline tables, the results are split across

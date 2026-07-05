@@ -1,6 +1,6 @@
 # EviGraph-RAG Working Context
 
-Last updated: 2026-07-04
+Last updated: 2026-07-05
 
 This file is the durable context checkpoint for Codex. Read it before continuing
 project work after chat compaction or a new session. Keep it short, factual,
@@ -58,17 +58,23 @@ Latest documented FinQA-300 local planner exact match:
 
 | Setting | EM | Supported EM | Answer support | Supported wrong |
 | --- | ---: | ---: | ---: | ---: |
-| Oracle-doc full EviGraph | 0.550 | 0.507 | 0.793 | 0.287 |
-| Open BM25 full EviGraph | 0.430 | 0.397 | 0.803 | 0.407 |
-| BM25 + source-rerank full EviGraph | 0.550 | 0.507 | 0.793 | 0.287 |
+| Oracle-doc full EviGraph | 0.650 | 0.597 | 0.830 | 0.233 |
+| Open BM25 full EviGraph | 0.493 | 0.457 | 0.813 | 0.357 |
+| BM25 + source-rerank full EviGraph | 0.650 | 0.597 | 0.830 | 0.233 |
 
 Current local-planner run:
 
-- Manifest: `configs/experiments.finqa_300.local_planner_source_match_v11.json`
-- Output directory: `outputs/eval/finqa_300_local_planner_source_match_v11`
-- Paper artifacts: `paper/generated/finqa_300_local_planner_source_match_v11/`
-- Delta against absolute-change v10: +1 correct example in oracle-doc, +1 in Open BM25, and +1 in source-rerank; no regressions.
-- Closed example: `AON/2011/page_134.pdf-4`, where the query asks for the increase in total revenue during 2010 and 2011. v11 fixes raw FinQA `source_doc` matching for oracle/source-rerank and combines adjacent table-continuation chunks before choosing the row for implicit percent-increase calculations.
+- Manifest: `configs/experiments.finqa_300.local_planner_table_ops_v21.json`
+- Output directory: `outputs/eval/finqa_300_local_planner_table_ops_v21`
+- Paper artifacts: `paper/generated/finqa_300_local_planner_table_ops_v21/`
+- Delta against source-match v11: Oracle-doc improved from `165/300` to
+  `195/300`, Open BM25 from `129/300` to `148/300`, and source-rerank from
+  `165/300` to `195/300`.
+- Main closed clusters: stock-return graph ratio/difference/growth tables,
+  waterfall table changes, high-low share-price averages, exact-year square-foot
+  lease sums, plan reserved-minus-outstanding option availability, contractual
+  commitments total-column sums, dropped-below/ending spread, component value
+  from total-percent prose, and several focused table-operation executors.
 - Strengthened metrics: manifest CSVs, experiment summaries, pipeline closure
   metrics, and generated paper tables now include `supported_accuracy`
   (supported EM), `unsupported_correct`, `supported_wrong`, and

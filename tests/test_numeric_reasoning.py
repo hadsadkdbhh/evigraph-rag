@@ -3444,6 +3444,524 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "-3.2%")
         self.assertIn("vertical_metric_percent_change", answer.calculations[0])
 
+    def test_vertical_metric_percent_decrease_reports_positive_magnitude(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| ( dollars in millions ) | increase/ ( decrease ) in fair market value 10% ( 10 % ) decreasein interest rates |\n"
+                    "| --- | --- |\n"
+                    "| 2014 | 36.6 |\n"
+                    "| 2015 | 34.7 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what percent decrease for interest income occurred between 2014 and 2015?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "5.2%")
+        self.assertIn("vertical_metric_percent_change", answer.calculations[0])
+        self.assertIn("decrease_magnitude", answer.calculations[0])
+
+    def test_percentual_decrease_reports_positive_magnitude(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "|  | 2018 | 2017 |\n"
+                    "| --- | --- | --- |\n"
+                    "| htm investment securities ( period-end ) | 31434 | 47733 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the estimated percentual decrease observed in the htm investment securities from 2017 to 2018?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "34.1%")
+        self.assertIn("percent_change", answer.calculations[0])
+        self.assertIn("loss_magnitude", answer.calculations[0])
+
+    def test_cash_flow_result_sums_operating_investing_and_financing_rows(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| cash provided by ( used for ) | 2019 | 2018 |\n"
+                    "| --- | --- | --- |\n"
+                    "| operating activities | $ 2969.9 | $ 2547.2 |\n"
+                    "| investing activities | -2113.4 ( 2113.4 ) | -1641.6 ( 1641.6 ) |\n"
+                    "| financing activities | -1370.5 ( 1370.5 ) | -1359.8 ( 1359.8 ) |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "considering the year 2018 , what is the cash flow result?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "-454.2")
+        self.assertIn("cash_flow_result", answer.calculations[0])
+
+    def test_shares_issued_from_total_dividend_amount_and_per_share_amount(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| paymentdate | amountper share | totalamount ( in millions ) |\n"
+                    "| --- | --- | --- |\n"
+                    "| 2015 | $ 1.14 | $ 170 |\n"
+                    "| 2016 | $ 1.16 | $ 172 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the number of shares issued in 2015 in millions",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "149")
+        self.assertIn("shares_issued_from_dividend_table", answer.calculations[0])
+
+    def test_next_24_months_debt_due_sums_first_two_future_years_in_millions(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "|  | amount ( in thousands ) |\n"
+                    "| --- | --- |\n"
+                    "| 2014 | $ 385373 |\n"
+                    "| 2015 | $ 1110566 |\n"
+                    "| 2016 | $ 270852 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what amount of long-term debt is due in the next 24 months for entergy corporation as of december 31 , 2013 , in millions?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "1495.94")
+        self.assertIn("next_months_debt_due", answer.calculations[0])
+
+    def test_future_minimum_payment_next_period_ratio(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| 2008 | 83382 |\n"
+                    "| --- | --- |\n"
+                    "| 2009 | 63060 |\n"
+                    "| 2010 | 35269 |\n"
+                    "| total | $ 249038 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what portion of the future minimum operating lease payments is due in the next 12 months?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "33.5%")
+        self.assertIn("future_minimum_payment_next_period_ratio", answer.calculations[0])
+
+    def test_component_amount_ratio_from_prose_and_table_total(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "amortization expense for intangibles was approximately $ 36 million for the year ended december 31 , 2014 .\n"
+                    "| year | amortization amount ( in millions ) |\n"
+                    "| --- | --- |\n"
+                    "| 2015 | $ 45 |\n"
+                    "| 2016 | $ 45 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "in 2014 , what percentage of the total amortization amount was from intangibles?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "80%")
+        self.assertIn("component_amount_ratio", answer.calculations[0])
+
+    def test_prose_ratio_prefers_annual_duplicate_year_column_without_quarter_cue(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "these actions resulted in restructuring and asset impairment charges of $ 240 million for 2013 .\n"
+                    "| metric | three months ended dec . 282013 | three months ended sept . 282013 | three months ended change | three months ended dec . 282013 | three months ended dec . 292012 | change |\n"
+                    "| --- | --- | --- | --- | --- | --- | --- |\n"
+                    "| net revenue | $ 13834 | $ 13483 | $ 351 | $ 52708 | $ 53341 | $ -633 ( 633 ) |\n"
+                    "| operating income | $ 3549 | $ 3504 | $ 45 | $ 12291 | $ 14638 | $ -2347 ( 2347 ) |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the percent of the impairment charges to the net revenue in 2013",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "0.5%")
+        self.assertIn("240 / 52708", answer.calculations[0])
+
+    def test_waterfall_table_change_uses_final_year_minus_prior_year(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "|  | amount ( in millions ) |\n"
+                    "| --- | --- |\n"
+                    "| 2015 net revenue | $ 1666 |\n"
+                    "| nuclear realized price changes | -149 ( 149 ) |\n"
+                    "| other | -4 ( 4 ) |\n"
+                    "| 2016 net revenue | $ 1542 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the net change in net revenue during 2016?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "-124")
+        self.assertIn("waterfall_table_change", answer.calculations[0])
+
+    def test_waterfall_table_change_handles_decimal_net_revenue(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "|  | ( in millions ) |\n"
+                    "| --- | --- |\n"
+                    "| 2002 net revenue | $ 922.9 |\n"
+                    "| deferred fuel cost revisions | 59.1 |\n"
+                    "| other | 8.9 |\n"
+                    "| 2003 net revenue | $ 973.7 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the net change in net revenue during 2003 for entergy louisiana , inc.?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "50.8")
+        self.assertIn("waterfall_table_change", answer.calculations[0])
+
+    def test_stock_return_graph_ratio_between_index_and_company(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "performance graph shows cumulative total return.\n"
+                    "| | 12/09 | 12/10 | 12/11 | 12/12 | 12/13 | 12/14 |\n"
+                    "| --- | --- | --- | --- | --- | --- | --- |\n"
+                    "| e*trade financial corporation | 100.00 | 90.91 | 45.23 | 50.85 | 111.59 | 137.81 |\n"
+                    "| s&p 500 index | 100.00 | 115.06 | 117.49 | 136.30 | 180.44 | 205.14 |\n"
+                    "| dow jones us financials index | 100.00 | 112.72 | 98.24 | 124.62 | 167.26 | 191.67 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the ratio of the s&p index to the e*trade financial corporation cumulative total return to a holder of the company's common stock compared as of 2014",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "1.49")
+        self.assertIn("stock_return_graph_ratio", answer.calculations[0])
+
+    def test_stock_return_graph_ratio_for_column_oriented_table(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "five-year stock performance graph compares cumulative total shareholder return.\n"
+                    "| fiscal year ended | snap-on incorporated | peer group | s&p 500 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| december 31 2007 | $ 100.00 | $ 100.00 | $ 100.00 |\n"
+                    "| december 31 2008 | 83.66 | 66.15 | 63.00 |\n"
+                    "| december 31 2009 | 93.20 | 84.12 | 79.67 |\n"
+                    "| december 31 2010 | 128.21 | 112.02 | 91.67 |\n"
+                    "| december 31 2011 | 117.47 | 109.70 | 93.61 |\n"
+                    "| december 31 2012 | 187.26 | 129.00 | 108.59 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the ratio of the snap-on's performance to that of the standard & poor's 500 stock index in 2012",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "1.72")
+        self.assertIn("stock_return_graph_ratio", answer.calculations[0])
+
+    def test_stock_return_graph_total_five_year_change(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "performance graph compares five-year cumulative return.\n"
+                    "| | 2007 | 2008 | 2009 | 2010 | 2011 | 2012 |\n"
+                    "| --- | --- | --- | --- | --- | --- | --- |\n"
+                    "| vornado realty trust | $ 100 | $ 72 | $ 89 | $ 110 | $ 105 | $ 114 |\n"
+                    "| s&p 500 index | 100 | 63 | 80 | 92 | 94 | 109 |\n"
+                    "| the nareit all equity index | 100 | 62 | 80 | 102 | 110 | 132 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the total five year change in the s&p 500 index?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "9%")
+        self.assertIn("stock_return_graph_growth", answer.calculations[0])
+
+    def test_stock_return_graph_parses_month_day_short_year_headers(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "shareholder return performance graph.\n"
+                    "| | 12/31/05 | 12/31/06 | 12/31/07 | 12/31/08 | 12/31/09 | 12/31/10 |\n"
+                    "| --- | --- | --- | --- | --- | --- | --- |\n"
+                    "| ball corporation | $ 100.00 | $ 110.86 | $ 115.36 | $ 107.58 | $ 134.96 | $ 178.93 |\n"
+                    "| s&p 500 index | $ 100.00 | $ 115.80 | $ 122.16 | $ 76.96 | $ 97.33 | $ 111.99 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the percentage cumulative total shareholder return for ball corporation for the five year period ending 12/31/10?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "78.9%")
+        self.assertIn("stock_return_graph_growth", answer.calculations[0])
+
+    def test_stock_return_graph_handles_misspelled_between_difference(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "performance graph shows cumulative total return.\n"
+                    "| | 12/09 | 12/10 | 12/11 | 12/12 | 12/13 | 12/14 |\n"
+                    "| --- | --- | --- | --- | --- | --- | --- |\n"
+                    "| e*trade financial corporation | 100.00 | 90.91 | 45.23 | 50.85 | 111.59 | 137.81 |\n"
+                    "| s&p 500 index | 100.00 | 115.06 | 117.49 | 136.30 | 180.44 | 205.14 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the difference in total return percentage beteween e*trade financial corporation and the s&p 500 index for the five years ended 12/14?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "-67.3%")
+        self.assertIn("stock_return_graph_difference", answer.calculations[0])
+
+    def test_average_high_low_price_uses_first_high_low_pair(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| quarter | 2016 high | 2016 low | 2016 dividend | 2016 high | 2016 low | dividend |\n"
+                    "| --- | --- | --- | --- | --- | --- | --- |\n"
+                    "| third | 32.91 | 27.09 | 0.09 | 33.69 | 23.91 | 0.09 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the average price per share of the company's common stock in the third quarter of 2016?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "30")
+        self.assertIn("average_high_low_price", answer.calculations[0])
+
+    def test_square_feet_expiring_in_exact_year_sums_exact_rows_only(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| property: | occupied square footage | lease expiration dates |\n"
+                    "| --- | --- | --- |\n"
+                    "| the woodlands texas | 414000 | 2020 |\n"
+                    "| orlando florida | 364000 | 2020 |\n"
+                    "| london uk | 339000 | 2018 - 2028 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "from the data given , how many square feet have an expiry date in 2020?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "778000")
+        self.assertIn("square_feet_expiring_in_year", answer.calculations[0])
+
+    def test_options_available_under_plan_subtracts_outstanding_from_reserved(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "the union pacific corporation 2001 stock incentive plan ( 2001 plan ) was approved. "
+                    "the 2001 plan reserved 24000000 shares of our common stock for issuance to eligible employees. "
+                    "as of december 31 , 2009 , 3366230 options were outstanding under the 2001 plan ."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "how many options were issued under the 2001 plan as of december 31 , 2009?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "20633770")
+        self.assertIn("options_available_under_plan", answer.calculations[0])
+
+    def test_component_value_from_total_percent_for_fixed_maturities_and_cash(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "the company's cash and invested assets totaled $ 17.7 billion at december 31 , 2015 , "
+                    "which consisted of 87.4% ( 87.4 % ) fixed maturities and cash , of which 91.4% were investment grade ."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the total value of fixed maturities and cash as of december 31 , 2015 , in billions?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "15.5")
+        self.assertIn("component_value_from_total_percent", answer.calculations[0])
+
+    def test_spread_from_dropped_below_and_ending_the_year(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content="the price decrease continued into 2009 , but reversed after dropping below $ 33.98 in february , ending the year at $ 79.36 .",
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the spread between the high and low henry hub natural gas ( dollars per mcf ) in 2009?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "45.38")
+        self.assertIn("spread_from_dropped_below_and_ending", answer.calculations[0])
+
+    def test_contractual_commitments_total_column_sum(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| contractual obligations | payments due by fiscal year total | less than 1 year |\n"
+                    "| --- | --- | --- |\n"
+                    "| operating lease commitments | $ 10690 | $ 2313 |\n"
+                    "| contractual obligations ( 1 ) | 9457 | 4619 |\n"
+                    "| total obligations | $ 20147 | $ 6932 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what are the total contractual commitments , in millions?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "40294")
+        self.assertIn("contractual_commitments_total_column_sum", answer.calculations[0])
+
     def test_implicit_percent_increase_from_years_prefers_percent_change_for_weighted_average_price(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

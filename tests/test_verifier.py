@@ -332,6 +332,46 @@ class ClaimVerifierTest(unittest.TestCase):
         self.assertTrue(verification["operation_semantics_checked"])
         self.assertTrue(verification["answer_supported"])
 
+    def test_operation_semantics_accepts_next_period_ratio(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(EvidenceNode("table", "text", "2008 83382 total 249038 33.5", source_doc="report.md"))
+        answer = Answer(
+            text="33.5%",
+            citations=["table"],
+            calculations=[
+                "future_minimum_payment_next_period_ratio year=2008 denominator=total: 83382 / 249038 = 0.334816 * 100 = 33.5%"
+            ],
+        )
+
+        verification = ClaimVerifier().verify(
+            "what portion of the future minimum operating lease payments is due in the next 12 months?",
+            answer,
+            graph,
+        )
+
+        self.assertTrue(verification["operation_semantics_checked"])
+        self.assertTrue(verification["answer_supported"])
+
+    def test_operation_semantics_accepts_cash_flow_result_sum(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(EvidenceNode("table", "text", "operating activities 2547.2 investing activities -1641.6 financing activities -1359.8", source_doc="report.md"))
+        answer = Answer(
+            text="-454.2",
+            citations=["table"],
+            calculations=[
+                "cash_flow_result year=2018 rows=operating activities; investing activities; financing activities: 2547.2 + -1641.6 + -1359.8 = -454.2"
+            ],
+        )
+
+        verification = ClaimVerifier().verify(
+            "considering the year 2018 , what is the cash flow result?",
+            answer,
+            graph,
+        )
+
+        self.assertTrue(verification["operation_semantics_checked"])
+        self.assertTrue(verification["answer_supported"])
+
     def test_operation_semantics_accepts_planned_plain_ratio_for_ratio_query(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(EvidenceNode("table", "text", "2011 453815 thereafter 2996337 0.2", source_doc="report.md"))

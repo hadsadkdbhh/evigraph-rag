@@ -1,0 +1,53 @@
+{
+  "title": "EviGraph FinQA 300-Example Local Program Planner Table Ops v21",
+  "config": "configs/default_local_planner.yaml",
+  "output_dir": "outputs/eval/finqa_300_local_planner_table_ops_v21",
+  "datasets": [
+    {
+      "name": "finqa_300_subset",
+      "raw_questions": "data/raw/finqa_300_subset.jsonl",
+      "questions": "outputs/eval/finqa_300_local_planner_table_ops_v21/finqa_questions.jsonl",
+      "field_map": {
+        "id": "id",
+        "query": "question",
+        "answer": "answer",
+        "source_doc": "source_doc",
+        "task_type": "task_type"
+      },
+      "corpus": "data/finqa_300_corpus",
+      "build_index": true,
+      "index": "outputs/index/finqa_300_subset.json",
+      "chunk_size": 1200,
+      "chunk_overlap": 160,
+      "gate": {
+        "min_records": 300,
+        "min_source_doc_coverage": 1.0,
+        "fail_on_error": true
+      }
+    }
+  ],
+  "experiments": [
+    {
+      "name": "oracle_doc_full_local_planner",
+      "type": "batch",
+      "retrieval_mode": "oracle_doc",
+      "methods": ["full_evigraph"]
+    },
+    {
+      "name": "open_bm25_full_local_planner",
+      "type": "batch",
+      "retrieval_mode": "open",
+      "methods": ["full_evigraph"]
+    },
+    {
+      "name": "source_rerank_full_local_planner",
+      "type": "batch",
+      "retrieval_mode": "source_rerank",
+      "methods": ["full_evigraph"]
+    }
+  ],
+  "limitations": [
+    "This manifest uses only the local heuristic program planner and does not require LLM_PROVIDER-compatible environment variables.",
+    "This v21 pass makes component-percent prose extraction robust to FinQA parenthesized percentage echoes such as ( 87.4 % )."
+  ]
+}
