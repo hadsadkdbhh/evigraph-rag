@@ -60,6 +60,21 @@ Current true neural retrieval track:
     retrieval pull more gold sources into the open top-k pool.
   - Keep these results separate from BM25 and source-rerank; do not call
     source-rerank a deployable open-retrieval method.
+- Latest run:
+  - `outputs/eval/finqa_600_neural_retrieval_full_evigraph_v43/summary.md`
+  - BM25 top-16 Full EviGraph: EM 0.362, source_hit@16 0.905.
+  - Neural dense top-16 Full EviGraph: EM 0.253, source_hit@16 0.745.
+  - Neural hybrid top-16 Full EviGraph: EM 0.363, source_hit@16 0.927.
+- Interpretation:
+  - Neural hybrid improves source exposure over BM25 top-16 but does not
+    improve final EM, so the next bottleneck is support selection over a
+    larger mixed candidate pool.
+  - BM25 top-8 v43 remains the best stable open result at EM 0.377.
+  - BM25 top-8 plus neural-hybrid top-16 have complementary wins: their
+    oracle portfolio union is 248/600 = 0.413, while simple verifier-score
+    portfolio selection reaches 0.385. This suggests the next useful method
+    change is a verifier-guided retrieval portfolio selector, not another
+    broad numeric rule.
 
 Latest bounded repair:
 
