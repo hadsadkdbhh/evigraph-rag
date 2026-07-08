@@ -215,21 +215,37 @@ Public TAT-QA pilot:
 - Generated repo data:
   - `data/raw/tatqa_20_subset.jsonl`
   - `data/tatqa_20_corpus/`
+  - `data/raw/tatqa_50_subset.jsonl`
+  - `data/tatqa_50_corpus/`
 - Manifest:
   - `configs/experiments.tatqa_20.local_planner.json`
+  - `configs/experiments.tatqa_50.local_planner.json`
 - Run output:
   - `outputs/eval/tatqa_20_local_planner/summary.md`
   - `outputs/eval/tatqa_20_local_planner/tatqa_20_open_bm25_full_retrieval_diagnostics.md`
+  - `outputs/eval/tatqa_50_local_planner/summary.md`
+  - `outputs/eval/tatqa_50_local_planner/tatqa_50_open_bm25_full_retrieval_diagnostics.md`
 - Results:
-  - Oracle-doc Full EviGraph: EM 0.500, support 0.800.
-  - Open BM25 Full EviGraph: EM 0.450, support 0.850.
-  - Open BM25 source_hit@8: 1.000, source_top1: 0.750.
-  - Failure report: 11/20 failed examples; all open failures have source hit,
-    so the pilot supports the claim that source exposure alone is insufficient.
+  - TAT-QA-20 Oracle-doc Full EviGraph: EM 0.500, support 0.800.
+  - TAT-QA-20 Open BM25 Full EviGraph: EM 0.450, support 0.850.
+  - TAT-QA-50 Oracle-doc Full EviGraph: EM 0.420, support 0.780.
+  - TAT-QA-50 Open BM25 Full EviGraph: EM 0.360, support 0.920.
+  - TAT-QA-50 Open BM25 source_hit@8: 0.960, source_top1: 0.740.
+  - TAT-QA-50 failure report: 32/50 failed examples; 30/50 are
+    wrong_with_source_hit, so the pilot supports the claim that source exposure
+    alone is insufficient.
+  - Largest TAT-QA-50 open failure class:
+    wrong_numeric_operation_or_row = 21. Row/operation diagnostics split 24
+    wrong numeric rows into 16 ambiguous_supported_wrong_number, 4
+    wrong_year_or_period, 2 wrong_row_label, and 2 wrong_operation_type.
 - Paper files:
   - `paper/generated/tatqa_20_cross_benchmark/tatqa_20_results.tex`
   - `paper/generated/tatqa_20_cross_benchmark/tatqa_20_results.md`
+  - `paper/generated/tatqa_50_cross_benchmark/tatqa_50_results.tex`
+  - `paper/generated/tatqa_50_cross_benchmark/tatqa_50_results.md`
 - Interpretation:
+  - Use TAT-QA-50 as the main public cross-benchmark pilot in the paper; keep
+    TAT-QA-20 as an earlier smoke result only.
   - This is a public cross-benchmark pilot, not a full TAT-QA benchmark claim.
   - Gold derivations are not serialized into the retrieval corpus.
   - Use it to answer the reviewer concern that the pipeline is FinQA-only,
