@@ -2773,6 +2773,29 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "708716.7")
         self.assertIn("year_range_average", answer.calculations[0])
 
+    def test_listed_year_average_from_respectively_prose_uses_only_query_years(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "During the years ended December 31, 2013, 2012 and 2011, "
+                    "the revenue from our discontinued operations was $503 million, "
+                    "$1.085 billion and $974 million, respectively."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the average revenue from discontinued operations in 2013 and 2011, in millions?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "738.5")
+        self.assertIn("listed_year_average", answer.calculations[0])
+
     def test_year_range_average_prefers_inline_exact_row_over_truncated_table_row(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

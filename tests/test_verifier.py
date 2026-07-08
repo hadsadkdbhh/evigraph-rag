@@ -425,6 +425,31 @@ class ClaimVerifierTest(unittest.TestCase):
         self.assertTrue(verification["operation_semantics_checked"])
         self.assertTrue(verification["answer_supported"])
 
+    def test_operation_semantics_accepts_listed_year_average(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                "text",
+                "text",
+                "revenue from discontinued operations 2013 $503 million 2011 $974 million 738.5",
+                source_doc="report.md",
+            )
+        )
+        answer = Answer(
+            text="738.5",
+            citations=["text"],
+            calculations=["listed_year_average row=revenue discontinued: (503 + 974) / 2 = 738.5"],
+        )
+
+        verification = ClaimVerifier().verify(
+            "what was the average revenue from discontinued operations in 2013 and 2011, in millions?",
+            answer,
+            graph,
+        )
+
+        self.assertTrue(verification["operation_semantics_checked"])
+        self.assertTrue(verification["answer_supported"])
+
     def test_operation_semantics_accepts_implicit_percent_increase(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(EvidenceNode("table", "text", "total revenue 2011 11287 2010 8512 32.6", source_doc="report.md"))

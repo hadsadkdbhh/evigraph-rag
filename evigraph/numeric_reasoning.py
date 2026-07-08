@@ -246,6 +246,9 @@ class NumericReasoner:
             answer = self._row_values_average(query_lower, contexts)
             if answer:
                 return answer
+            answer = self._listed_year_average(query_lower, contexts)
+            if answer:
+                return answer
             answer = self._year_range_average_v2(query_lower, contexts)
             if answer:
                 return answer
@@ -706,6 +709,51 @@ class NumericReasoner:
             return NumericAnswer(
                 text=f"{result:.1f}",
                 calculation=f"year_range_average: {operation.expression}",
+                cited_node_ids=[node_id],
+            )
+        return None
+
+    def _listed_year_average(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
+        if "average" not in query_lower:
+            return None
+        if re.search(r"\bfrom\s+20\d{2}\s+(?:to|through)\s+20\d{2}\b", query_lower):
+            return None
+        if re.search(r"\b20\d{2}\s*-\s*20\d{2}\b", query_lower):
+            return None
+        query_years: list[str] = []
+        for year in re.findall(r"\b(20\d{2})\b", query_lower):
+            if year not in query_years:
+                query_years.append(year)
+        if len(query_years) < 2:
+            return None
+        for node_id, text in contexts:
+            values = self._inline_multi_year_row_values_for_query(query_lower, text, query_years)
+            if not values:
+                continue
+            ordered = [values[year] for year in query_years if year in values]
+            if len(ordered) != len(query_years):
+                continue
+            operation = self.executor.average(ordered)
+            if operation is None:
+                continue
+            return NumericAnswer(
+                text=f"{operation.value:.1f}",
+                calculation=f"listed_year_average row={values.get('__row_label__', '')}: {operation.expression}",
+                cited_node_ids=[node_id],
+            )
+        for node_id, text in contexts:
+            values = self._prose_multi_year_values_for_query(query_lower, text, query_years)
+            if not values:
+                continue
+            ordered = [values[year] for year in query_years if year in values]
+            if len(ordered) != len(query_years):
+                continue
+            operation = self.executor.average(ordered)
+            if operation is None:
+                continue
+            return NumericAnswer(
+                text=f"{operation.value:.1f}",
+                calculation=f"listed_year_average row={values.get('__row_label__', '')}: {operation.expression}",
                 cited_node_ids=[node_id],
             )
         return None

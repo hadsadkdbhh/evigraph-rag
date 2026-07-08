@@ -650,7 +650,7 @@ def _expected_operation(query: str) -> set[str] | None:
         ]
     ):
         return {"ratio_percent", "ratio_between_years"}
-    if "ratio" in query_lower and (
+    if re.search(r"\bratio\b", query_lower) and (
         len(re.findall(r"\b20\d{2}\b", query_lower)) >= 2
         or (
             "return" in query_lower
@@ -660,7 +660,7 @@ def _expected_operation(query: str) -> set[str] | None:
     ):
         return {"ratio", "ratio_between_years"}
     if "average" in query_lower:
-        return {"average", "row_average", "row_values_average", "year_range_average"}
+        return {"average", "row_average", "row_values_average", "year_range_average", "listed_year_average"}
     if any(phrase in query_lower for phrase in ["difference", "net change", "how much higher", "change in", "changed in", "five year change"]):
         return {"difference", "row_year_difference", "pretax_aftertax_difference"}
     if "cash flow" in query_lower and "result" in query_lower:
@@ -699,6 +699,7 @@ def _calculation_operation(calculation: str) -> str | None:
         "average_high_low_price": "average",
         "row_values_average": "row_values_average",
         "year_range_average": "year_range_average",
+        "listed_year_average": "listed_year_average",
         "planned_average": "average",
         "row_year_difference": "row_year_difference",
         "waterfall_table_change": "difference",

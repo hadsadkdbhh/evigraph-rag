@@ -253,7 +253,14 @@ class RowOperationDiagnosticAnalyzer:
 
     def _operation_matches(self, expected: str, actual: str) -> bool:
         compatible = {
-            "average": {"average", "planned_average", "row_values_average", "year_range_average", "average_high_low_price"},
+            "average": {
+                "average",
+                "planned_average",
+                "row_values_average",
+                "year_range_average",
+                "listed_year_average",
+                "average_high_low_price",
+            },
             "percent_change": {
                 "percent_change",
                 "planned_percent_change",

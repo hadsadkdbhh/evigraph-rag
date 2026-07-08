@@ -16,6 +16,29 @@ retrieval performance without inflating claims beyond the evidence.
 
 In-flight bounded repair:
 
+- v36 listed-year average manifests:
+  - `configs/experiments.finqa_300.local_planner_listed_year_average_v36.json`
+  - `configs/experiments.finqa_600.local_planner_listed_year_average_v36.json`
+- Change:
+  - Adds a bounded average executor for explicitly listed, non-contiguous
+    years such as `2013 and 2011`.
+  - Fixes verifier expected-operation logic so `operations` is not mistaken for
+    the word `ratio`.
+  - Keeps continuous year ranges such as `from 2008 to 2010` on the existing
+    year-range average path.
+- Fixed smoke:
+  - `DISH/2013/page_138.pdf-3`: `what was the average revenue from
+    discontinued operations in 2013 and 2011, in millions?`
+  - Old v35 Oracle/Source/Open: `503 / 974 = 0.52`.
+  - New local smoke: `(503 + 974) / 2 = 738.5`, verifier-supported.
+- Tests:
+  - `python -m unittest discover -s tests`: 372 tests OK.
+- Status:
+  - Run the v36 FinQA-300 and FinQA-600 manifests before treating this as the
+    new headline result.
+
+In-flight bounded repair:
+
 - v35 year-range sum manifests:
   - `configs/experiments.finqa_300.local_planner_year_range_sum_v35.json`
   - `configs/experiments.finqa_600.local_planner_year_range_sum_v35.json`
@@ -32,8 +55,10 @@ In-flight bounded repair:
 - Tests:
   - `python -m unittest discover -s tests`: 367 tests OK.
 - Status:
-  - Run the v35 FinQA-300 and FinQA-600 manifests before treating this as the
-    new headline result.
+  - FinQA-300 v35 matched v34 exactly: Oracle 0.667, Open BM25 0.520,
+    Source rerank 0.667.
+  - FinQA-600 v35 improved v34 by one Oracle/Source case and had no paired
+    regressions: Oracle 0.495, Open BM25 0.365, Source rerank 0.492.
 
 Latest failure-driven operand repair:
 
