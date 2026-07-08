@@ -902,6 +902,13 @@ class NumericReasoner:
         return None
 
     def _difference_years(self, query_lower: str, years: list[str]) -> tuple[str, str]:
+        in_from_match = re.search(r"\bin\s+(20\d{2})\s+from\s+(20\d{2})\b", query_lower)
+        if in_from_match:
+            return in_from_match.group(2), in_from_match.group(1)
+        malformed_from_match = re.search(r"\bfrom\s*,\s*(20\d{2})\s+to\s+(20\d{2})\b", query_lower)
+        if malformed_from_match:
+            first, second = malformed_from_match.group(1), malformed_from_match.group(2)
+            return (second, first) if int(first) > int(second) else (first, second)
         between_match = re.search(r"\bbetween\s+(20\d{2})\s+and\s+(20\d{2})\b", query_lower)
         if between_match:
             first, second = between_match.group(1), between_match.group(2)

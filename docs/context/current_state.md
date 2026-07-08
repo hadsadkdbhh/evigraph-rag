@@ -220,23 +220,30 @@ Public TAT-QA pilot:
 - Manifest:
   - `configs/experiments.tatqa_20.local_planner.json`
   - `configs/experiments.tatqa_50.local_planner.json`
+  - `configs/experiments.tatqa_50.direction_repair_v47.json`
 - Run output:
   - `outputs/eval/tatqa_20_local_planner/summary.md`
   - `outputs/eval/tatqa_20_local_planner/tatqa_20_open_bm25_full_retrieval_diagnostics.md`
   - `outputs/eval/tatqa_50_local_planner/summary.md`
   - `outputs/eval/tatqa_50_local_planner/tatqa_50_open_bm25_full_retrieval_diagnostics.md`
+  - `outputs/eval/tatqa_50_direction_repair_v47/summary.md`
+  - `outputs/eval/tatqa_50_direction_repair_v47/tatqa_50_open_bm25_full_v47_retrieval_diagnostics.md`
 - Results:
   - TAT-QA-20 Oracle-doc Full EviGraph: EM 0.500, support 0.800.
   - TAT-QA-20 Open BM25 Full EviGraph: EM 0.450, support 0.850.
-  - TAT-QA-50 Oracle-doc Full EviGraph: EM 0.420, support 0.780.
-  - TAT-QA-50 Open BM25 Full EviGraph: EM 0.360, support 0.920.
+  - TAT-QA-50 baseline Oracle-doc Full EviGraph: EM 0.420, support 0.780.
+  - TAT-QA-50 baseline Open BM25 Full EviGraph: EM 0.360, support 0.920.
+  - TAT-QA-50 v47 Oracle-doc Full EviGraph: EM 0.480, support 0.780.
+  - TAT-QA-50 v47 Open BM25 Full EviGraph: EM 0.400, support 0.920.
+  - v47 direction-semantics repair gives Oracle +3 paired wins / 0 losses and
+    Open BM25 +2 paired wins / 0 losses over the baseline TAT-QA-50 run.
   - TAT-QA-50 Open BM25 source_hit@8: 0.960, source_top1: 0.740.
-  - TAT-QA-50 failure report: 32/50 failed examples; 30/50 are
+  - TAT-QA-50 v47 failure report: 30/50 failed examples; 28/50 are
     wrong_with_source_hit, so the pilot supports the claim that source exposure
     alone is insufficient.
   - Largest TAT-QA-50 open failure class:
-    wrong_numeric_operation_or_row = 21. Row/operation diagnostics split 24
-    wrong numeric rows into 16 ambiguous_supported_wrong_number, 4
+    wrong_numeric_operation_or_row = 19. Row/operation diagnostics split 22
+    wrong numeric rows into 14 ambiguous_supported_wrong_number, 4
     wrong_year_or_period, 2 wrong_row_label, and 2 wrong_operation_type.
 - Paper files:
   - `paper/generated/tatqa_20_cross_benchmark/tatqa_20_results.tex`

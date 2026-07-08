@@ -3405,6 +3405,53 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "-1.9")
         self.assertIn("row_year_difference", answer.calculations[0])
 
+    def test_change_in_target_year_from_base_year(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "|  | 2019 | 2018 |\n"
+                    "| --- | --- | --- |\n"
+                    "| deferred revenue | 4 | 5 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the change in deferred revenue in 2019 from 2018?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "-1")
+        self.assertIn("row_year_difference", answer.calculations[0])
+
+    def test_change_from_comma_descending_years_uses_newer_minus_older(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "|  | Revenues |  |\n"
+                    "| --- | --- | --- |\n"
+                    "| (in thousands) | 2019 | 2018 |\n"
+                    "| Teekay Tankers | 943917 | 776493 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the change in revenues of teekay tankers from, 2019 to 2018?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "167424")
+        self.assertIn("row_year_difference", answer.calculations[0])
+
     def test_change_between_years_uses_first_minus_second(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

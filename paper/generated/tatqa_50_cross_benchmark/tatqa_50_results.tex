@@ -8,10 +8,10 @@ Setting & Method & n & EM & Support & Source hit@8 \\
 Oracle-doc & Top-\(K\) & 50 & 0.420 & 0.780 & -- \\
 Oracle-doc & Utility-only & 50 & 0.420 & 0.780 & -- \\
 Oracle-doc & Retrieve-then-program & 50 & 0.420 & 0.780 & -- \\
-Oracle-doc & Full EviGraph & 50 & 0.420 & 0.780 & -- \\
-Open BM25 & Full EviGraph & 50 & 0.360 & 0.920 & 0.960 \\
+Oracle-doc & Full EviGraph & 50 & 0.480 & 0.780 & -- \\
+Open BM25 & Full EviGraph & 50 & 0.400 & 0.920 & 0.960 \\
 \bottomrule
 \end{tabular}
-\caption{Public TAT-QA-50 cross-benchmark pilot. The subset contains arithmetic questions sampled from the TAT-QA development set with seed 13. Gold derivations are not serialized into the retrieval corpus. The open setting retrieves the gold source in 48/50 examples, but 30/50 examples are still wrong despite source exposure, highlighting that retrieval exposure alone does not determine an executable evidence state.}
+\caption{Public TAT-QA-50 cross-benchmark pilot after the v47 direction-semantics repair. The subset contains arithmetic questions sampled from the TAT-QA development set with seed 13. Gold derivations are not serialized into the retrieval corpus. The open setting retrieves the gold source in 48/50 examples, but 28/50 examples are still wrong despite source exposure, highlighting that retrieval exposure alone does not determine an executable evidence state.}
 \label{tab:tatqa-pilot}
 \end{table}

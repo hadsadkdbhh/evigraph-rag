@@ -286,8 +286,8 @@ The drop relative to FinQA-300 is useful rather than embarrassing: it shows that
 
 \paragraph{Public TAT-QA pilot and cross-format stress suite.}
 As a small public cross-benchmark pilot, we run the same manifest pipeline on 50 arithmetic examples sampled from the TAT-QA development set.
-Full EviGraph reaches 0.420 exact match under oracle-document retrieval and 0.360 under open BM25.
-The open setting retrieves the gold source document for 48/50 examples, but 30 examples remain wrong despite source exposure.
+After a narrow v47 direction-semantics repair, Full EviGraph reaches 0.480 exact match under oracle-document retrieval and 0.400 under open BM25.
+The open setting retrieves the gold source document for 48/50 examples, but 28 examples remain wrong despite source exposure.
 This reinforces the paper's mechanism claim: retrieval exposure is necessary but does not by itself determine a supportable numeric evidence state.
 
 \input{generated/tatqa_50_cross_benchmark/tatqa_50_results}
