@@ -5412,7 +5412,7 @@ class NumericReasoner:
     ) -> NumericAnswer | None:
         if "total" not in query_lower:
             return None
-        query_years = re.findall(r"\b(20\d{2})\b", query_lower)
+        query_years = self._query_year_series_for_sum(query_lower)
         if len(query_years) < 2:
             return None
         query_terms = set(self._keywords(query_lower))
@@ -5571,7 +5571,7 @@ class NumericReasoner:
             return None
         if any(term in query_lower for term in ["percent", "percentage", "ratio", "average", " per ", "change"]):
             return None
-        query_years = re.findall(r"\b(20\d{2})\b", query_lower)
+        query_years = self._query_year_series_for_sum(query_lower)
         if len(query_years) < 2:
             return None
         for node_id, text in contexts:
@@ -5598,6 +5598,20 @@ class NumericReasoner:
                     cited_node_ids=[node_id],
                 )
         return None
+
+    def _query_year_series_for_sum(self, query_lower: str) -> list[str]:
+        range_match = re.search(r"\b(20\d{2})\b\s*(?:through|to|-)\s*\b(20\d{2})\b", query_lower)
+        if range_match:
+            start = int(range_match.group(1))
+            end = int(range_match.group(2))
+            if abs(start - end) <= 10:
+                step = 1 if end >= start else -1
+                return [str(year) for year in range(start, end + step, step)]
+        seen: list[str] = []
+        for year in re.findall(r"\b(20\d{2})\b", query_lower):
+            if year not in seen:
+                seen.append(year)
+        return seen
 
     def _table_row_total_across_period(
         self,

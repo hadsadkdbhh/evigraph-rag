@@ -4474,6 +4474,31 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "3576")
         self.assertIn("row_year_sum", answer.calculations[0])
 
+    def test_total_row_sum_expands_query_year_range(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| in millions | 2018 | 2017 | 2016 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| service cost | 20 | 21 | 22 |\n"
+                    "| interest cost | 10 | 11 | 12 |\n"
+                    "| net pension cost | 137 | 138 | 113 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the total net pension cost from 2016-2018, in millions?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "388")
+        self.assertIn("years=2016,2017,2018", answer.calculations[0])
+
     def test_total_issuable_stock_value_multiplies_authorized_shares_by_fair_value(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

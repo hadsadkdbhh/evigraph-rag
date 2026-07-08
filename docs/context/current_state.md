@@ -14,6 +14,27 @@ retrieval performance without inflating claims beyond the evidence.
 
 ## Current Baseline
 
+In-flight bounded repair:
+
+- v35 year-range sum manifests:
+  - `configs/experiments.finqa_300.local_planner_year_range_sum_v35.json`
+  - `configs/experiments.finqa_600.local_planner_year_range_sum_v35.json`
+- Change:
+  - Expands total-over-year-range queries such as `2016-2018` into the full
+    inclusive year series for sum execution.
+  - Keeps this scoped to sum-style execution and local planner aggregate
+    behavior; this is not a broad new arithmetic rule.
+- Fixed smoke:
+  - `BDX/2018/page_82.pdf-4`: `what is the total net pension cost from
+    2016-2018, in millions?`
+  - Old v34 Oracle/Source: `113 + 137 = 250`, omitting 2017.
+  - New local smoke: `113 + 138 + 137 = 388`.
+- Tests:
+  - `python -m unittest discover -s tests`: 367 tests OK.
+- Status:
+  - Run the v35 FinQA-300 and FinQA-600 manifests before treating this as the
+    new headline result.
+
 Latest failure-driven operand repair:
 
 - v34 tax-provision ratio manifests:

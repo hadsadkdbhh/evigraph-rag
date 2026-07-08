@@ -566,6 +566,24 @@ class NumericPlannerFallbackTest(unittest.TestCase):
         self.assertEqual(answer.text, "60")
         self.assertIn("planned_sum", answer.calculation)
 
+    def test_heuristic_plans_sum_over_year_range(self) -> None:
+        context = (
+            "| metric | 2018 | 2017 | 2016 |\n"
+            "| --- | ---: | ---: | ---: |\n"
+            "| net pension cost | 137 | 138 | 113 |\n"
+        )
+        planner = NumericPlannerFallback(HeuristicNumericPlanClient())
+
+        answer = planner.answer(
+            "what is the total net pension cost from 2016-2018, in millions?",
+            [("table", context)],
+        )
+
+        self.assertIsNotNone(answer)
+        self.assertEqual(answer.text, "388")
+        self.assertIn("planned_sum", answer.calculation)
+        self.assertIn("net pension cost/2017", answer.calculation)
+
     def test_heuristic_complement_percent(self) -> None:
         context = (
             "| metric | percent |\n"
