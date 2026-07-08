@@ -524,6 +524,7 @@ class CorpusRetriever:
         top_k: int = 8,
         source_doc: str | None = None,
         retrieval_mode: str = "oracle_doc",
+        adjacent_window: int = 1,
     ) -> list[EvidenceNode]:
         if not corpus_path:
             return MockRetriever().retrieve(query, corpus_path, top_k)
@@ -535,30 +536,30 @@ class CorpusRetriever:
             chunks = DocumentLoader().load(path)
         if retrieval_mode == "open":
             nodes = BM25Retriever(chunks).retrieve(query, top_k=top_k)
-            return self._with_adjacent_context(nodes, chunks)
+            return self._with_adjacent_context(nodes, chunks, adjacent_window=adjacent_window)
 
         if retrieval_mode == "open_tfidf":
             nodes = SklearnTfidfRetriever(chunks).retrieve(query, top_k=top_k)
-            return self._with_adjacent_context(nodes, chunks)
+            return self._with_adjacent_context(nodes, chunks, adjacent_window=adjacent_window)
 
         if retrieval_mode == "open_dense":
             nodes = DenseRetriever(chunks).retrieve(query, top_k=top_k)
-            return self._with_adjacent_context(nodes, chunks)
+            return self._with_adjacent_context(nodes, chunks, adjacent_window=adjacent_window)
 
         if retrieval_mode == "open_hybrid":
             nodes = HybridRetriever(chunks).retrieve(query, top_k=top_k)
-            return self._with_adjacent_context(nodes, chunks)
+            return self._with_adjacent_context(nodes, chunks, adjacent_window=adjacent_window)
 
         if retrieval_mode == "open_neural_dense":
             nodes = NeuralDenseRetriever(chunks).retrieve(query, top_k=top_k)
-            return self._with_adjacent_context(nodes, chunks)
+            return self._with_adjacent_context(nodes, chunks, adjacent_window=adjacent_window)
 
         if retrieval_mode == "open_neural_hybrid":
             nodes = NeuralHybridRetriever(chunks).retrieve(query, top_k=top_k)
-            return self._with_adjacent_context(nodes, chunks)
+            return self._with_adjacent_context(nodes, chunks, adjacent_window=adjacent_window)
 
         if source_doc and retrieval_mode == "source_rerank":
-            return self._source_rerank(query, chunks, source_doc, top_k)
+            return self._source_rerank(query, chunks, source_doc, top_k, adjacent_window=adjacent_window)
 
         if source_doc:
             source_name = Path(source_doc).name
@@ -588,6 +589,7 @@ class CorpusRetriever:
         chunks: list[DocumentChunk],
         source_doc: str,
         top_k: int,
+        adjacent_window: int = 1,
     ) -> list[EvidenceNode]:
         source_name = Path(source_doc).name
         open_candidates = BM25Retriever(chunks).retrieve(query, top_k=max(top_k * 4, top_k))
@@ -615,6 +617,7 @@ class CorpusRetriever:
             chunks,
             promote_existing=True,
             neighbor_rank_from_anchor=False,
+            adjacent_window=adjacent_window,
         )
 
     def _matches_source_doc(self, chunk: DocumentChunk, source_doc: str, source_name: str) -> bool:
@@ -648,8 +651,12 @@ class CorpusRetriever:
         chunks: list[DocumentChunk],
         promote_existing: bool = False,
         neighbor_rank_from_anchor: bool = True,
+        adjacent_window: int = 1,
     ) -> list[EvidenceNode]:
         if not nodes:
+            return nodes
+        adjacent_window = max(0, int(adjacent_window))
+        if adjacent_window == 0:
             return nodes
         chunks_by_source: dict[str, list[DocumentChunk]] = defaultdict(list)
         for chunk in chunks:
@@ -669,7 +676,7 @@ class CorpusRetriever:
                 continue
             source_doc, index = positions[chunk_id]
             source_chunks = chunks_by_source[source_doc]
-            for neighbor_index in (index - 1, index + 1):
+            for neighbor_index, distance in self._neighbor_indices(index, len(source_chunks), adjacent_window):
                 if neighbor_index < 0 or neighbor_index >= len(source_chunks):
                     continue
                 neighbor = source_chunks[neighbor_index]
@@ -677,11 +684,24 @@ class CorpusRetriever:
                     if promote_existing:
                         self._mark_existing_neighbor(nodes_by_chunk_id[neighbor.chunk_id], anchor)
                     continue
-                neighbor_node = self._neighbor_node(neighbor, anchor, rank_from_anchor=neighbor_rank_from_anchor)
+                neighbor_node = self._neighbor_node(
+                    neighbor,
+                    anchor,
+                    rank_from_anchor=neighbor_rank_from_anchor,
+                    distance=distance,
+                )
                 expanded.append(neighbor_node)
                 seen_chunk_ids.add(neighbor.chunk_id)
                 nodes_by_chunk_id[neighbor.chunk_id] = neighbor_node
         return expanded
+
+    def _neighbor_indices(self, index: int, source_length: int, adjacent_window: int) -> list[tuple[int, int]]:
+        indices: list[tuple[int, int]] = []
+        for distance in range(1, adjacent_window + 1):
+            for neighbor_index in (index - distance, index + distance):
+                if 0 <= neighbor_index < source_length:
+                    indices.append((neighbor_index, distance))
+        return indices
 
     def _chunk_order(self, chunk: DocumentChunk) -> tuple[int, int, str]:
         try:
@@ -695,6 +715,7 @@ class CorpusRetriever:
         chunk: DocumentChunk,
         anchor: EvidenceNode,
         rank_from_anchor: bool = True,
+        distance: int = 1,
     ) -> EvidenceNode:
         node_type, modality, content = _infer_node_content(chunk.text)
         try:
@@ -720,6 +741,7 @@ class CorpusRetriever:
                 "retrieval_rank": retrieval_rank,
                 "chunk_id": chunk.chunk_id,
                 "neighbor_context": True,
+                "neighbor_distance": distance,
                 "expanded_from": anchor.node_id,
                 "expanded_from_chunk_id": anchor.metadata.get("chunk_id"),
                 **(chunk.metadata or {}),

@@ -133,6 +133,10 @@ class TableOperationExecutor:
         column_terms = self._selector_terms(spec, "column_terms", "column", "year")
         if not row_terms:
             return None
+        if not period_terms:
+            paired = self._resolve_paired_label_value(row_terms, column_terms, context_text)
+            if paired is not None:
+                return paired
 
         for headers, rows in self.markdown_tables(context_text):
             column_index = self.column_index(headers, column_terms, period_terms=period_terms)
@@ -153,6 +157,8 @@ class TableOperationExecutor:
                 continue
             value = self.first_number(row[column_index])
             if value is None:
+                continue
+            if self._year_terms(column_terms) and any(abs(value - float(term)) < 0.05 for term in column_terms):
                 continue
             row_label = row[0] if row else ""
             return TableValue(
@@ -224,6 +230,16 @@ class TableOperationExecutor:
             " * ".join(f"{value:g}" for value in values) + f" = {result:g}",
         )
 
+    def minimum(self, values: list[float]) -> TableOperationResult | None:
+        if not values:
+            return None
+        result = min(values)
+        return TableOperationResult(
+            "minimum",
+            result,
+            f"min({', '.join(f'{value:g}' for value in values)}) = {result:g}",
+        )
+
     def difference(self, target: float, base: float) -> TableOperationResult:
         result = target - base
         return TableOperationResult("difference", result, f"{target:g} - {base:g} = {result:g}")
@@ -281,6 +297,54 @@ class TableOperationExecutor:
         if not body:
             return None
         return rows[0], body
+
+    def _resolve_paired_label_value(
+        self,
+        row_terms: list[str],
+        column_terms: list[str],
+        context_text: str,
+    ) -> TableValue | None:
+        normalized_terms = self._terms(row_terms)
+        if not normalized_terms:
+            return None
+        normalized_column_terms = self._terms(column_terms)
+        best: tuple[int, int, int, int, str, str, float] | None = None
+        for line_index, line in enumerate(context_text.splitlines()):
+            if "|" not in line or self._is_separator_line(line):
+                continue
+            cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+            if len(cells) < 4 or len(cells) % 2 != 0:
+                continue
+            for column_index in range(0, len(cells) - 1, 2):
+                label = cells[column_index]
+                value_cell = cells[column_index + 1]
+                value = self.first_number(value_cell)
+                if value is None:
+                    continue
+                if not re.search(r"[a-zA-Z]", value_cell):
+                    continue
+                value_terms = self._terms([value_cell])
+                if not value_terms:
+                    continue
+                if normalized_column_terms and not any(
+                    self._term_matches_label(term, value_terms) for term in normalized_column_terms
+                ):
+                    continue
+                label_terms = self._terms([label])
+                matched = sum(1 for term in normalized_terms if self._term_matches_label(term, label_terms))
+                if matched == 0:
+                    continue
+                if matched < len(normalized_terms) and matched < 2:
+                    continue
+                exact = 1 if matched == len(normalized_terms) else 0
+                extra_terms = sum(1 for term in label_terms if not self._term_matches_label(term, normalized_terms))
+                candidate = (exact, matched, -extra_terms, -line_index, label, value_cell, value)
+                if best is None or candidate[:4] > best[:4]:
+                    best = candidate
+        if best is None:
+            return None
+        _exact, _matched, _extra, _line, label, value_cell, value = best
+        return TableValue(value=value, row_label=label, column_label=value_cell)
 
     def _explicit_value(
         self,

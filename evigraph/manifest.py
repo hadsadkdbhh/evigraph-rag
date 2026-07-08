@@ -10,6 +10,7 @@ from evigraph.experiment_report import ExperimentReport
 from evigraph.experiment_card import ExperimentCard
 from evigraph.failure_analysis import FailureAnalyzer
 from evigraph.process_trace import ProcessTraceAnalyzer
+from evigraph.retrieval_diagnostics import RetrievalDiagnosticAnalyzer
 from evigraph.row_operation_diagnostics import RowOperationDiagnosticAnalyzer
 from evigraph.indexing import LocalIndexBuilder
 from evigraph.dataset_adapter import DatasetAdapter
@@ -49,6 +50,7 @@ class ManifestRunner:
             "failure_reports": [],
             "row_operation_diagnostics": [],
             "process_traces": [],
+            "retrieval_diagnostics": [],
         }
         summary_inputs: list[Path] = []
 
@@ -84,6 +86,18 @@ class ManifestRunner:
                     process_path = self.output_dir / f"{dataset_name}_{experiment['name']}_process_trace.md"
                     ProcessTraceAnalyzer().write(output_path, process_path, method=diagnostic_method)
                     artifacts["process_traces"].append(str(process_path))
+                    retrieval_path = self.output_dir / f"{dataset_name}_{experiment['name']}_retrieval_diagnostics.md"
+                    RetrievalDiagnosticAnalyzer().write(
+                        output_path,
+                        questions_path=questions_path,
+                        corpus_path=corpus_path,
+                        retrieval_mode=retrieval_mode,
+                        output_path=retrieval_path,
+                        method=diagnostic_method,
+                        top_k=self._top_k(config),
+                        adjacent_window=self._adjacent_window(config),
+                    )
+                    artifacts["retrieval_diagnostics"].append(str(retrieval_path))
             if dataset.get("build_index"):
                 artifacts["indexes"].append(str(self._resolve(dataset["index"])))
             if dataset.get("raw_questions"):
@@ -145,6 +159,7 @@ class ManifestRunner:
             "query",
             "answer",
             "prediction",
+            "calculation",
             "accuracy",
             "answer_supported",
             "supported_accuracy",
@@ -154,9 +169,11 @@ class ManifestRunner:
             "arithmetically_supported",
             "calculation_supported",
             "operation_semantics_checked",
+            "operand_semantics_checked",
             "row_operation_grounded",
             "semantically_grounded",
             "citation_correct",
+            "source_consistent",
             "misleading_acceptance",
             "input_tokens",
             "tool_calls",
@@ -164,6 +181,9 @@ class ManifestRunner:
             "run_dir",
         ]
         schema_matches = self._csv_has_fieldnames(output_path, fieldnames)
+        if not schema_matches and self._csv_has_required_fieldnames(output_path, ["id", "method"]):
+            self._rewrite_csv_with_fieldnames(output_path, fieldnames)
+            schema_matches = True
         completed_keys = self._completed_batch_keys(output_path) if schema_matches else set()
         completed_runs = len(completed_keys)
         if completed_runs:
@@ -191,6 +211,7 @@ class ManifestRunner:
                         source_doc=sample.get("source_doc"),
                         retrieval_mode=retrieval_mode,
                         top_k=self._top_k(base_config),
+                        log_run=False,
                     )
                     metrics = summarize_result(result, sample.get("answer"))
                     writer.writerow(
@@ -202,8 +223,9 @@ class ManifestRunner:
                             "query": sample["query"],
                             "answer": sample.get("answer"),
                             "prediction": result["answer"]["text"],
+                            "calculation": self._calculation_summary(result["answer"].get("calculations", [])),
                             **metrics,
-                            "run_dir": result["artifacts"]["run_dir"],
+                            "run_dir": result.get("artifacts", {}).get("run_dir", ""),
                         }
                     )
                     output_handle.flush()
@@ -244,9 +266,11 @@ class ManifestRunner:
             "arithmetically_supported",
             "calculation_supported",
             "operation_semantics_checked",
+            "operand_semantics_checked",
             "row_operation_grounded",
             "semantically_grounded",
             "citation_correct",
+            "source_consistent",
             "misleading_acceptance",
             "input_tokens",
             "tool_calls",
@@ -369,8 +393,30 @@ class ManifestRunner:
             existing = list(reader.fieldnames or [])
         return existing == fieldnames
 
+    def _csv_has_required_fieldnames(self, output_path: Path, required_fieldnames: list[str]) -> bool:
+        if not output_path.exists() or output_path.stat().st_size == 0:
+            return False
+        with output_path.open("r", encoding="utf-8", newline="") as handle:
+            reader = csv.DictReader(handle)
+            existing = set(reader.fieldnames or [])
+        return all(fieldname in existing for fieldname in required_fieldnames)
+
+    def _rewrite_csv_with_fieldnames(self, output_path: Path, fieldnames: list[str]) -> None:
+        with output_path.open("r", encoding="utf-8", newline="") as handle:
+            rows = list(csv.DictReader(handle))
+        with output_path.open("w", encoding="utf-8", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=fieldnames, extrasaction="ignore")
+            writer.writeheader()
+            for row in rows:
+                writer.writerow(row)
+
     def _batch_key(self, sample_id: Any, method: Any) -> tuple[str, str]:
         return str(sample_id), str(method)
+
+    def _calculation_summary(self, calculations: Any) -> str:
+        if not isinstance(calculations, list):
+            return ""
+        return " ; ".join(str(calculation) for calculation in calculations if calculation)
 
     def _read_manifest(self, path: Path) -> dict[str, Any]:
         if not path.exists():
@@ -391,6 +437,12 @@ class ManifestRunner:
             return int(config.get("retrieval", {}).get("top_k", 8))
         except (TypeError, ValueError):
             return 8
+
+    def _adjacent_window(self, config: dict[str, Any]) -> int:
+        try:
+            return max(0, int(config.get("retrieval", {}).get("adjacent_window", 1)))
+        except (TypeError, ValueError):
+            return 1
 
     def _resolve(self, path: str | Path) -> Path:
         candidate = Path(path)

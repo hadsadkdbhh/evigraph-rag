@@ -118,7 +118,7 @@ class RowOperationDiagnosticAnalyzer:
         gold = row.get("answer", "")
         prediction = row.get("prediction", "")
         run_dir = Path(row.get("run_dir", ""))
-        calculation = self._calculation_line(run_dir)
+        calculation = row.get("calculation", "") or self._calculation_line(run_dir)
         context = self._support_context(run_dir)
         labels: set[str] = set()
         signals: list[str] = []
@@ -222,8 +222,6 @@ class RowOperationDiagnosticAnalyzer:
             and re.search(r"\b(?:due to|came from|attributable to)\b", lowered)
         ):
             return "percent_of_increase"
-        if any(token in lowered for token in ("average", "mean")):
-            return "average"
         if any(
             token in lowered
             for token in (
@@ -243,6 +241,8 @@ class RowOperationDiagnosticAnalyzer:
         ):
             if not any(token in lowered for token in ("portion", "percent of", "percentage of", "represented", "allocated", "comes from")):
                 return "percent_change"
+        if any(token in lowered for token in ("average", "mean")):
+            return "average"
         if any(token in lowered for token in ("portion", "percent of", "percentage of", "represented", "allocated", "comes from", "ratio")):
             return "ratio_percent"
         if any(token in lowered for token in ("difference", "change in", "higher", "lower", "five year change")):
@@ -264,6 +264,7 @@ class RowOperationDiagnosticAnalyzer:
             "percent_of_increase": {"planned_percent_of_increase"},
             "ratio_percent": {
                 "ratio_percent",
+                "planned_ratio",
                 "future_minimum_payment_next_period_ratio",
                 "component_amount_ratio",
                 "component_value_from_total_percent",

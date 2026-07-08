@@ -244,6 +244,32 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertIn("period-end", answer.calculations[0])
         self.assertEqual(answer.citations, ["retrieved_1_case_0_0", "retrieved_2_case_0_1"])
 
+    def test_total_three_year_period_sums_matching_row_across_year_columns(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "the following table sets forth sales by product group for each of the last three years.\n"
+                    "| ( thousands of barrels per day ) | 2004 | 2003 | 2002 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| gasoline | 807 | 776 | 773 |\n"
+                    "| heavy fuel oil | 27 | 24 | 20 |\n"
+                    "| asphalt | 79 | 74 | 75 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what were total heavy fuel oil sales in tbd for the three year period?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "71")
+        self.assertIn("table_row_total_across_period", answer.calculations[0])
+
     def test_percent_change_prefers_specific_table_row(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
@@ -344,6 +370,112 @@ class NumericReasoningTest(unittest.TestCase):
 
         self.assertEqual(answer.text, "-1.1%")
         self.assertIn("row=balance at december 31", answer.calculations[0])
+
+    def test_percent_change_prefers_ending_balance_for_total_gross_unrecognized_tax_benefits(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "Our aggregate changes in our total gross amount of unrecognized tax benefits are summarized as follows.\n"
+                    "|  | 2018 | 2017 |\n"
+                    "| --- | --- | --- |\n"
+                    "| beginning balance | $ 172945 | $ 178413 |\n"
+                    "| gross increases in unrecognized tax benefits 2013 prior year tax positions | 16191 | 3680 |\n"
+                    "| gross decreases in unrecognized tax benefits 2013 prior year tax positions | -4000 ( 4000 ) | -30166 ( 30166 ) |\n"
+                    "| ending balance | $ 196152 | $ 172945 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the percentage change in total gross amount of unrecognized tax benefits from 2017 to 2018?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "13.4%")
+        self.assertIn("row=ending balance", answer.calculations[0])
+
+    def test_unrecognized_tax_benefit_endpoint_beats_post_text_tax_amounts(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "Our aggregate changes in our total gross amount of unrecognized tax benefits are summarized as follows.\n"
+                    "|  | 2018 | 2017 |\n"
+                    "| --- | --- | --- |\n"
+                    "| beginning balance | $ 172945 | $ 178413 |\n"
+                    "| gross increases in unrecognized tax benefits 2013 prior year tax positions | 16191 | 3680 |\n"
+                    "| ending balance | $ 196152 | $ 172945 |\n"
+                    "The combined amount of accrued interest and penalties related to tax positions were "
+                    "approximately $ 24.6 million and $ 23.6 million for fiscal 2018 and 2017, respectively."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the percentage change in total gross amount of unrecognized tax benefits from 2017 to 2018?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "13.4%")
+        self.assertIn("row=ending balance", answer.calculations[0])
+
+    def test_percent_change_prefers_beginning_balance_when_query_years_precede_reconciliation_columns(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "Our aggregate changes in our total gross amount of unrecognized tax benefits are summarized as follows.\n"
+                    "|  | 2018 | 2017 |\n"
+                    "| --- | --- | --- |\n"
+                    "| beginning balance | $ 172945 | $ 178413 |\n"
+                    "| gross increases in unrecognized tax benefits 2013 prior year tax positions | 16191 | 3680 |\n"
+                    "| ending balance | $ 196152 | $ 172945 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the percentage change in total gross amount of unrecognized tax benefits from 2016 to 2017?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "-3.1%")
+        self.assertIn("row=beginning balance", answer.calculations[0])
+
+    def test_percent_change_from_beginning_year_to_ending_year_balance(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| ( dollar amounts in millions ) | year ended december 31 , 2012 | year ended december 31 , 2011 | year ended december 31 , 2010 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| balance at january 1 | $ 349 | $ 307 | $ 285 |\n"
+                    "| additions for tax positions of prior years | 4 | 22 | 10 |\n"
+                    "| balance at december 31 | $ 404 | $ 349 | $ 307 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what percent did the balance increase between the beginning of 2010 and the end of 2012?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "41.8%")
+        self.assertIn("beginning_to_end_balance_percent_change", answer.calculations[0])
 
     def test_percent_change_promotes_wrapped_year_header(self) -> None:
         graph = EvidenceGraph()
@@ -1103,6 +1235,33 @@ class NumericReasoningTest(unittest.TestCase):
 
         self.assertEqual(answer.text, "59.4%")
         self.assertIn("ratio_percent", answer.calculations[0])
+
+    def test_ratio_percent_attributable_to_specific_reporting_unit_ignores_header_date(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| reporting unit | december 31 2011 |\n"
+                    "| --- | --- |\n"
+                    "| u.s . brokerage | $ 1751.2 |\n"
+                    "| capital markets | 142.4 |\n"
+                    "| retail bank | 40.6 |\n"
+                    "| total goodwill | $ 1934.2 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what percentage of total goodwill is attributable to u.s . brokerage reporting unit as december 31 , 2011?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "90.5%")
+        self.assertIn("u.s . brokerage", answer.calculations[0])
+        self.assertIn("1751.2 / 1934.2", answer.calculations[0])
 
     def test_ratio_percent_represented_by_prose_amount_with_thousand_table(self) -> None:
         graph = EvidenceGraph()
@@ -1973,6 +2132,32 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.citations, ["dre_dividends"])
         self.assertIn("0.455 - 0.45", answer.calculations[0])
 
+    def test_percent_change_quarterly_high_sale_price_uses_first_and_second_rows(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="hwm_prices",
+                node_type="text",
+                content=(
+                    "| quarter | 2016 high | 2016 low | 2016 dividend | 2016 high | 2016 low | dividend |\n"
+                    "| --- | --- | --- | --- | --- | --- | --- |\n"
+                    "| first | $ 30.66 | $ 18.42 | $ 0.09 | $ 51.30 | $ 37.95 | $ 0.09 |\n"
+                    "| second | $ 34.50 | $ 26.34 | $ 0.09 | $ 42.87 | $ 33.45 | $ 0.09 |\n"
+                ),
+                source_doc="hwm.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "considering the year 2016, what was the percentual increase in the high sale price observed during the first and second quarters?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "12.5%")
+        self.assertEqual(answer.citations, ["hwm_prices"])
+        self.assertIn("quarterly_high_sale_price_percent_change", answer.calculations[0])
+        self.assertIn("first->second", answer.calculations[0])
+
     def test_ratio_percent_due_after_total(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
@@ -2022,6 +2207,35 @@ class NumericReasoningTest(unittest.TestCase):
 
         self.assertEqual(answer.text, "93.5%")
         self.assertIn("ratio_percent", answer.calculations[0])
+
+    def test_tax_provision_benefit_ratio_beats_later_commitments_table(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="ip_tax",
+                node_type="text",
+                content=(
+                    "the company recorded an income tax provision for 2007 of $ 415 million , "
+                    "including a $ 41 million benefit related to the effective settlement of tax audits , "
+                    "and $ 8 million of other tax benefits .\n"
+                    "| in millions | 2008 | 2009 |\n"
+                    "| --- | --- | --- |\n"
+                    "| lease obligations | $ 136 | $ 116 |\n"
+                    "| purchase obligations ( a ) | 1953 | 294 |\n"
+                    "| total | $ 2089 | $ 410 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the percent of the benefit related to the effective settlement of tax audits "
+            "recorded as part of the company recorded an income tax provision for 2007",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "9.9%")
+        self.assertIn("denominator_row=income tax provision", answer.calculations[0])
 
     def test_ratio_percent_as_percentage_of_selects_specific_rows(self) -> None:
         graph = EvidenceGraph()
@@ -2382,6 +2596,57 @@ class NumericReasoningTest(unittest.TestCase):
 
         self.assertEqual(answer.text, "6.4%")
         self.assertIn("ratio_percent", answer.calculations[0])
+
+    def test_ratio_percent_normalizes_missing_of_typo(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="ip_contracts",
+                node_type="text",
+                content=(
+                    "| in millions | 2006 | 2007 |\n"
+                    "| --- | ---: | ---: |\n"
+                    "| purchase obligations ( a ) | 3264 | 393 |\n"
+                    "( a ) the 2006 amount includes $ 2.4 billion for contracts made in the ordinary "
+                    "course of business to purchase pulpwood, logs and wood chips."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what was the percent f the purchase obligations in 2006 set aside for the contract "
+            "for the purchase of pulpwood, logs and wood chips",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "73.5%")
+        self.assertIn("ratio_percent", answer.calculations[0])
+
+    def test_same_column_row_ratio_percent_uses_one_percentage_point_increase_column(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="awk_sensitivity",
+                node_type="text",
+                content=(
+                    "|  | one-percentage-pointincrease | one-percentage-pointdecrease |\n"
+                    "| --- | ---: | ---: |\n"
+                    "| effect on total of service and interest cost components | $ 7367 | $ -5974 ( 5974 ) |\n"
+                    "| effect on other postretirement benefit obligation | $ 72238 | $ -60261 ( 60261 ) |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the one-percentage-point increase of effect on total of service and interest cost "
+            "components as a percentage of the effect on other postretirement benefit obligation?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "10.2%")
+        self.assertIn("same_column_row_ratio_percent", answer.calculations[0])
 
     def test_prose_ratio_prefers_exact_year_table_denominator_over_prose_subitem(self) -> None:
         graph = EvidenceGraph()

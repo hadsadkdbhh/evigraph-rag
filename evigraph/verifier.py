@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import Any
 
 from evigraph.evidence_graph import EvidenceGraph
@@ -19,9 +20,16 @@ class ClaimVerifier:
         calculation_supported = self._calculation_claim_supported(answer.text, answer.calculations)
         row_grounded = self._row_grounded(query, answer, support_graph)
         operation_semantics_checked = self._operation_semantics_checked(query, answer)
+        operand_semantics_checked = self._operand_semantics_checked(query, answer)
         period_grounded = self._period_grounded(query, answer)
+        source_consistent = self._source_consistent(query, answer, support_graph)
         semantically_grounded = (
-            citation_nodes_exist and row_grounded and period_grounded and operation_semantics_checked and not has_risky_support
+            has_citation
+            and citation_nodes_exist
+            and row_grounded
+            and period_grounded
+            and operation_semantics_checked
+            and not has_risky_support
         )
         answer_supported = (
             has_citation
@@ -52,11 +60,14 @@ class ClaimVerifier:
                 period_grounded,
                 operation_semantics_checked,
             ),
+            "diagnostic_warnings": self._diagnostic_warnings(operand_semantics_checked, source_consistent),
             "checked_citations": list(answer.citations),
             "arithmetically_supported": numeric_supported,
             "calculation_supported": calculation_supported,
             "operation_semantics_checked": operation_semantics_checked,
+            "operand_semantics_checked": operand_semantics_checked,
             "period_grounded": period_grounded,
+            "source_consistent": source_consistent,
             "row_operation_grounded": row_grounded and period_grounded and operation_semantics_checked,
             "semantically_grounded": semantically_grounded,
             "row_grounded": row_grounded,
@@ -126,6 +137,8 @@ class ClaimVerifier:
                 return True
             if self._cash_flow_reconciliation_row_grounded(label, query, support_graph):
                 return True
+            if self._tax_benefit_reconciliation_endpoint_grounded(label, query, support_graph):
+                return True
         return False
 
     def _calculation_row_labels(self, calculation: str) -> list[str]:
@@ -192,6 +205,27 @@ class ClaimVerifier:
         ).lower()
         return "cash flow data" in support_lower
 
+    def _tax_benefit_reconciliation_endpoint_grounded(
+        self,
+        label: str,
+        query: str,
+        support_graph: EvidenceGraph,
+    ) -> bool:
+        label_lower = label.lower()
+        if not any(term in label_lower for term in ("ending balance", "beginning balance", "balance at december 31", "balance at january 1")):
+            return False
+        query_lower = query.lower()
+        if "unrecognized tax benefits" not in query_lower:
+            return False
+        support_lower = " ".join(
+            " ".join(str(value) for value in node.content.values()) if isinstance(node.content, dict) else str(node.content)
+            for node in support_graph.nodes.values()
+        ).lower()
+        return (
+            "unrecognized tax benefits" in support_lower
+            and any(term in support_lower for term in ("reconciliation", "beginning", "ending"))
+        )
+
     def _operation_semantics_checked(self, query: str, answer: Answer) -> bool:
         expected = _expected_operation(query)
         if expected is None:
@@ -199,6 +233,43 @@ class ClaimVerifier:
         actual = {_calculation_operation(calculation) for calculation in answer.calculations}
         actual.discard(None)
         return bool(actual & expected)
+
+    def _operand_semantics_checked(self, query: str, answer: Answer) -> bool:
+        query_terms = set(_grounding_terms(query))
+        query_distinctive_terms = _distinctive_terms(query_terms)
+        between_phrases = _between_phrases(query)
+        for calculation in answer.calculations:
+            operation = _calculation_operation(calculation)
+            if operation is None:
+                continue
+            labels = _calculation_field_labels(calculation)
+            if operation in {"ratio_percent", "ratio", "ratio_between_years", "percent_of_increase"}:
+                numerator_labels = labels_for(labels, ["row", "numerator", "target"])
+                denominator_labels = labels_for(labels, ["denominator_row", "denominator", "base"])
+                if numerator_labels and not any(
+                    _label_specific_to_query(label, query_terms, query_distinctive_terms) for label in numerator_labels
+                ):
+                    return False
+                if denominator_labels and not any(
+                    _label_specific_to_query(label, query_terms, query_distinctive_terms) for label in denominator_labels
+                ):
+                    return False
+            elif operation in {"difference", "row_year_difference", "relative_difference_between_rows", "percentage_point_row_difference"}:
+                comparison_labels = labels_for(labels, ["row", "target", "base", "denominator_row"])
+                if between_phrases and comparison_labels:
+                    if not _comparison_labels_cover_between_phrases(comparison_labels, between_phrases):
+                        return False
+                elif comparison_labels and not any(
+                    _label_specific_to_query(label, query_terms, query_distinctive_terms) for label in comparison_labels
+                ):
+                    return False
+            elif operation in {"percent_change", "percent_delta"}:
+                row_labels = labels_for(labels, ["row", "target"])
+                if row_labels and not any(
+                    _label_specific_to_query(label, query_terms, query_distinctive_terms) for label in row_labels
+                ):
+                    return False
+        return True
 
     def _period_grounded(self, query: str, answer: Answer) -> bool:
         query_years = set(re.findall(r"\b(?:19|20)\d{2}\b", query))
@@ -215,6 +286,76 @@ class ClaimVerifier:
         if re.search(r"\b(?:from|between)\b", query.lower()):
             return query_years <= explicit_calculation_years
         return bool(query_years & explicit_calculation_years)
+
+    def _source_consistent(self, query: str, answer: Answer, support_graph: EvidenceGraph) -> bool:
+        cited_nodes = [support_graph.nodes[citation] for citation in answer.citations if citation in support_graph.nodes]
+        cited_families = {
+            family
+            for node in cited_nodes
+            if (family := self._source_family(node.source_doc or node.metadata.get("source_doc")))
+        }
+        if not cited_families:
+            return True
+
+        ranked_nodes = [
+            node
+            for node in support_graph.nodes.values()
+            if self._source_family(node.source_doc or node.metadata.get("source_doc"))
+            and self._retrieval_rank(node) < 999
+            and node.node_type != "verifier_judgment"
+        ]
+        families = {self._source_family(node.source_doc or node.metadata.get("source_doc")) for node in ranked_nodes}
+        families.discard("")
+        if len(families) <= 1:
+            return True
+
+        cited_best_rank = min(
+            (
+                self._retrieval_rank(node)
+                for node in ranked_nodes
+                if self._source_family(node.source_doc or node.metadata.get("source_doc")) in cited_families
+            ),
+            default=999,
+        )
+        if cited_best_rank <= 1:
+            return True
+
+        top_nodes = [node for node in ranked_nodes if self._retrieval_rank(node) <= min(3, cited_best_rank - 1)]
+        if not top_nodes:
+            return True
+        query_terms = set(_grounding_terms(query))
+        family_stats: dict[str, dict[str, float]] = {}
+        for node in top_nodes:
+            family = self._source_family(node.source_doc or node.metadata.get("source_doc"))
+            if not family:
+                continue
+            stats = family_stats.setdefault(family, {"count": 0.0, "best_rank": 999.0, "overlap": 0.0})
+            stats["count"] += 1.0
+            stats["best_rank"] = min(stats["best_rank"], float(self._retrieval_rank(node)))
+            stats["overlap"] += float(len(query_terms & set(_grounding_terms(node.text()))))
+
+        for family, stats in family_stats.items():
+            if family in cited_families:
+                continue
+            if stats["count"] >= 3 and stats["best_rank"] < cited_best_rank:
+                return False
+        return True
+
+    def _source_family(self, source_doc: object) -> str:
+        if source_doc is None:
+            return ""
+        name = Path(str(source_doc)).name.lower()
+        match = re.search(r"\bfinqa_\d+_([a-z0-9]+)_\d{4}_", name)
+        if match:
+            return match.group(1)
+        stem = Path(name).stem
+        return re.split(r"[_\-.]", stem)[0] if stem else name
+
+    def _retrieval_rank(self, node: Any) -> int:
+        try:
+            return int(node.metadata.get("retrieval_rank", 999))
+        except (TypeError, ValueError):
+            return 999
 
     def _missing_evidence(
         self,
@@ -237,6 +378,14 @@ class ClaimVerifier:
             missing.append("Calculation operation type does not match query intent.")
         return missing
 
+    def _diagnostic_warnings(self, operand_semantics_checked: bool, source_consistent: bool = True) -> list[str]:
+        warnings = []
+        if not operand_semantics_checked:
+            warnings.append("Calculation operand labels do not match query entities or measures.")
+        if not source_consistent:
+            warnings.append("Citation source is inconsistent with the higher-ranked source cluster.")
+        return warnings
+
     def _context_utilization(
         self,
         numeric_supported: bool,
@@ -245,7 +394,13 @@ class ClaimVerifier:
         period_grounded: bool,
         operation_semantics_checked: bool,
     ) -> str:
-        if numeric_supported and calculation_supported and row_grounded and period_grounded and operation_semantics_checked:
+        if (
+            numeric_supported
+            and calculation_supported
+            and row_grounded
+            and period_grounded
+            and operation_semantics_checked
+        ):
             return "numeric_calculation_row_operation_and_citation_checked"
         if numeric_supported and row_grounded and period_grounded and operation_semantics_checked:
             return "numeric_row_operation_and_citation_checked"
@@ -254,6 +409,167 @@ class ClaimVerifier:
 
 def _numbers(text: str) -> list[float]:
     return [float(match) for match in re.findall(r"[-+]?\d+(?:\.\d+)?", text)]
+
+
+def _calculation_field_labels(calculation: str) -> dict[str, list[str]]:
+    fields: dict[str, list[str]] = {}
+    keys = [
+        "denominator_row",
+        "numerator_column",
+        "denominator_column",
+        "numerator",
+        "denominator",
+        "target",
+        "base",
+        "row",
+        "column",
+        "years",
+        "year",
+    ]
+    key_pattern = "|".join(re.escape(key) for key in keys)
+    pattern = re.compile(rf"\b({key_pattern})=", flags=re.IGNORECASE)
+    matches = list(pattern.finditer(calculation))
+    for index, match in enumerate(matches):
+        key = match.group(1).lower()
+        start = match.end()
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(calculation)
+        raw_value = calculation[start:end]
+        raw_value = _strip_expression_suffix(raw_value)
+        raw_value = raw_value.split(";", 1)[0]
+        raw_value = raw_value.strip()
+        if raw_value:
+            fields.setdefault(key, []).append(raw_value)
+    return fields
+
+
+def _strip_expression_suffix(value: str) -> str:
+    if ":" not in value:
+        return value
+    before, after = value.split(":", 1)
+    if re.match(r"\s*[-+]?(?:\d|\()", after) or re.search(r"[*/+=]", after):
+        return before
+    return value
+
+
+def labels_for(labels: dict[str, list[str]], keys: list[str]) -> list[str]:
+    values: list[str] = []
+    for key in keys:
+        values.extend(labels.get(key, []))
+    return values
+
+
+def _distinctive_terms(terms: set[str]) -> set[str]:
+    generic = {
+        "amount",
+        "amounts",
+        "attributable",
+        "base",
+        "beginning",
+        "current",
+        "december",
+        "ending",
+        "first",
+        "following",
+        "fourth",
+        "high",
+        "low",
+        "measure",
+        "next",
+        "observed",
+        "price",
+        "quarter",
+        "quarters",
+        "reported",
+        "reporting",
+        "sale",
+        "second",
+        "share",
+        "target",
+        "third",
+        "unit",
+        "value",
+        "values",
+        "year",
+        "years",
+    }
+    return {term for term in terms if term not in generic and len(term) > 1}
+
+
+def _label_specific_to_query(label: str, query_terms: set[str], query_distinctive_terms: set[str]) -> bool:
+    if _is_generic_period_label(label):
+        return True
+    if _tax_benefit_endpoint_label_matches_query(label, query_terms):
+        return True
+    if _period_label_matches_query(label, query_terms):
+        return True
+    if _cash_flow_reconciliation_label_matches_query(label, query_terms):
+        return True
+    label_terms = set(_grounding_terms(label))
+    if not label_terms:
+        return True
+    label_distinctive_terms = _distinctive_terms(label_terms)
+    if label_distinctive_terms & query_distinctive_terms:
+        return True
+    if query_distinctive_terms:
+        return False
+    return bool(label_terms & query_terms)
+
+
+def _is_generic_period_label(label: str) -> bool:
+    label_lower = label.lower()
+    return (
+        "balance at december 31" in label_lower
+        or "period-end" in label_lower
+        or "period end" in label_lower
+        or "period 2013end" in label_lower
+        or ("period" in label_lower and "end" in label_lower)
+    )
+
+
+def _period_label_matches_query(label: str, query_terms: set[str]) -> bool:
+    label_lower = label.lower()
+    if re.search(r"\b(?:19|20)\d{2}\b", label_lower):
+        return True
+    return "thereafter" in label_lower
+
+
+def _cash_flow_reconciliation_label_matches_query(label: str, query_terms: set[str]) -> bool:
+    label_lower = label.lower()
+    if "reconcile" not in label_lower:
+        return False
+    return "cash" in query_terms and "flow" in query_terms
+
+
+def _tax_benefit_endpoint_label_matches_query(label: str, query_terms: set[str]) -> bool:
+    label_lower = label.lower()
+    if not any(term in label_lower for term in ("ending balance", "beginning balance", "balance at december 31", "balance at january 1")):
+        return False
+    return {"unrecognized", "tax", "benefit"} <= query_terms
+
+
+def _between_phrases(query: str) -> list[set[str]]:
+    query_lower = query.lower()
+    match = re.search(r"\bbetween\s+(.+?)\s+and\s+(.+?)(?:\?|$|\bin\b|\bfrom\b|\bduring\b|\bfor\b|\bas\b)", query_lower)
+    if not match:
+        return []
+    phrases = []
+    for group in match.groups():
+        terms = set(_grounding_terms(group))
+        if terms:
+            phrases.append(terms)
+    return phrases if len(phrases) == 2 else []
+
+
+def _comparison_labels_cover_between_phrases(labels: list[str], phrases: list[set[str]]) -> bool:
+    label_terms = [set(_grounding_terms(label)) for label in labels]
+    for phrase_terms in phrases:
+        phrase_distinctive = _distinctive_terms(phrase_terms)
+        if phrase_distinctive:
+            if not any(phrase_distinctive <= _distinctive_terms(terms) for terms in label_terms):
+                return False
+        elif not any(phrase_terms <= terms for terms in label_terms):
+            return False
+    return True
 
 
 def _calculation_result_numbers(calculations: list[str]) -> list[float]:
@@ -363,6 +679,7 @@ def _calculation_operation(calculation: str) -> str | None:
         "percent_change": "percent_change",
         "percent_change_from_to": "percent_change",
         "planned_percent_change": "percent_change",
+        "quarterly_high_sale_price_percent_change": "percent_change",
         "implicit_percent_increase": "percent_change",
         "prose_current_balance_change": "percent_change",
         "planned_percent_of_increase": "percent_of_increase",
@@ -376,6 +693,7 @@ def _calculation_operation(calculation: str) -> str | None:
         "stock_return_graph_growth": "percent_change",
         "stock_return_graph_difference": "difference",
         "component_value_from_total_percent": "ratio_percent",
+        "same_column_row_ratio_percent": "ratio_percent",
         "shares_issued_from_dividend_table": "ratio",
         "row_average": "row_average",
         "average_high_low_price": "average",
@@ -399,6 +717,7 @@ def _calculation_operation(calculation: str) -> str | None:
         "contractual_commitments_total_column_sum": "sum",
         "spread_from_dropped_below_and_ending": "difference",
         "planned_lookup": "lookup",
+        "planned_minimum": "lookup",
         "repeated_increase_projection": "difference",
     }
     return aliases.get(operation)

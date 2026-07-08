@@ -59,6 +59,24 @@ FINQA_300_LOCAL_RESULT_SPECS = (
     ),
 )
 
+FINQA_300_LOCAL_V34_RESULT_SPECS = (
+    ResultSpec(
+        "Oracle-doc",
+        "finqa_300_subset_oracle_doc_full_local_planner_v34_tax_provision_ratio.csv",
+        ("full_evigraph",),
+    ),
+    ResultSpec(
+        "Open BM25",
+        "finqa_300_subset_open_bm25_full_local_planner_v34_tax_provision_ratio.csv",
+        ("full_evigraph",),
+    ),
+    ResultSpec(
+        "BM25 + source rerank",
+        "finqa_300_subset_source_rerank_full_local_planner_v34_tax_provision_ratio.csv",
+        ("full_evigraph",),
+    ),
+)
+
 FINQA_300_LOCAL_ABLATION_RESULT_SPECS = (
     ResultSpec(
         "Oracle-doc",
@@ -113,6 +131,114 @@ FINQA_300_LOCAL_ABLATION_RESULT_SPECS = (
     ),
 )
 
+FINQA_300_LOCAL_ABLATION_V21_RESULT_SPECS = (
+    ResultSpec(
+        "Oracle-doc",
+        "finqa_300_subset_oracle_doc_ablation_v21.csv",
+        (
+            "direct_rag",
+            "topk",
+            "retrieve_then_program",
+            "full_context",
+            "utility_only",
+            "evigraph_wo_risk",
+            "evigraph_wo_operation_planner",
+            "evigraph_wo_verifier_grounded_rejection",
+            "evigraph_wo_verifier",
+            "evigraph_wo_support",
+            "full_evigraph",
+        ),
+    ),
+    ResultSpec(
+        "Open BM25",
+        "finqa_300_subset_open_bm25_ablation_v21.csv",
+        (
+            "direct_rag",
+            "topk",
+            "retrieve_then_program",
+            "full_context",
+            "utility_only",
+            "evigraph_wo_risk",
+            "evigraph_wo_operation_planner",
+            "evigraph_wo_verifier_grounded_rejection",
+            "evigraph_wo_verifier",
+            "evigraph_wo_support",
+            "full_evigraph",
+        ),
+    ),
+    ResultSpec(
+        "BM25 + source rerank",
+        "finqa_300_subset_source_rerank_ablation_v21.csv",
+        (
+            "direct_rag",
+            "topk",
+            "retrieve_then_program",
+            "full_context",
+            "utility_only",
+            "evigraph_wo_risk",
+            "evigraph_wo_operation_planner",
+            "evigraph_wo_verifier_grounded_rejection",
+            "evigraph_wo_verifier",
+            "evigraph_wo_support",
+            "full_evigraph",
+        ),
+    ),
+)
+
+FINQA_300_LOCAL_ABLATION_V28_RESULT_SPECS = (
+    ResultSpec(
+        "Oracle-doc",
+        "finqa_300_subset_oracle_doc_ablation_v28.csv",
+        (
+            "direct_rag",
+            "topk",
+            "retrieve_then_program",
+            "full_context",
+            "utility_only",
+            "evigraph_wo_risk",
+            "evigraph_wo_operation_planner",
+            "evigraph_wo_verifier_grounded_rejection",
+            "evigraph_wo_verifier",
+            "evigraph_wo_support",
+            "full_evigraph",
+        ),
+    ),
+    ResultSpec(
+        "Open BM25",
+        "finqa_300_subset_open_bm25_ablation_v28.csv",
+        (
+            "direct_rag",
+            "topk",
+            "retrieve_then_program",
+            "full_context",
+            "utility_only",
+            "evigraph_wo_risk",
+            "evigraph_wo_operation_planner",
+            "evigraph_wo_verifier_grounded_rejection",
+            "evigraph_wo_verifier",
+            "evigraph_wo_support",
+            "full_evigraph",
+        ),
+    ),
+    ResultSpec(
+        "BM25 + source rerank",
+        "finqa_300_subset_source_rerank_ablation_v28.csv",
+        (
+            "direct_rag",
+            "topk",
+            "retrieve_then_program",
+            "full_context",
+            "utility_only",
+            "evigraph_wo_risk",
+            "evigraph_wo_operation_planner",
+            "evigraph_wo_verifier_grounded_rejection",
+            "evigraph_wo_verifier",
+            "evigraph_wo_support",
+            "full_evigraph",
+        ),
+    ),
+)
+
 FINQA_300_LOCAL_RETRIEVAL_BASELINE_RESULT_SPECS = (
     ResultSpec(
         "Open BM25",
@@ -145,6 +271,24 @@ FINQA_300_LOCAL_STRONG_RETRIEVAL_BASELINE_RESULT_SPECS = (
     ResultSpec(
         "Open hybrid",
         "finqa_300_subset_open_hybrid_baseline.csv",
+        ("direct_rag", "topk", "retrieve_then_program", "full_context", "utility_only", "full_evigraph"),
+    ),
+)
+
+FINQA_300_LOCAL_STRONG_RETRIEVAL_BASELINE_V21_RESULT_SPECS = (
+    ResultSpec(
+        "Open BM25",
+        "finqa_300_subset_open_bm25_baseline_v21.csv",
+        ("direct_rag", "topk", "retrieve_then_program", "full_context", "utility_only", "full_evigraph"),
+    ),
+    ResultSpec(
+        "Open TF-IDF",
+        "finqa_300_subset_open_tfidf_baseline_v21.csv",
+        ("direct_rag", "topk", "retrieve_then_program", "full_context", "utility_only", "full_evigraph"),
+    ),
+    ResultSpec(
+        "Open hybrid",
+        "finqa_300_subset_open_hybrid_baseline_v21.csv",
         ("direct_rag", "topk", "retrieve_then_program", "full_context", "utility_only", "full_evigraph"),
     ),
 )
@@ -221,6 +365,186 @@ FINQA_600_LOCAL_RESULT_SPECS = (
     ),
 )
 
+FINQA_600_LOCAL_V34_RESULT_SPECS = (
+    ResultSpec(
+        "Oracle-doc",
+        "finqa_600_subset_oracle_doc_full_local_planner_v34_tax_provision_ratio.csv",
+        ("full_evigraph",),
+    ),
+    ResultSpec(
+        "Open BM25",
+        "finqa_600_subset_open_bm25_full_local_planner_v34_tax_provision_ratio.csv",
+        ("full_evigraph",),
+    ),
+    ResultSpec(
+        "BM25 + source rerank",
+        "finqa_600_subset_source_rerank_full_local_planner_v34_tax_provision_ratio.csv",
+        ("full_evigraph",),
+    ),
+)
+
+FINQA_600_LOCAL_V21_RESULT_SPECS = (
+    ResultSpec(
+        "Oracle-doc",
+        "finqa_600_subset_oracle_doc_full_local_planner_v21.csv",
+        ("full_evigraph",),
+    ),
+    ResultSpec(
+        "Open BM25",
+        "finqa_600_subset_open_bm25_full_local_planner_v21.csv",
+        ("full_evigraph",),
+    ),
+    ResultSpec(
+        "BM25 + source rerank",
+        "finqa_600_subset_source_rerank_full_local_planner_v21.csv",
+        ("full_evigraph",),
+    ),
+)
+
+FINQA_600_LOCAL_ABLATION_V21_RESULT_SPECS = (
+    ResultSpec(
+        "Oracle-doc",
+        "finqa_600_subset_oracle_doc_ablation_v21.csv",
+        (
+            "direct_rag",
+            "topk",
+            "retrieve_then_program",
+            "full_context",
+            "utility_only",
+            "evigraph_wo_risk",
+            "evigraph_wo_operation_planner",
+            "evigraph_wo_verifier_grounded_rejection",
+            "evigraph_wo_verifier",
+            "evigraph_wo_support",
+            "full_evigraph",
+        ),
+    ),
+    ResultSpec(
+        "Open BM25",
+        "finqa_600_subset_open_bm25_ablation_v21.csv",
+        (
+            "direct_rag",
+            "topk",
+            "retrieve_then_program",
+            "full_context",
+            "utility_only",
+            "evigraph_wo_risk",
+            "evigraph_wo_operation_planner",
+            "evigraph_wo_verifier_grounded_rejection",
+            "evigraph_wo_verifier",
+            "evigraph_wo_support",
+            "full_evigraph",
+        ),
+    ),
+    ResultSpec(
+        "BM25 + source rerank",
+        "finqa_600_subset_source_rerank_ablation_v21.csv",
+        (
+            "direct_rag",
+            "topk",
+            "retrieve_then_program",
+            "full_context",
+            "utility_only",
+            "evigraph_wo_risk",
+            "evigraph_wo_operation_planner",
+            "evigraph_wo_verifier_grounded_rejection",
+            "evigraph_wo_verifier",
+            "evigraph_wo_support",
+            "full_evigraph",
+        ),
+    ),
+)
+
+FINQA_600_LOCAL_ABLATION_V28_RESULT_SPECS = (
+    ResultSpec(
+        "Oracle-doc",
+        "finqa_600_subset_oracle_doc_ablation_v28.csv",
+        (
+            "direct_rag",
+            "topk",
+            "retrieve_then_program",
+            "full_context",
+            "utility_only",
+            "evigraph_wo_risk",
+            "evigraph_wo_operation_planner",
+            "evigraph_wo_verifier_grounded_rejection",
+            "evigraph_wo_verifier",
+            "evigraph_wo_support",
+            "full_evigraph",
+        ),
+    ),
+    ResultSpec(
+        "Open BM25",
+        "finqa_600_subset_open_bm25_ablation_v28.csv",
+        (
+            "direct_rag",
+            "topk",
+            "retrieve_then_program",
+            "full_context",
+            "utility_only",
+            "evigraph_wo_risk",
+            "evigraph_wo_operation_planner",
+            "evigraph_wo_verifier_grounded_rejection",
+            "evigraph_wo_verifier",
+            "evigraph_wo_support",
+            "full_evigraph",
+        ),
+    ),
+    ResultSpec(
+        "BM25 + source rerank",
+        "finqa_600_subset_source_rerank_ablation_v28.csv",
+        (
+            "direct_rag",
+            "topk",
+            "retrieve_then_program",
+            "full_context",
+            "utility_only",
+            "evigraph_wo_risk",
+            "evigraph_wo_operation_planner",
+            "evigraph_wo_verifier_grounded_rejection",
+            "evigraph_wo_verifier",
+            "evigraph_wo_support",
+            "full_evigraph",
+        ),
+    ),
+)
+
+FINQA_600_LOCAL_STRONG_RETRIEVAL_BASELINE_V21_RESULT_SPECS = (
+    ResultSpec(
+        "Open BM25",
+        "finqa_600_subset_open_bm25_baseline_v21.csv",
+        ("direct_rag", "topk", "retrieve_then_program", "full_context", "utility_only", "full_evigraph"),
+    ),
+    ResultSpec(
+        "Open TF-IDF",
+        "finqa_600_subset_open_tfidf_baseline_v21.csv",
+        ("direct_rag", "topk", "retrieve_then_program", "full_context", "utility_only", "full_evigraph"),
+    ),
+    ResultSpec(
+        "Open hybrid",
+        "finqa_600_subset_open_hybrid_baseline_v21.csv",
+        ("direct_rag", "topk", "retrieve_then_program", "full_context", "utility_only", "full_evigraph"),
+    ),
+)
+
+FINQA_600_NEURAL_RETRIEVAL_BASELINE_V21_RESULT_SPECS = (
+    ResultSpec(
+        "Open BM25",
+        "finqa_600_subset_open_bm25_baseline_v21.csv",
+        ("direct_rag", "retrieve_then_program", "full_evigraph"),
+    ),
+    ResultSpec(
+        "Open neural dense",
+        "finqa_600_subset_open_neural_dense_baseline_v21.csv",
+        ("direct_rag", "retrieve_then_program", "full_evigraph"),
+    ),
+    ResultSpec(
+        "Open neural hybrid",
+        "finqa_600_subset_open_neural_hybrid_baseline_v21.csv",
+        ("direct_rag", "retrieve_then_program", "full_evigraph"),
+    ),
+)
+
 FINQA_600_LLM_DIRECT_RAG_RESULT_SPECS = (
     ResultSpec(
         "Oracle-doc",
@@ -242,13 +566,23 @@ FINQA_600_LLM_DIRECT_RAG_RESULT_SPECS = (
 RESULT_SPEC_PRESETS = {
     "finqa": DEFAULT_RESULT_SPECS,
     "finqa_300_local": FINQA_300_LOCAL_RESULT_SPECS,
+    "finqa_300_local_v34": FINQA_300_LOCAL_V34_RESULT_SPECS,
     "finqa_300_local_ablation": FINQA_300_LOCAL_ABLATION_RESULT_SPECS,
+    "finqa_300_local_ablation_v21": FINQA_300_LOCAL_ABLATION_V21_RESULT_SPECS,
+    "finqa_300_local_ablation_v28": FINQA_300_LOCAL_ABLATION_V28_RESULT_SPECS,
     "finqa_300_local_retrieval_baselines": FINQA_300_LOCAL_RETRIEVAL_BASELINE_RESULT_SPECS,
     "finqa_300_local_strong_retrieval_baselines": FINQA_300_LOCAL_STRONG_RETRIEVAL_BASELINE_RESULT_SPECS,
+    "finqa_300_local_strong_retrieval_baselines_v21": FINQA_300_LOCAL_STRONG_RETRIEVAL_BASELINE_V21_RESULT_SPECS,
     "finqa_300_neural_retrieval_baselines": FINQA_300_NEURAL_RETRIEVAL_BASELINE_RESULT_SPECS,
     "finqa_300_llm_direct_rag": FINQA_300_LLM_DIRECT_RAG_RESULT_SPECS,
     "finqa_300_gpt54_direct_rag": FINQA_300_GPT54_DIRECT_RAG_RESULT_SPECS,
     "finqa_600_local": FINQA_600_LOCAL_RESULT_SPECS,
+    "finqa_600_local_v34": FINQA_600_LOCAL_V34_RESULT_SPECS,
+    "finqa_600_local_v21": FINQA_600_LOCAL_V21_RESULT_SPECS,
+    "finqa_600_local_ablation_v21": FINQA_600_LOCAL_ABLATION_V21_RESULT_SPECS,
+    "finqa_600_local_ablation_v28": FINQA_600_LOCAL_ABLATION_V28_RESULT_SPECS,
+    "finqa_600_local_strong_retrieval_baselines_v21": FINQA_600_LOCAL_STRONG_RETRIEVAL_BASELINE_V21_RESULT_SPECS,
+    "finqa_600_neural_retrieval_baselines_v21": FINQA_600_NEURAL_RETRIEVAL_BASELINE_V21_RESULT_SPECS,
     "finqa_600_llm_direct_rag": FINQA_600_LLM_DIRECT_RAG_RESULT_SPECS,
 }
 

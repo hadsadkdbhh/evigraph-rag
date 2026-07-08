@@ -85,6 +85,10 @@ class FailureAnalyzer:
                 return "no_numeric_answer_additive_or_lookup"
             return "no_numeric_answer_other"
         if self._numbers(prediction) and self._numbers(row.get("answer", "")):
+            if self._truthy(row.get("answer_supported")) and not self._truthy(row.get("source_consistent", "true")):
+                return "supported_wrong_source_inconsistency"
+            if self._truthy(row.get("answer_supported")) and not self._truthy(row.get("operand_semantics_checked", "true")):
+                return "supported_wrong_operand_semantic_mismatch"
             return "wrong_numeric_operation_or_row"
         return "unsupported_textual_prediction"
 
@@ -95,6 +99,11 @@ class FailureAnalyzer:
         if value in (None, ""):
             return 0.0
         return float(value)
+
+    def _truthy(self, value: Any) -> bool:
+        if isinstance(value, str):
+            return value.strip().lower() in {"1", "1.0", "true", "yes"}
+        return bool(value)
 
     def _shorten(self, text: str, limit: int = 220) -> str:
         compact = re.sub(r"\s+", " ", text).strip()

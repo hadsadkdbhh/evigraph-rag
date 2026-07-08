@@ -18,6 +18,7 @@ class MetricsTest(unittest.TestCase):
                 "row_operation_grounded": True,
                 "semantically_grounded": True,
                 "citation_correct": True,
+                "source_consistent": False,
             },
             "cost": {},
         }
@@ -29,6 +30,7 @@ class MetricsTest(unittest.TestCase):
         self.assertFalse(metrics["unsupported_correct"])
         self.assertFalse(metrics["supported_wrong"])
         self.assertEqual(metrics["answer_support_gap"], 0.0)
+        self.assertFalse(metrics["source_consistent"])
 
     def test_supported_wrong_flags_grounded_but_wrong_predictions(self) -> None:
         result = {
@@ -53,6 +55,7 @@ class MetricsTest(unittest.TestCase):
         self.assertFalse(metrics["unsupported_correct"])
         self.assertTrue(metrics["supported_wrong"])
         self.assertEqual(metrics["answer_support_gap"], -1.0)
+        self.assertTrue(metrics["source_consistent"])
 
 
 if __name__ == "__main__":

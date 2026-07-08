@@ -1,0 +1,54 @@
+{
+  "title": "EviGraph FinQA 600-Example Local Program Planner Verifier Endpoint Grounding v33",
+  "config": "configs/default_local_planner.yaml",
+  "output_dir": "outputs/eval/finqa_600_local_planner_verifier_endpoint_grounding_v33",
+  "datasets": [
+    {
+      "name": "finqa_600_subset",
+      "raw_questions": "data/raw/finqa_600_subset.jsonl",
+      "questions": "outputs/eval/finqa_600_local_planner_verifier_endpoint_grounding_v33/finqa_questions.jsonl",
+      "field_map": {
+        "id": "id",
+        "query": "question",
+        "answer": "answer",
+        "source_doc": "source_doc",
+        "task_type": "task_type"
+      },
+      "corpus": "data/finqa_600_corpus",
+      "build_index": true,
+      "index": "outputs/index/finqa_600_subset.json",
+      "chunk_size": 1200,
+      "chunk_overlap": 160,
+      "gate": {
+        "min_records": 600,
+        "min_source_doc_coverage": 1.0,
+        "fail_on_error": true
+      }
+    }
+  ],
+  "experiments": [
+    {
+      "name": "oracle_doc_full_local_planner_v33_verifier_endpoint_grounding",
+      "type": "batch",
+      "retrieval_mode": "oracle_doc",
+      "methods": ["full_evigraph"]
+    },
+    {
+      "name": "open_bm25_full_local_planner_v33_verifier_endpoint_grounding",
+      "type": "batch",
+      "retrieval_mode": "open",
+      "methods": ["full_evigraph"]
+    },
+    {
+      "name": "source_rerank_full_local_planner_v33_verifier_endpoint_grounding",
+      "type": "batch",
+      "retrieval_mode": "source_rerank",
+      "methods": ["full_evigraph"]
+    }
+  ],
+  "limitations": [
+    "This manifest evaluates bounded verifier grounding for reconciliation-table endpoint rows.",
+    "It accepts ending/beginning balance rows only when the query and supporting context name unrecognized tax benefits.",
+    "It is intended to prevent verifier-guided repair or grounded rejection from replacing a correct endpoint-row calculation with a weaker intermediate-row operand."
+  ]
+}

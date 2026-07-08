@@ -37,6 +37,7 @@ class MethodRunner:
     def __init__(self, config: dict[str, Any] | None = None) -> None:
         config = config or {}
         self.config = config
+        self.retrieval_config = config.get("retrieval", {})
         selection_config = config.get("selection", {})
         self.max_nodes = int(selection_config.get("max_nodes", 4))
         self.risk_threshold = float(selection_config.get("risk_threshold", 0.65))
@@ -75,6 +76,7 @@ class MethodRunner:
             top_k=top_k,
             source_doc=source_doc,
             retrieval_mode=retrieval_mode,
+            adjacent_window=self._adjacent_window(),
         )
         self._trace(logger, "retrieve", {"method": method, "candidate_ids": [node.node_id for node in candidates]})
 
@@ -95,7 +97,7 @@ class MethodRunner:
             verification = self._skipped_verification(answer)
         else:
             verification = self.verifier.verify(query, answer, support_graph)
-            if method == "full_evigraph" and retrieval_mode in {"oracle_doc", "source_rerank"}:
+            if method == "full_evigraph":
                 answer, verification, repair_action = self.repairer.repair(
                     query,
                     answer,
@@ -111,14 +113,16 @@ class MethodRunner:
                 "direct_rag",
                 "evigraph_wo_verifier_grounded_rejection",
             }
-            if verifier_grounded_rejection_enabled and verification.get("row_grounded") is False:
+            row_rejected = verification.get("row_grounded") is False
+            if verifier_grounded_rejection_enabled and row_rejected:
                 answer = Answer(
                     text="Insufficient evidence to answer.",
                     citations=[],
                     calculations=answer.calculations,
                 )
                 verification = self.verifier.verify(query, answer, support_graph)
-                verification["missing_evidence"].append("Rejected numeric answer because calculation row did not match query.")
+                if row_rejected:
+                    verification["missing_evidence"].append("Rejected numeric answer because calculation row did not match query.")
             verify_action = Action(
                 "VERIFY_CLAIM",
                 target_node_ids=list(answer.citations),
@@ -227,6 +231,12 @@ class MethodRunner:
             + sum(float(action.estimated_cost.get("latency_ms", 0)) for action in actions),
         }
 
+    def _adjacent_window(self) -> int:
+        try:
+            return max(0, int(self.retrieval_config.get("adjacent_window", 1)))
+        except (TypeError, ValueError):
+            return 1
+
     def _skipped_verification(self, answer: Any) -> dict[str, Any]:
         return {
             "answer_supported": False,
@@ -240,6 +250,7 @@ class MethodRunner:
             "calculation_supported": False,
             "period_grounded": False,
             "operation_semantics_checked": False,
+            "operand_semantics_checked": False,
             "row_operation_grounded": False,
             "semantically_grounded": False,
             "row_grounded": False,

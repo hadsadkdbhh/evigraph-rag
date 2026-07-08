@@ -1,6 +1,6 @@
 # EviGraph-RAG Working Context
 
-Last updated: 2026-07-05
+Last updated: 2026-07-08
 
 This file is the durable context checkpoint for Codex. Read it before continuing
 project work after chat compaction or a new session. Keep it short, factual,
@@ -13,6 +13,246 @@ engineering goal is to improve real FinQA numerical reasoning and open
 retrieval performance without inflating claims beyond the evidence.
 
 ## Current Baseline
+
+Latest failure-driven operand repair:
+
+- v34 tax-provision ratio manifests:
+  - `configs/experiments.finqa_300.local_planner_tax_provision_ratio_v34.json`
+  - `configs/experiments.finqa_600.local_planner_tax_provision_ratio_v34.json`
+- Outputs:
+  - `outputs/eval/finqa_300_local_planner_tax_provision_ratio_v34/summary.md`
+  - `outputs/eval/finqa_600_local_planner_tax_provision_ratio_v34/summary.md`
+- Change:
+  - Adds a bounded prose component-ratio executor for income-tax-provision
+    benefit questions.
+  - Target pattern: same sentence gives `income tax provision for YEAR of
+    $D`, plus `$N benefit related to tax-audit settlement`; compute `N / D`.
+  - This prevents later unrelated commitment tables from supplying a wrong
+    denominator.
+- Tests:
+  - `python -m unittest discover -s tests`: 363 tests OK.
+- Result against v33:
+  - FinQA-300: Oracle 0.667, Open BM25 0.520, Source rerank 0.667.
+    Paired wins/losses vs v33: all 0/0.
+  - FinQA-600: Oracle 0.493, Open BM25 0.365, Source rerank 0.490.
+    Paired wins/losses vs v33: Oracle 1/0, Open 1/0, Source 1/0.
+- Key fixed example:
+  - `IP/2007/page_75.pdf-4`: 19.9% or selected-evidence fallback to correct
+    9.9%, with calculation `41 / 415 * 100`.
+- Current headline local-planner result:
+  - FinQA-300: Oracle 0.667, Open BM25 0.520, Source rerank 0.667.
+  - FinQA-600: Oracle 0.493, Open BM25 0.365, Source rerank 0.490.
+- Remaining biggest target:
+  - FinQA-600 Open BM25 remains dominated by ambiguous supported wrong numbers
+    and row/operation mismatches. Continue with concrete shared clusters only.
+
+Latest verifier-grounding repair:
+
+- v33 verifier endpoint grounding manifests:
+  - `configs/experiments.finqa_300.local_planner_verifier_endpoint_grounding_v33.json`
+  - `configs/experiments.finqa_600.local_planner_verifier_endpoint_grounding_v33.json`
+- Outputs:
+  - `outputs/eval/finqa_300_local_planner_verifier_endpoint_grounding_v33/summary.md`
+  - `outputs/eval/finqa_600_local_planner_verifier_endpoint_grounding_v33/summary.md`
+- Change:
+  - The verifier now treats `ending balance`, `beginning balance`,
+    `balance at december 31`, and `balance at january 1` as grounded
+    reconciliation endpoint rows only when both the query and support context
+    name unrecognized tax benefits.
+  - This prevents verifier-guided repair or grounded rejection from replacing
+    correct endpoint-row calculations with weaker intermediate-row operands.
+- Tests:
+  - `python -m unittest discover -s tests`: 362 tests OK.
+- Result against v30 traceable:
+  - FinQA-300: Oracle 0.667, Open BM25 0.520, Source rerank 0.667.
+    Paired wins/losses vs v30: Oracle 2/0, Open 1/0, Source 2/0.
+  - FinQA-600: Oracle 0.492, Open BM25 0.363, Source rerank 0.488.
+    Paired wins/losses vs v30: Oracle 3/0, Open 2/0, Source 3/0.
+- Key fixed examples:
+  - `ADBE/2018/page_86.pdf-1`: 4.2%/340.0% failure to correct 13.4%
+    endpoint-row percent change over `ending balance`.
+  - `ADBE/2018/page_86.pdf-3`: missing/unsupported answer to correct -3.1%
+    endpoint-row percent change over `beginning balance`.
+  - `BLK/2012/page_160.pdf-1`: 22.5% to correct 41.8% beginning-to-ending
+    balance percent change.
+- Remaining biggest target:
+  - FinQA-600 Open BM25 still has 130 wrong numeric operation/row cases:
+    ambiguous_supported_wrong_number 81, wrong_row_label 20,
+    wrong_operation_type 19, wrong_year_or_period 10.
+  - Continue with concrete failure clusters; do not broaden generic rules.
+
+Latest verifier/failure-analysis pass:
+
+- v27 source-consistency manifests:
+  - `configs/experiments.finqa_300.local_planner_source_consistency_v27.json`
+  - `configs/experiments.finqa_600.local_planner_source_consistency_v27.json`
+- Outputs:
+  - `outputs/eval/finqa_300_local_planner_source_consistency_v27/summary.md`
+  - `outputs/eval/finqa_600_local_planner_source_consistency_v27/summary.md`
+- Result: v27 is diagnostic-only. Hard source-consistency rejection was tested
+  and rejected because it hurt open-retrieval accuracy. The retained diagnostic
+  keeps v26 exact match unchanged while exposing source-inconsistent supported
+  wrong answers under Open BM25: 10/300 on FinQA-300 and 20/600 on FinQA-600.
+- Current exact match remains:
+  - FinQA-300: Oracle 0.657, Open BM25 0.513, Source rerank 0.657.
+  - FinQA-600: Oracle 0.482, Open BM25 0.357, Source rerank 0.478.
+- Paper narrative: source consistency is a verifier/failure-analysis signal,
+  not an accuracy-improving module.
+
+Latest narrow repair pass:
+
+- v28 percent-intent manifests:
+  - `configs/experiments.finqa_300.local_planner_percent_intent_repairs_v28.json`
+  - `configs/experiments.finqa_600.local_planner_percent_intent_repairs_v28.json`
+- Outputs:
+  - `outputs/eval/finqa_300_local_planner_percent_intent_repairs_v28/summary.md`
+  - `outputs/eval/finqa_600_local_planner_percent_intent_repairs_v28/summary.md`
+- Changes:
+  - Normalize `percent f the` to `percent of the` for OCR/noisy FinQA query intent.
+  - Add same-column row-ratio percent execution for one-percentage-point
+    increase/decrease sensitivity tables.
+- Result: no paired regressions.
+  - FinQA-300: Oracle 0.660, Open BM25 0.517, Source rerank 0.660.
+  - FinQA-600: Oracle 0.487, Open BM25 0.360, Source rerank 0.483.
+
+Latest traceability and retrieval-context pass:
+
+- v29 source-window manifests:
+  - `configs/experiments.finqa_300.local_planner_source_window_v29.json`
+  - `configs/experiments.finqa_600.local_planner_source_window_v29.json`
+- v29 change:
+  - `retrieval.adjacent_window` is now configurable.
+  - The v29 config sets `adjacent_window: 2` to test whether a wider
+    source-local chunk window fixes source-hit/gold-number-missing failures.
+- v29 FinQA-300 result:
+  - Oracle 0.660, Open BM25 0.513, Source rerank 0.660.
+  - Interpretation: widening adjacent context did not improve Open BM25
+    (v28 Open BM25 was 0.517) and should not be used as the next main
+    accuracy story. It remains a diagnostic/negative result.
+- v30 traceable manifests:
+  - `configs/experiments.finqa_300.local_planner_traceable_v30.json`
+  - `configs/experiments.finqa_600.local_planner_traceable_v30.json`
+- v30 change:
+  - Manifest CSVs now include a `calculation` column, so row/operation
+    diagnostics work even when `log_run=False` and per-run artifacts are not
+    stored.
+  - Row/operation diagnostics now read CSV calculations before falling back to
+    `answer.md` in a run directory.
+  - Diagnostic intent cleanup: `percentage change in average ...` is treated
+    as percent-change intent, and `planned_ratio` is compatible with
+    ratio-percent intent.
+- v30 result:
+  - FinQA-300: Oracle 0.660, Open BM25 0.517, Source rerank 0.660.
+  - FinQA-600: Oracle 0.487, Open BM25 0.360, Source rerank 0.483.
+  - Interpretation: v30 intentionally reproduces v28 behavior while making
+    future failure-driven repair measurable.
+- v30 Open BM25 row/operation diagnostic split:
+  - FinQA-300 wrong numeric operation/row: 52 rows. Primary errors:
+    ambiguous_supported_wrong_number 35, wrong_operation_type 9,
+    wrong_row_label 5, wrong_year_or_period 3.
+  - FinQA-600 wrong numeric operation/row: 131 rows. Primary errors:
+    ambiguous_supported_wrong_number 81, wrong_row_label 21,
+    wrong_operation_type 19, wrong_year_or_period 10.
+  - Next technical target: inspect concrete ambiguous/row/operation/year
+    examples from v30, then make 3-5 bounded repairs. Do not continue broad
+    retrieval-window tuning.
+
+Latest component-ablation closure:
+
+- v28 component-ablation manifests:
+  - `configs/experiments.finqa_300.local_planner_ablation_v28.json`
+  - `configs/experiments.finqa_600.local_planner_ablation_v28.json`
+- Outputs:
+  - `outputs/eval/finqa_300_local_planner_ablation_v28/summary.md`
+  - `outputs/eval/finqa_600_local_planner_ablation_v28/summary.md`
+- FinQA-300 v28 ablation exact match:
+  - Oracle: Direct RAG 0.593, retrieve-then-program 0.640, utility-only
+    0.627, full EviGraph 0.660.
+  - Open BM25: Direct RAG 0.453, retrieve-then-program 0.483,
+    utility-only 0.400, full EviGraph 0.517.
+  - Source rerank: Direct RAG 0.593, retrieve-then-program 0.640,
+    utility-only 0.557, full EviGraph 0.660.
+- FinQA-600 v28 ablation exact match:
+  - Oracle: Direct RAG 0.442, retrieve-then-program 0.467, utility-only
+    0.462, full EviGraph 0.487.
+  - Open BM25: Direct RAG 0.310, retrieve-then-program 0.338,
+    utility-only 0.307, full EviGraph 0.360.
+  - Source rerank: Direct RAG 0.443, retrieve-then-program 0.467,
+    utility-only 0.425, full EviGraph 0.483.
+- Interpretation: v28 closes the version mismatch between the main result and
+  the component-ablation table. It supports the evidence-state-control story,
+  especially in Open BM25 where full EviGraph improves over utility-only by
+  11.7 EM points on FinQA-300 and 5.3 points on FinQA-600.
+- Paper assets:
+  - `paper/generated/finqa_300_local_planner_ablation_v28/finqa_results_summary.md`
+  - `paper/generated/finqa_300_local_planner_ablation_v28/finqa_results_tables.tex`
+  - `paper/generated/finqa_600_local_planner_ablation_v28/finqa_results_summary.md`
+  - `paper/generated/finqa_600_local_planner_ablation_v28/finqa_results_tables.tex`
+- Statistical confidence reports:
+  - `paper/generated/finqa_300_local_planner_ablation_v28/statistical_confidence.md`
+  - `paper/generated/finqa_600_local_planner_ablation_v28/statistical_confidence.md`
+- Statistical interpretation:
+  - FinQA-300 Open BM25 full EviGraph vs utility-only: +11.7 EM points,
+    target-only 42, baseline-only 7, McNemar p < 0.001.
+  - FinQA-300 Open BM25 full EviGraph vs retrieve-then-program: +3.3 EM
+    points, target-only 16, baseline-only 6, McNemar p = 0.052.
+  - FinQA-600 Open BM25 full EviGraph vs utility-only: +5.3 EM points,
+    target-only 46, baseline-only 14, McNemar p < 0.001.
+  - FinQA-600 Open BM25 full EviGraph vs retrieve-then-program: +2.2 EM
+    points, target-only 22, baseline-only 9, McNemar p = 0.029.
+  - This supports a strong graph-selection claim; the smaller margin over
+    retrieve-then-program should be framed as incremental but consistent.
+
+Latest retrieval diagnostics:
+
+- The manifest runner now emits `*_retrieval_diagnostics.md` for non-pareto
+  batch experiments.
+- Open BM25 FinQA-300 v28:
+  - source hit@8: 269/300 = 0.897.
+  - source top-1: 151/300 = 0.503.
+  - wrong with source hit: 115/300; wrong without source hit: 30/300.
+- Open BM25 FinQA-600 v28:
+  - source hit@8: 515/600 = 0.858.
+  - source top-1: 192/600 = 0.320.
+  - wrong with source hit: 302/600; wrong without source hit: 82/600.
+- Interpretation: open retrieval is still a bottleneck, but most remaining
+  Open BM25 errors already have the source document somewhere in top-8.
+  The next repair target should therefore be retrieval-aware operand grounding,
+  not broad rule expansion.
+
+Latest case-study and failure-slice artifacts:
+
+- Case studies:
+  - `paper/generated/finqa_300_local_planner_ablation_v28/paper_case_studies_open_bm25.md`
+- Failure slices:
+  - `paper/generated/finqa_300_local_planner_ablation_v28/failure_slices_open_bm25.md`
+  - `paper/generated/finqa_600_local_planner_ablation_v28/failure_slices_open_bm25.md`
+- FinQA-300 Open BM25 failure slices:
+  - Failed rows: 145/300.
+  - Source slices: source_hit_gold_number_missing 93, source_missing 30,
+    source_hit_gold_number_present 22.
+  - Intent slices: percent_change 40, lookup_or_other 31, ratio_percent 27,
+    sum_or_lookup 18, average 11, difference 10, ratio 8.
+  - Support slices: textual_or_insufficient 93, supported_wrong_numeric 46,
+    unsupported_wrong_numeric 6.
+- FinQA-600 Open BM25 failure slices:
+  - Failed rows: 384/600.
+  - Source slices: source_hit_gold_number_missing 254, source_missing 82,
+    source_hit_gold_number_present 48.
+  - Intent slices: percent_change 105, ratio_percent 83, lookup_or_other 74,
+    sum_or_lookup 63, average 30, difference 15, ratio 14.
+  - Support slices: textual_or_insufficient 252, supported_wrong_numeric 118,
+    unsupported_wrong_numeric 14.
+- Case-study candidates selected:
+  - EviGraph over Direct RAG: `IPG/2015/page_48.pdf-2`.
+  - Graph selection over utility-only: `UNP/2009/page_65.pdf-2`.
+  - Operation planner win: `DRE/2009/page_56.pdf-1`.
+  - Open retrieval/operand failure: `MRO/2007/page_134.pdf-3`.
+  - GPT-5.4 correct but unsupported: `INTC/2013/page_29.pdf-2`.
+- Interpretation: the biggest next technical target is not a generic arithmetic
+  rule. It is source-hit-but-gold-number-missing cases, especially
+  percent_change and ratio_percent questions, where retrieval reaches the source
+  but chunk/operand grounding fails.
 
 Use the 300-example FinQA validation subset as the current reality check.
 

@@ -1,0 +1,54 @@
+{
+  "title": "EviGraph FinQA 300-Example Local Program Planner Percent Intent Repairs v28",
+  "config": "configs/default_local_planner.yaml",
+  "output_dir": "outputs/eval/finqa_300_local_planner_percent_intent_repairs_v28",
+  "datasets": [
+    {
+      "name": "finqa_300_subset",
+      "raw_questions": "data/raw/finqa_300_subset.jsonl",
+      "questions": "outputs/eval/finqa_300_local_planner_percent_intent_repairs_v28/finqa_questions.jsonl",
+      "field_map": {
+        "id": "id",
+        "query": "question",
+        "answer": "answer",
+        "source_doc": "source_doc",
+        "task_type": "task_type"
+      },
+      "corpus": "data/finqa_300_corpus",
+      "build_index": true,
+      "index": "outputs/index/finqa_300_subset.json",
+      "chunk_size": 1200,
+      "chunk_overlap": 160,
+      "gate": {
+        "min_records": 300,
+        "min_source_doc_coverage": 1.0,
+        "fail_on_error": true
+      }
+    }
+  ],
+  "experiments": [
+    {
+      "name": "oracle_doc_full_local_planner_v28_percent_intent",
+      "type": "batch",
+      "retrieval_mode": "oracle_doc",
+      "methods": ["full_evigraph"]
+    },
+    {
+      "name": "open_bm25_full_local_planner_v28_percent_intent",
+      "type": "batch",
+      "retrieval_mode": "open",
+      "methods": ["full_evigraph"]
+    },
+    {
+      "name": "source_rerank_full_local_planner_v28_percent_intent",
+      "type": "batch",
+      "retrieval_mode": "source_rerank",
+      "methods": ["full_evigraph"]
+    }
+  ],
+  "limitations": [
+    "This manifest evaluates narrow percent-intent repairs on top of v27 diagnostics.",
+    "The changes normalize a FinQA percent-of OCR typo and add same-column row ratio execution for one-percentage-point sensitivity tables.",
+    "It uses only local execution and does not require API credentials."
+  ]
+}

@@ -77,6 +77,37 @@ class ProcessTraceAnalyzerTest(unittest.TestCase):
         self.assertIn("| operand_hit | 1 | 0.500 |", markdown)
         self.assertIn("first_failed=`evidence_available`", markdown)
 
+    def test_process_trace_falls_back_to_csv_metrics_without_run_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            csv_path = self._write_csv(
+                root,
+                [
+                    {
+                        "id": "csv-only",
+                        "query": "What was the percentage change?",
+                        "answer": "17%",
+                        "prediction": "17%",
+                        "accuracy": "1.0",
+                        "answer_supported": "1",
+                        "operation_semantics_checked": "1",
+                        "operand_semantics_checked": "1",
+                        "row_operation_grounded": "1",
+                        "citation_correct": "1",
+                        "run_dir": "",
+                    }
+                ],
+                extra_fieldnames=["operand_semantics_checked"],
+            )
+
+            analysis = ProcessTraceAnalyzer().analyze(csv_path)
+            markdown = ProcessTraceAnalyzer().render_markdown(analysis)
+
+        self.assertEqual(analysis["step_counts"]["evidence_available"], 1)
+        self.assertEqual(analysis["step_counts"]["operand_hit"], 1)
+        self.assertEqual(analysis["step_counts"]["exact_match"], 1)
+        self.assertIn("| evidence_available | 1 | 1.000 |", markdown)
+
     def _write_run(self, root: Path, calculation: str, context: str) -> Path:
         run_dir = root / f"run_{len(list(root.glob('run_*')))}"
         run_dir.mkdir()
@@ -88,7 +119,12 @@ class ProcessTraceAnalyzerTest(unittest.TestCase):
         (run_dir / "support_graph.json").write_text(json.dumps({"nodes": nodes, "edges": []}), encoding="utf-8")
         return run_dir
 
-    def _write_csv(self, root: Path, rows: list[dict[str, str]]) -> Path:
+    def _write_csv(
+        self,
+        root: Path,
+        rows: list[dict[str, str]],
+        extra_fieldnames: list[str] | None = None,
+    ) -> Path:
         path = root / "results.csv"
         fieldnames = [
             "id",
@@ -103,6 +139,9 @@ class ProcessTraceAnalyzerTest(unittest.TestCase):
             "citation_correct",
             "run_dir",
         ]
+        for fieldname in extra_fieldnames or []:
+            if fieldname not in fieldnames:
+                fieldnames.append(fieldname)
         with path.open("w", encoding="utf-8", newline="") as handle:
             writer = csv.DictWriter(handle, fieldnames=fieldnames)
             writer.writeheader()

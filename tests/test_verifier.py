@@ -85,6 +85,40 @@ class ClaimVerifierTest(unittest.TestCase):
         self.assertTrue(verification["row_operation_grounded"])
         self.assertTrue(verification["answer_supported"])
 
+    def test_row_grounding_accepts_unrecognized_tax_benefit_endpoint_balance(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                "table",
+                "text",
+                (
+                    "Our aggregate changes in our total gross amount of unrecognized tax benefits "
+                    "are summarized as follows.\n"
+                    "|  | 2018 | 2017 |\n"
+                    "| --- | --- | --- |\n"
+                    "| beginning balance | $ 172945 | $ 178413 |\n"
+                    "| gross increases in unrecognized tax benefits 2013 prior year tax positions | 16191 | 3680 |\n"
+                    "| ending balance | $ 196152 | $ 172945 |"
+                ),
+                source_doc="report.md",
+            )
+        )
+        answer = Answer(
+            text="13.4%",
+            citations=["table"],
+            calculations=["percent_change row=ending balance: (196152 - 172945) / 172945 * 100 = 13.4%"],
+        )
+
+        verification = ClaimVerifier().verify(
+            "what is the percentage change in total gross amount of unrecognized tax benefits from 2017 to 2018?",
+            answer,
+            graph,
+        )
+
+        self.assertTrue(verification["row_grounded"])
+        self.assertTrue(verification["operand_semantics_checked"])
+        self.assertTrue(verification["answer_supported"])
+
     def test_row_grounding_accepts_cash_flow_reconciliation_row_when_table_header_names_measure(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
@@ -190,6 +224,103 @@ class ClaimVerifierTest(unittest.TestCase):
         self.assertTrue(verification["answer_supported"])
         self.assertTrue(verification["operation_semantics_checked"])
         self.assertEqual(verification["context_utilization"], "numeric_calculation_row_operation_and_citation_checked")
+
+    def test_empty_citation_is_not_semantically_grounded(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(EvidenceNode("text", "text", "value 10", source_doc="report.md"))
+        answer = Answer(text="Insufficient evidence to answer.", citations=[], calculations=[])
+
+        verification = ClaimVerifier().verify("what is the value?", answer, graph)
+
+        self.assertFalse(verification["answer_supported"])
+        self.assertFalse(verification["semantically_grounded"])
+        self.assertIn("No citations were selected.", verification["missing_evidence"])
+
+    def test_source_consistency_rejects_lower_rank_wrong_company_citation(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                "ew_rank1",
+                "text",
+                "edwards acquisitions ipr&d 190.0 total cash purchase price net of cash acquired 320.1",
+                source_doc="finqa_328_ew_2016_page_79_pdf_4.md",
+                metadata={"retrieval_rank": 1},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                "ew_rank2",
+                "text",
+                "edwards lifesciences total cash purchase price net of cash acquired and ipr&d",
+                source_doc="finqa_001_ew_2016_page_79_pdf_3.md",
+                metadata={"retrieval_rank": 2},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                "ew_rank3",
+                "text",
+                "cardiaq acquisition total cash purchase price net of cash acquired 320.1 ipr&d 190.0",
+                source_doc="finqa_328_ew_2016_page_79_pdf_4.md",
+                metadata={"retrieval_rank": 3},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                "ilmn_rank4",
+                "text",
+                "illumina ipr&d 303.4 cash acquired 303.4",
+                source_doc="finqa_444_ilmn_2007_page_78_pdf_3.md",
+                metadata={"retrieval_rank": 4},
+            )
+        )
+        answer = Answer(
+            text="100%",
+            citations=["ilmn_rank4"],
+            calculations=["ratio_percent row=ipr d denominator_row=cash acquired: 303.4 / 303.4 * 100 = 100.0%"],
+        )
+
+        verification = ClaimVerifier().verify(
+            "what percentage of the total cash purchase price net of cash acquired was represented by ipr&d?",
+            answer,
+            graph,
+        )
+
+        self.assertFalse(verification["source_consistent"])
+        self.assertTrue(verification["answer_supported"])
+        self.assertIn(
+            "Citation source is inconsistent with the higher-ranked source cluster.",
+            verification["diagnostic_warnings"],
+        )
+
+    def test_source_consistency_accepts_single_source_oracle_context(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                "table",
+                "text",
+                "ipr&d 190.0 total cash purchase price net of cash acquired 320.1",
+                source_doc="finqa_328_ew_2016_page_79_pdf_4.md",
+                metadata={"retrieval_rank": 0},
+            )
+        )
+        answer = Answer(
+            text="59.4%",
+            citations=["table"],
+            calculations=[
+                "ratio_percent row=ipr&d denominator_row=total cash purchase price net of cash acquired: "
+                "190.0 / 320.1 * 100 = 59.4%"
+            ],
+        )
+
+        verification = ClaimVerifier().verify(
+            "what percentage of the total cash purchase price net of cash acquired was represented by ipr&d?",
+            answer,
+            graph,
+        )
+
+        self.assertTrue(verification["source_consistent"])
+        self.assertTrue(verification["answer_supported"])
 
     def test_calculation_inputs_do_not_support_wrong_numeric_answer(self) -> None:
         graph = EvidenceGraph()
@@ -330,6 +461,103 @@ class ClaimVerifierTest(unittest.TestCase):
         )
 
         self.assertTrue(verification["operation_semantics_checked"])
+        self.assertTrue(verification["answer_supported"])
+        self.assertTrue(verification["operand_semantics_checked"])
+
+    def test_operand_semantics_flags_generic_reporting_unit_for_specific_brokerage_query(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(EvidenceNode("table", "text", "u.s. brokerage reporting unit goodwill 1760 total goodwill 1934.2", source_doc="report.md"))
+        answer = Answer(
+            text="1.6%",
+            citations=["table"],
+            calculations=["ratio_percent row=reporting unit denominator_row=total goodwill: 31 / 1934.2 * 100 = 1.6%"],
+        )
+
+        verification = ClaimVerifier().verify(
+            "what percentage of total goodwill is attributable to u.s. brokerage reporting unit as december 31, 2011?",
+            answer,
+            graph,
+        )
+
+        self.assertFalse(verification["operand_semantics_checked"])
+        self.assertTrue(verification["answer_supported"])
+        self.assertIn("Calculation operand labels do not match query entities or measures.", verification["diagnostic_warnings"])
+
+    def test_operand_semantics_flags_between_comparison_with_wrong_entity_label(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                "table",
+                "text",
+                "discovery channel international subscribers 120 animal planet international subscribers 183 discovery science 75",
+                source_doc="report.md",
+            )
+        )
+        answer = Answer(
+            text="108",
+            citations=["table"],
+            calculations=[
+                "planned_absolute_difference target=discovery science/internationalsubscribers "
+                "base=animal planet/internationalsubscribers: abs(75 - 183) = 108"
+            ],
+        )
+
+        verification = ClaimVerifier().verify(
+            "what is the difference in millions of international subscribers between discovery channel and animal planet?",
+            answer,
+            graph,
+        )
+
+        self.assertFalse(verification["operand_semantics_checked"])
+        self.assertTrue(verification["answer_supported"])
+        self.assertIn("Calculation operand labels do not match query entities or measures.", verification["diagnostic_warnings"])
+
+    def test_operand_semantics_flags_percent_change_row_that_only_names_period(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(EvidenceNode("table", "text", "2016 first quarter high sale price 18.42 second quarter high sale price 20.73", source_doc="report.md"))
+        answer = Answer(
+            text="66.4%",
+            citations=["table"],
+            calculations=["percent_change row=first years=2016->2016: (30.66 - 18.42) / 18.42 * 100 = 66.4%"],
+        )
+
+        verification = ClaimVerifier().verify(
+            "considering the year 2016, what was the percentual increase in the high sale price observed during the first and second quarters?",
+            answer,
+            graph,
+        )
+
+        self.assertFalse(verification["operand_semantics_checked"])
+        self.assertTrue(verification["answer_supported"])
+        self.assertIn("Calculation operand labels do not match query entities or measures.", verification["diagnostic_warnings"])
+
+    def test_operation_semantics_accepts_quarterly_high_sale_percent_change(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                "table",
+                "text",
+                "2016 first quarter high sale price 30.66 second quarter high sale price 34.50",
+                source_doc="report.md",
+            )
+        )
+        answer = Answer(
+            text="12.5%",
+            citations=["table"],
+            calculations=[
+                "quarterly_high_sale_price_percent_change first->second column=2016 high: "
+                "(34.5 - 30.66) / 30.66 * 100 = 12.5%"
+            ],
+        )
+
+        verification = ClaimVerifier().verify(
+            "considering the year 2016, what was the percentual increase in the high sale price observed during the first and second quarters?",
+            answer,
+            graph,
+        )
+
+        self.assertTrue(verification["operation_semantics_checked"])
+        self.assertTrue(verification["operand_semantics_checked"])
         self.assertTrue(verification["answer_supported"])
 
     def test_operation_semantics_accepts_next_period_ratio(self) -> None:

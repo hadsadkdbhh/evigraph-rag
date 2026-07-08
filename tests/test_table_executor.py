@@ -179,6 +179,52 @@ cash flow data
         self.assertEqual(value.value, 484.0)
         self.assertEqual(value.row_label, "accrued trade liabilities")
 
+    def test_resolve_value_reads_paired_label_value_header_row(self) -> None:
+        context = """
+| global networks discovery channel | internationalsubscribers ( millions ) 246 | regional networks dmax | internationalsubscribers ( millions ) 90 |
+| --- | --- | --- | --- |
+| animal planet | 183 | discovery kids | 61 |
+| discovery science | 75 | discovery history | 13 |
+"""
+
+        value = self.executor.resolve_value({"label": "discovery channel"}, context)
+
+        self.assertIsNotNone(value)
+        self.assertEqual(value.value, 246.0)
+        self.assertEqual(value.row_label, "global networks discovery channel")
+
+    def test_resolve_value_with_year_selector_rejects_header_year_as_value(self) -> None:
+        context = """
+| calculation of proportional free cash flow ( in millions ) | 2015 | 2014 |
+| --- | --- | --- |
+| proportional free cash flow | 1241 | 891 |
+"""
+
+        value = self.executor.resolve_value(
+            {"row_terms": ["proportional", "free", "cash", "flow"], "year": "2015"},
+            context,
+        )
+
+        self.assertIsNotNone(value)
+        self.assertEqual(value.value, 1241.0)
+        self.assertEqual(value.row_label, "proportional free cash flow")
+
+    def test_paired_label_value_does_not_treat_wide_table_header_as_pair(self) -> None:
+        context = """
+| calculation of proportional free cash flow ( in millions ) | 2015 | 2014 | 2013 |
+| --- | --- | --- | --- |
+| proportional free cash flow | 1241 | 891 | 1271 |
+"""
+
+        value = self.executor.resolve_value(
+            {"row_terms": ["proportional", "free", "cash", "flow"], "year": "2015"},
+            context,
+        )
+
+        self.assertIsNotNone(value)
+        self.assertEqual(value.value, 1241.0)
+        self.assertEqual(value.row_label, "proportional free cash flow")
+
     def test_difference(self) -> None:
         result = self.executor.difference(173.2, 171.5)
         self.assertAlmostEqual(result.value, 1.7)

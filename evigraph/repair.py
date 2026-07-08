@@ -34,7 +34,7 @@ class VerifierGuidedRepairer:
         generator: AnswerGenerator,
         verifier: AnswerVerifier,
     ) -> tuple[Answer, dict, Action | None]:
-        if not self._should_repair(verification, answer):
+        if not self._should_repair(query, verification, answer):
             return answer, verification, None
 
         issues = self._repair_issues(verification)
@@ -50,7 +50,13 @@ class VerifierGuidedRepairer:
             if self._same_answer(candidate, answer):
                 continue
             candidate_verification = verifier.verify(query, candidate, support_graph)
-            if candidate_verification.get("answer_supported"):
+            if candidate_verification.get("answer_supported") and self._candidate_improves(
+                query,
+                candidate,
+                candidate_verification,
+                answer,
+                verification,
+            ):
                 candidate_verification["repair_applied"] = True
                 candidate_verification["repair_attempts"] = attempted
                 return (
@@ -61,21 +67,26 @@ class VerifierGuidedRepairer:
                         target_node_ids=list(candidate.citations),
                         params={"attempts": attempted, "issues": issues},
                         estimated_cost={"tool_calls": 0, "latency_ms": 10 * attempted},
-                        reason="Verifier rejected the initial numeric support; accepted a source-local repaired answer.",
+                        reason="Verifier-guided operand repair accepted a better source-local numeric answer.",
                     ),
                 )
 
+        if verification.get("answer_supported"):
+            return answer, verification, None
         repaired_verification = dict(verification)
         repaired_verification["repair_applied"] = False
         repaired_verification["repair_attempts"] = attempted
         return answer, repaired_verification, None
 
-    def _should_repair(self, verification: dict, answer: Answer) -> bool:
-        if verification.get("answer_supported"):
-            return False
+    def _should_repair(self, query: str, verification: dict, answer: Answer) -> bool:
         if not answer.calculations:
             return False
-        return bool(self._repair_issues(verification))
+        issues = self._repair_issues(verification)
+        if issues == ["source_consistency"]:
+            return bool(verification.get("answer_supported") and self._answer_reasonableness_score(query, answer) < 0)
+        if issues:
+            return True
+        return bool(verification.get("answer_supported"))
 
     def _repair_issues(self, verification: dict) -> list[str]:
         issues = []
@@ -85,11 +96,64 @@ class VerifierGuidedRepairer:
             issues.append("period_grounding")
         if verification.get("operation_semantics_checked") is False:
             issues.append("operation_type")
+        if verification.get("source_consistent") is False:
+            issues.append("source_consistency")
         if verification.get("arithmetically_supported") is False or verification.get("calculation_supported") is False:
             issues.append("operand_support")
         if not issues and verification.get("answer_supported") is False:
             issues.append("answer_support")
+        if not issues and verification.get("answer_supported"):
+            issues.append("supported_operand_rescore")
         return issues
+
+    def _candidate_improves(
+        self,
+        query: str,
+        candidate: Answer,
+        candidate_verification: dict,
+        current: Answer,
+        current_verification: dict,
+    ) -> bool:
+        if not current_verification.get("answer_supported"):
+            return True
+        return self._answer_score(query, candidate, candidate_verification) > self._answer_score(
+            query,
+            current,
+            current_verification,
+        )
+
+    def _answer_score(self, query: str, answer: Answer, verification: dict) -> float:
+        score = 0.0
+        score += 50.0 if verification.get("answer_supported") else 0.0
+        score += 8.0 if verification.get("calculation_supported") else 0.0
+        score += 8.0 if verification.get("arithmetically_supported") else 0.0
+        score += 8.0 if verification.get("row_grounded") else 0.0
+        score += 6.0 if verification.get("period_grounded", True) else 0.0
+        score += 6.0 if verification.get("operation_semantics_checked") else 0.0
+        score += 4.0 if verification.get("semantically_grounded") else 0.0
+        score += float(verification.get("confidence", 0.0))
+        score += self._answer_reasonableness_score(query, answer)
+        return score
+
+    def _answer_reasonableness_score(self, query: str, answer: Answer) -> float:
+        query_lower = query.lower()
+        numbers = self._numbers(answer.text)
+        if not numbers:
+            return 0.0
+        if any(term in query_lower for term in ["percent", "percentage", "portion", "share", "ratio"]):
+            score = 0.0
+            for value in numbers:
+                magnitude = abs(value)
+                if magnitude <= 200:
+                    score += 3.0
+                elif magnitude >= 1000:
+                    score -= 20.0
+                elif magnitude >= 500:
+                    score -= 10.0
+                elif magnitude >= 300:
+                    score -= 5.0
+            return score
+        return 0.0
 
     def _source_cluster_graphs(self, graph: EvidenceGraph, query: str = "", answer: Answer | None = None) -> list[EvidenceGraph]:
         by_source: dict[str, list[EvidenceNode]] = {}

@@ -366,6 +366,80 @@ class NumericPlannerFallbackTest(unittest.TestCase):
         self.assertEqual(answer.text, "1.1%")
         self.assertIn("249 / 22203", answer.calculation)
 
+    def test_heuristic_difference_uses_paired_header_row_for_discovery_channel(self) -> None:
+        context = (
+            "| global networks discovery channel | internationalsubscribers ( millions ) 246 | regional networks dmax | internationalsubscribers ( millions ) 90 |\n"
+            "| --- | --- | --- | --- |\n"
+            "| animal planet | 183 | discovery kids | 61 |\n"
+            "| tlc real time and travel & living | 174 | quest | 26 |\n"
+            "| discovery science | 75 | discovery history | 13 |\n"
+        )
+        planner = NumericPlannerFallback(HeuristicNumericPlanClient())
+
+        answer = planner.answer(
+            "what is the difference in millions of international subscribers between discovery channel and animal planet?",
+            [("table", context)],
+        )
+
+        self.assertIsNotNone(answer)
+        self.assertEqual(answer.text, "63")
+        self.assertIn("discovery channel", answer.calculation)
+        self.assertIn("animal planet", answer.calculation)
+
+    def test_heuristic_difference_reuses_paired_header_row_for_second_disca_mismatch(self) -> None:
+        context = (
+            "| global networks discovery channel | internationalsubscribers ( millions ) 246 | regional networks dmax | internationalsubscribers ( millions ) 90 |\n"
+            "| --- | --- | --- | --- |\n"
+            "| animal planet | 183 | discovery kids | 61 |\n"
+            "| tlc real time and travel & living | 174 | quest | 26 |\n"
+            "| discovery science | 75 | discovery history | 13 |\n"
+        )
+        planner = NumericPlannerFallback(HeuristicNumericPlanClient())
+
+        answer = planner.answer(
+            "what is the difference in millions of international subscribers between discovery channel and tlc real time and travel & living?",
+            [("table", context)],
+        )
+
+        self.assertIsNotNone(answer)
+        self.assertEqual(answer.text, "72")
+        self.assertIn("discovery channel", answer.calculation)
+        self.assertIn("tlc real time and travel & living", answer.calculation)
+
+    def test_heuristic_lowest_amount_uses_minimum_across_year_columns(self) -> None:
+        context = (
+            "| $ in millions | year ended december 2014 | year ended december 2013 | year ended december 2012 |\n"
+            "| --- | --- | --- | --- |\n"
+            "| interest rate hedges | $ 1936 | $ -8683 ( 8683 ) | $ -2383 ( 2383 ) |\n"
+        )
+        planner = NumericPlannerFallback(HeuristicNumericPlanClient())
+
+        answer = planner.answer(
+            "in millions in 2014 2013 and 2012 , what were the lowest amount of interest rate hedges?",
+            [("table", context)],
+        )
+
+        self.assertIsNotNone(answer)
+        self.assertEqual(answer.text, "-8683")
+        self.assertIn("planned_minimum", answer.calculation)
+
+    def test_heuristic_percent_change_does_not_use_header_year_as_amount(self) -> None:
+        context = (
+            "| calculation of proportional free cash flow ( in millions ) | 2015 | 2014 |\n"
+            "| --- | --- | --- |\n"
+            "| proportional free cash flow | 1241 | 891 |\n"
+        )
+        planner = NumericPlannerFallback(HeuristicNumericPlanClient())
+
+        answer = planner.answer(
+            "what was the percentage change in proportional free cash flow between 2014 and 2015?",
+            [("table", context)],
+        )
+
+        self.assertIsNotNone(answer)
+        self.assertEqual(answer.text, "39.3%")
+        self.assertIn("(1241 - 891)", answer.calculation)
+
     def test_percent_question_rejects_sum_plan(self) -> None:
         context = (
             "| millions of dollars | dec . 31 2008 | dec . 31 2007 |\n"

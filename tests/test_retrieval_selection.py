@@ -86,6 +86,56 @@ class RetrievalSelectionTest(unittest.TestCase):
         self.assertEqual(chunk_ids[:2], ["case_0_0", "case_0_1"])
         self.assertTrue(nodes[1].metadata.get("neighbor_context"))
         self.assertEqual(nodes[1].metadata.get("retrieval_rank"), 1)
+        self.assertEqual(nodes[1].metadata.get("neighbor_distance"), 1)
+
+    def test_open_retrieval_adjacent_window_default_stays_one_hop(self) -> None:
+        chunks = [
+            DocumentChunk("case_0_0", "fuel recovery query hit amount 98", "case.md", metadata={"char_start": 0}),
+            DocumentChunk("case_0_1", "middle table row with deferred revisions 59.1", "case.md", metadata={"char_start": 900}),
+            DocumentChunk("case_0_2", "second-hop continuation row with hidden answer 12.3", "case.md", metadata={"char_start": 1800}),
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            index_path = Path(tmpdir) / "index.json"
+            index_path.write_text(
+                json.dumps({"chunks": [chunk.to_dict() for chunk in chunks]}),
+                encoding="utf-8",
+            )
+
+            nodes = CorpusRetriever().retrieve(
+                "fuel recovery",
+                str(index_path),
+                top_k=1,
+                retrieval_mode="open",
+            )
+
+        chunk_ids = [node.metadata.get("chunk_id") for node in nodes]
+        self.assertIn("case_0_1", chunk_ids)
+        self.assertNotIn("case_0_2", chunk_ids)
+
+    def test_open_retrieval_adjacent_window_two_adds_second_hop_context(self) -> None:
+        chunks = [
+            DocumentChunk("case_0_0", "fuel recovery query hit amount 98", "case.md", metadata={"char_start": 0}),
+            DocumentChunk("case_0_1", "middle table row with deferred revisions 59.1", "case.md", metadata={"char_start": 900}),
+            DocumentChunk("case_0_2", "second-hop continuation row with hidden answer 12.3", "case.md", metadata={"char_start": 1800}),
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            index_path = Path(tmpdir) / "index.json"
+            index_path.write_text(
+                json.dumps({"chunks": [chunk.to_dict() for chunk in chunks]}),
+                encoding="utf-8",
+            )
+
+            nodes = CorpusRetriever().retrieve(
+                "fuel recovery",
+                str(index_path),
+                top_k=1,
+                retrieval_mode="open",
+                adjacent_window=2,
+            )
+
+        second_hop = next(node for node in nodes if node.metadata.get("chunk_id") == "case_0_2")
+        self.assertTrue(second_hop.metadata.get("neighbor_context"))
+        self.assertEqual(second_hop.metadata.get("neighbor_distance"), 2)
 
     def test_oracle_doc_keeps_full_source_chunk(self) -> None:
         chunks = [

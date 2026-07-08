@@ -38,6 +38,9 @@ class NumericReasoner:
         answer = self._rate_of_return_on_table_value(query_lower, contexts)
         if answer:
             return answer
+        answer = self._beginning_to_end_balance_percent_change(query_lower, contexts)
+        if answer:
+            return answer
         if (
             "percentage change" in query_lower
             or "percent change" in query_lower
@@ -70,6 +73,9 @@ class NumericReasoner:
                 return answer
             if not is_roi_query:
                 answer = self._quarterly_cash_dividend_percent_change(query_lower, contexts)
+                if answer:
+                    return answer
+                answer = self._quarterly_high_sale_price_percent_change(query_lower, contexts)
                 if answer:
                     return answer
                 answer = self._stock_return_graph(query_lower, contexts)
@@ -134,6 +140,9 @@ class NumericReasoner:
             or "what share" in query_lower
             or " as a percentage of " in query_lower
         ):
+            answer = self._same_column_row_ratio_percent(query_lower, contexts)
+            if answer:
+                return answer
             answer = self._increase_component_ratio_percent(query_lower, contexts)
             if answer:
                 return answer
@@ -162,6 +171,9 @@ class NumericReasoner:
             if answer:
                 return answer
             answer = self._component_amount_ratio_from_prose_and_table(query_lower, contexts)
+            if answer:
+                return answer
+            answer = self._tax_provision_benefit_ratio(query_lower, contexts)
             if answer:
                 return answer
             answer = self._ratio_percent(query_lower, contexts)
@@ -297,6 +309,10 @@ class NumericReasoner:
             return answer
 
         answer = self._table_row_sum(query_lower, contexts)
+        if answer:
+            return answer
+
+        answer = self._table_row_total_across_period(query_lower, contexts)
         if answer:
             return answer
 
@@ -1641,6 +1657,60 @@ class NumericReasoner:
             consider([node_id], text, order)
         return best[2] if best else None
 
+    def _beginning_to_end_balance_percent_change(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        match = re.search(r"\bbeginning\s+of\s+(20\d{2}).+?\bend\s+of\s+(20\d{2})\b", query_lower)
+        if not match:
+            return None
+        if "balance" not in query_lower or not any(term in query_lower for term in ("percent", "percentage")):
+            return None
+        base_year, target_year = match.group(1), match.group(2)
+        for node_id, text in contexts:
+            for headers, rows in self._year_table_candidates(text, base_year, target_year):
+                base_index = self._header_year_index(headers, base_year)
+                target_index = self._header_year_index(headers, target_year)
+                if base_index is None or target_index is None:
+                    continue
+                beginning_row = self._first_row_with_label(rows, ("balance at january 1", "beginning balance"))
+                ending_row = self._first_row_with_label(
+                    rows,
+                    ("balance at december 31", "ending balance", "balance at end"),
+                )
+                if beginning_row is None or ending_row is None:
+                    continue
+                if max(base_index, target_index) >= len(beginning_row) or max(base_index, target_index) >= len(ending_row):
+                    continue
+                base_value = self._first_number(beginning_row[base_index])
+                target_value = self._first_number(ending_row[target_index])
+                if base_value in {None, 0} or target_value is None:
+                    continue
+                operation = self.executor.percent_change(target_value, base_value)
+                if operation is None:
+                    continue
+                result = self._percent_change_result(query_lower, base_value, target_value, operation.value)
+                return NumericAnswer(
+                    text=f"{result:.1f}%",
+                    calculation=(
+                        f"beginning_to_end_balance_percent_change "
+                        f"base_row={beginning_row[0]} target_row={ending_row[0]} "
+                        f"years={base_year}->{target_year}: {operation.expression}"
+                    ),
+                    cited_node_ids=[node_id],
+                )
+        return None
+
+    def _first_row_with_label(self, rows: list[list[str]], label_terms: tuple[str, ...]) -> list[str] | None:
+        for row in rows:
+            if not row:
+                continue
+            label = row[0].lower()
+            if any(term in label for term in label_terms):
+                return row
+        return None
+
     def _percent_change(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
         years = re.findall(r"\b(20\d{2})\b", query_lower)
         if len(years) < 2:
@@ -1650,9 +1720,11 @@ class NumericReasoner:
                     return answer
             return self._percent_change_latest_table_years(query_lower, contexts)
         base_year, target_year = self._percent_change_years(query_lower, years)
-        prose_answer = self._percent_change_from_prose(query_lower, contexts, base_year, target_year)
-        if prose_answer is not None:
-            return prose_answer
+        prefer_reconciliation_table = "unrecognized tax benefits" in query_lower
+        if not prefer_reconciliation_table:
+            prose_answer = self._percent_change_from_prose(query_lower, contexts, base_year, target_year)
+            if prose_answer is not None:
+                return prose_answer
         year_label_answer = self._percent_change_year_label_candidates(query_lower, contexts, base_year, target_year)
         if year_label_answer is not None:
             return year_label_answer
@@ -2874,6 +2946,15 @@ class NumericReasoner:
     ) -> dict[str, float] | None:
         base_index = self._header_year_index(headers, base_year)
         target_index = self._header_year_index(headers, target_year)
+        if (
+            (base_index is None or target_index is None)
+            and "unrecognized tax benefits" in query_lower
+        ):
+            shifted_base = self._header_year_index(headers, str(int(base_year) + 1))
+            shifted_target = self._header_year_index(headers, str(int(target_year) + 1))
+            if shifted_base is not None and shifted_target is not None:
+                base_index = shifted_base
+                target_index = shifted_target
         if base_index is None or target_index is None:
             promoted = self._promote_year_header(headers, rows, base_year, target_year)
             if not promoted:
@@ -2884,7 +2965,9 @@ class NumericReasoner:
             if base_index is None or target_index is None:
                 return None
 
-        best_row = self._best_query_row(query_lower, headers, rows)
+        best_row = self._reconciliation_endpoint_row(query_lower, headers, rows, base_year, target_year)
+        if not best_row:
+            best_row = self._best_query_row(query_lower, headers, rows)
         if not best_row:
             best_row = self._best_query_row_with_context(query_lower, headers, rows, text)
         if not best_row:
@@ -2896,6 +2979,39 @@ class NumericReasoner:
         if base_value is None or target_value is None:
             return None
         return {base_year: base_value, target_year: target_value, "__row_label__": best_row[0]}
+
+    def _reconciliation_endpoint_row(
+        self,
+        query_lower: str,
+        headers: list[str],
+        rows: list[list[str]],
+        base_year: str,
+        target_year: str,
+    ) -> list[str] | None:
+        if "unrecognized tax benefits" not in query_lower:
+            return None
+        if not any("balance" in (row[0].lower() if row else "") for row in rows):
+            return None
+
+        header_years = set()
+        for header in headers:
+            header_years.update(re.findall(r"\b(20\d{2})\b", header))
+
+        endpoint_terms: tuple[str, ...]
+        if base_year in header_years and target_year in header_years:
+            endpoint_terms = ("ending balance", "balance at december 31", "balance at end")
+        elif str(int(base_year) + 1) in header_years and str(int(target_year) + 1) in header_years:
+            endpoint_terms = ("beginning balance", "balance at january 1", "balance at beginning")
+        else:
+            return None
+
+        for row in rows:
+            if not row:
+                continue
+            label = row[0].lower()
+            if any(term in label for term in endpoint_terms):
+                return row
+        return None
 
     def _year_table_candidates(
         self,
@@ -2959,6 +3075,63 @@ class NumericReasoner:
             if base_year in row_text and target_year in row_text:
                 return row, rows[index + 1 :]
         return None
+
+    def _same_column_row_ratio_percent(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        if " as a percentage of " not in query_lower:
+            return None
+        numerator_terms, denominator_terms = self._as_percentage_row_terms(query_lower)
+        if not numerator_terms or not denominator_terms:
+            return None
+        column_terms: list[str] = []
+        if "one-percentage-point increase" in query_lower or "one percentage point increase" in query_lower:
+            column_terms = ["increase"]
+        elif "one-percentage-point decrease" in query_lower or "one percentage point decrease" in query_lower:
+            column_terms = ["decrease"]
+        for node_id, text in contexts:
+            for headers, rows in self._markdown_tables(text):
+                column_index = None
+                if column_terms:
+                    column_index = self._column_index(headers, column_terms)
+                if column_index is None:
+                    column_index = self._ratio_value_column(headers, query_lower, denominator_terms, None)
+                if column_index is None:
+                    continue
+                numerator_row = self._ratio_table_row(rows, numerator_terms, prefer_total=False, query_lower=query_lower)
+                denominator_row = self._ratio_table_row(rows, denominator_terms, prefer_total=False, query_lower=query_lower)
+                if numerator_row is None or denominator_row is None or numerator_row == denominator_row:
+                    continue
+                if column_index >= min(len(numerator_row), len(denominator_row)):
+                    continue
+                numerator = self._first_number(numerator_row[column_index])
+                denominator = self._first_number(denominator_row[column_index])
+                if numerator is None or denominator in {None, 0}:
+                    continue
+                operation = self.executor.ratio(numerator, denominator)
+                if operation is None:
+                    continue
+                percent = operation.value * 100.0
+                return NumericAnswer(
+                    text=self._format_percent(percent),
+                    calculation=(
+                        f"same_column_row_ratio_percent row={numerator_row[0]} "
+                        f"denominator_row={denominator_row[0]} column={headers[column_index]}: "
+                        f"{numerator:g} / {denominator:g} * 100 = {self._format_percent(percent)}"
+                    ),
+                    cited_node_ids=[node_id],
+                )
+        return None
+
+    def _as_percentage_row_terms(self, query_lower: str) -> tuple[list[str], list[str]]:
+        if " as a percentage of " not in query_lower:
+            return [], []
+        before, after = query_lower.split(" as a percentage of ", 1)
+        numerator_text = re.sub(r"^.*?\b(?:what|which)\s+(?:is|are|was|were)\s+", "", before)
+        denominator_text = after.rstrip(" ?")
+        return self._keywords(numerator_text), self._keywords(denominator_text)
 
     def _ratio_percent(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
         years = re.findall(r"\b(20\d{2})\b", query_lower)
@@ -3415,6 +3588,78 @@ class NumericReasoner:
                 )
         return None
 
+    def _tax_provision_benefit_ratio(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        if "income tax provision" not in query_lower:
+            return None
+        if "benefit" not in query_lower:
+            return None
+        if "tax audit" not in query_lower and "settlement" not in query_lower:
+            return None
+        query_years = re.findall(r"\b(20\d{2})\b", query_lower)
+        query_year = query_years[0] if query_years else None
+        provision_pattern = re.compile(
+            r"income\s+tax\s+provision\s+for\s+(?P<year>20\d{2})\s+of\s+\$\s*"
+            r"(?P<denominator>[-+]?\d[\d,]*(?:\.\d+)?)\s*(?P<denominator_scale>billion|million|thousand)?"
+            r"(?P<trailing>[^.]{0,220})",
+            flags=re.IGNORECASE,
+        )
+        benefit_pattern = re.compile(
+            r"\$\s*(?P<numerator>[-+]?\d[\d,]*(?:\.\d+)?)\s*"
+            r"(?P<numerator_scale>billion|million|thousand)?\s+benefit\s+related\s+to\s+"
+            r"(?P<label>[^,.]{0,120}?(?:tax\s+audits?|settlement)[^,.]{0,80})",
+            flags=re.IGNORECASE,
+        )
+        best: tuple[int, int, str, float, float, str] | None = None
+        query_terms = set(self._keywords(query_lower))
+        for context_index, (node_id, text) in enumerate(contexts):
+            for sentence in self._prose_sentences(text):
+                lower_sentence = sentence.lower()
+                if "income tax provision" not in lower_sentence or "benefit" not in lower_sentence:
+                    continue
+                for provision_match in provision_pattern.finditer(sentence):
+                    if query_year and provision_match.group("year") != query_year:
+                        continue
+                    benefit_match = benefit_pattern.search(provision_match.group("trailing"))
+                    if not benefit_match:
+                        continue
+                    label = re.sub(r"\s+", " ", benefit_match.group("label")).strip(" ,.;")
+                    label_terms = set(self._keywords(label))
+                    if not ({"tax", "audit"} & label_terms or "settlement" in label_terms):
+                        continue
+                    numerator = self._scaled_number(
+                        benefit_match.group("numerator"),
+                        benefit_match.group("numerator_scale").lower() if benefit_match.group("numerator_scale") else None,
+                    )
+                    denominator = self._scaled_number(
+                        provision_match.group("denominator"),
+                        provision_match.group("denominator_scale").lower() if provision_match.group("denominator_scale") else None,
+                    )
+                    if denominator == 0:
+                        continue
+                    score = len(query_terms & label_terms)
+                    candidate = (score, -context_index, node_id, numerator, denominator, label)
+                    if best is None or candidate > best:
+                        best = candidate
+        if best is None:
+            return None
+        _score, _context_order, node_id, numerator, denominator, label = best
+        operation = self.executor.ratio(numerator, denominator)
+        if operation is None:
+            return None
+        result = operation.value * 100.0
+        return NumericAnswer(
+            text=self._format_percent(result),
+            calculation=(
+                f"ratio_percent row={label} denominator_row=income tax provision: "
+                f"{numerator:g} / {denominator:g} * 100 = {result:.1f}%"
+            ),
+            cited_node_ids=[node_id],
+        )
+
     def _column_index_containing(self, headers: list[str], terms: tuple[str, ...]) -> int | None:
         for index, header in enumerate(headers):
             header_lower = header.lower()
@@ -3463,6 +3708,72 @@ class NumericReasoner:
                 ),
                 cited_node_ids=[node_id],
             )
+        return None
+
+    def _quarterly_high_sale_price_percent_change(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        if "high sale price" not in query_lower and "high sales price" not in query_lower:
+            return None
+        if "quarter" not in query_lower and "quarters" not in query_lower:
+            return None
+        quarter_order = ["first", "second", "third", "fourth"]
+        requested = [quarter for quarter in quarter_order if quarter in query_lower]
+        if len(requested) < 2:
+            return None
+        base_quarter, target_quarter = requested[0], requested[1]
+        query_years = re.findall(r"\b(20\d{2})\b", query_lower)
+        query_year = query_years[0] if query_years else None
+
+        for node_id, text in contexts:
+            for headers, rows in self._markdown_tables(text):
+                high_index = self._quarterly_price_column(headers, "high", query_year)
+                if high_index is None:
+                    continue
+                base_row = self._quarter_row(rows, base_quarter)
+                target_row = self._quarter_row(rows, target_quarter)
+                if base_row is None or target_row is None:
+                    continue
+                if high_index >= len(base_row) or high_index >= len(target_row):
+                    continue
+                base = self._first_number(base_row[high_index])
+                target = self._first_number(target_row[high_index])
+                if base is None or target is None or base == 0:
+                    continue
+                operation = self.executor.percent_change(target, base)
+                if operation is None:
+                    continue
+                return NumericAnswer(
+                    text=f"{operation.value:.1f}%",
+                    calculation=(
+                        "quarterly_high_sale_price_percent_change "
+                        f"{base_quarter}->{target_quarter} column={headers[high_index].strip().lower()}: "
+                        f"{operation.expression}"
+                    ),
+                    cited_node_ids=[node_id],
+                )
+        return None
+
+    def _quarterly_price_column(self, headers: list[str], measure: str, query_year: str | None) -> int | None:
+        best: tuple[int, int] | None = None
+        for index, header in enumerate(headers):
+            header_lower = header.lower()
+            if measure not in header_lower:
+                continue
+            score = 1
+            if query_year and query_year in header_lower:
+                score += 3
+            candidate = (score, -index)
+            if best is None or candidate > best:
+                best = candidate
+        return -best[1] if best is not None else None
+
+    def _quarter_row(self, rows: list[list[str]], quarter: str) -> list[str] | None:
+        for row in rows:
+            if row and row[0].strip().lower().startswith(quarter):
+                return row
         return None
 
     def _dividend_table_value(self, text: str, row_label: str) -> float | None:
@@ -5288,6 +5599,54 @@ class NumericReasoner:
                 )
         return None
 
+    def _table_row_total_across_period(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        if "total" not in query_lower:
+            return None
+        if not re.search(r"\b(?:three|3)\s+year\s+period\b|\blast\s+three\s+years\b", query_lower):
+            return None
+        if any(term in query_lower for term in ["percent", "percentage", "ratio", "average", " per ", "change"]):
+            return None
+        for node_id, text in contexts:
+            for headers, rows in self._markdown_tables(text):
+                year_indexes = [
+                    index
+                    for index, header in enumerate(headers)
+                    if re.fullmatch(r"(?:19|20)\d{2}", header.strip())
+                ]
+                if len(year_indexes) < 3:
+                    continue
+                row = self._best_query_row(query_lower, headers, rows)
+                if not row:
+                    continue
+                values = []
+                used_headers = []
+                for index in year_indexes[:3]:
+                    if index >= len(row):
+                        continue
+                    value = self._first_number(row[index])
+                    if value is None:
+                        continue
+                    values.append(value)
+                    used_headers.append(headers[index].strip())
+                if len(values) != 3:
+                    continue
+                operation = self.executor.sum(values)
+                if operation is None:
+                    continue
+                return NumericAnswer(
+                    text=self._format_number(operation.value),
+                    calculation=(
+                        f"table_row_total_across_period row={row[0]} "
+                        f"years={','.join(used_headers)}: {operation.expression}"
+                    ),
+                    cited_node_ids=[node_id],
+                )
+        return None
+
     def _percent_of_stated_amount_prose(
         self,
         query_lower: str,
@@ -5697,7 +6056,7 @@ class NumericReasoner:
                 return value, {"row_label": label}
         best_match: tuple[float, int, int, str, float] | None = None
         for row_index, (label, value) in enumerate(rows):
-            matched_terms = [term for term in normalized_terms if term in label]
+            matched_terms = [term for term in normalized_terms if self._term_matches_text(term, label)]
             if not matched_terms:
                 continue
             score = sum(len(term) for term in matched_terms)
@@ -5723,7 +6082,7 @@ class NumericReasoner:
             return None, {}
         best_match: tuple[int, int, int, int, int, int, str, float] | None = None
         for row_index, (label, value) in enumerate(rows):
-            matched_terms = [term for term in normalized_terms if term in label]
+            matched_terms = [term for term in normalized_terms if self._term_matches_text(term, label)]
             if not matched_terms:
                 continue
             coverage = len(matched_terms)
@@ -5738,7 +6097,7 @@ class NumericReasoner:
                 role=role,
                 denominator_label=denominator_label,
             )
-            exact_score = 1 if all(term in label for term in normalized_terms) else 0
+            exact_score = 1 if all(self._term_matches_text(term, label) for term in normalized_terms) else 0
             candidate = (coverage, exact_score, compactness, intent_score, lexical_score, -row_index, label, value)
             if best_match is None or candidate > best_match:
                 best_match = candidate
@@ -5746,6 +6105,11 @@ class NumericReasoner:
             return None, {}
         _coverage, _exact, _compactness, _intent, _lexical, _row_order, label, value = best_match
         return value, {"row_label": label}
+
+    def _term_matches_text(self, term: str, text: str) -> bool:
+        if len(term) <= 2:
+            return term in set(re.findall(r"[a-z0-9]+", text))
+        return term in text
 
     def _ratio_operand_intent_score(
         self,
@@ -6242,6 +6606,7 @@ class NumericReasoner:
 
     def _normalize_query(self, query: str) -> str:
         normalized = query.lower()
+        normalized = re.sub(r"\b(percent|percentage)\s+f\s+the\b", r"\1 of the", normalized)
         return normalized.replace("comodities", "commodities")
 
     def _amounts(self, text: str) -> list[float]:

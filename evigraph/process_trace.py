@@ -183,6 +183,26 @@ class ProcessTraceAnalyzer:
 
     def _trace_row(self, row: dict[str, str]) -> dict[str, Any]:
         run_dir = Path(row.get("run_dir", ""))
+        if not self._has_run_artifacts(run_dir):
+            trace = {
+                "id": row.get("id", ""),
+                "query": row.get("query", ""),
+                "answer": row.get("answer", ""),
+                "prediction": row.get("prediction", ""),
+                "calculation": "",
+                "run_dir": row.get("run_dir", ""),
+                "evidence_available": self._truthy(row.get("citation_correct")),
+                "period_hit": True,
+                "row_hit": self._truthy(row.get("row_operation_grounded")),
+                "operand_hit": self._truthy(row.get("operand_semantics_checked", row.get("calculation_supported"))),
+                "operation_hit": self._truthy(row.get("operation_semantics_checked")),
+                "citation_hit": self._truthy(row.get("citation_correct")),
+                "answer_supported": self._truthy(row.get("answer_supported")),
+                "exact_match": self._to_float(row.get("accuracy")) >= 1.0,
+                "critic": {"csv_fallback": True},
+            }
+            trace["first_failed_step"] = self._first_failed_step(trace)
+            return trace
         support_context = self._support_context(run_dir)
         calculation = self._calculation_line(run_dir)
         critic = self.critic.assess(row.get("query", ""), support_context, calculation)
@@ -206,6 +226,11 @@ class ProcessTraceAnalyzer:
         }
         trace["first_failed_step"] = self._first_failed_step(trace)
         return trace
+
+    def _has_run_artifacts(self, run_dir: Path) -> bool:
+        if not str(run_dir) or str(run_dir) == ".":
+            return False
+        return (run_dir / "support_graph.json").exists() or (run_dir / "answer.md").exists()
 
     def _first_failed_step(self, trace: dict[str, Any]) -> str:
         for step in PROCESS_STEPS:

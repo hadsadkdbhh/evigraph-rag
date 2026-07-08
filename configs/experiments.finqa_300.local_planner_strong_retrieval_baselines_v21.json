@@ -1,0 +1,75 @@
+{
+  "title": "EviGraph FinQA 300-Example Strong Local Retrieval Baselines v21",
+  "config": "configs/default_local_planner.yaml",
+  "output_dir": "outputs/eval/finqa_300_local_planner_strong_retrieval_baselines_v21",
+  "datasets": [
+    {
+      "name": "finqa_300_subset",
+      "raw_questions": "data/raw/finqa_300_subset.jsonl",
+      "questions": "outputs/eval/finqa_300_local_planner_strong_retrieval_baselines_v21/finqa_questions.jsonl",
+      "field_map": {
+        "id": "id",
+        "query": "question",
+        "answer": "answer",
+        "source_doc": "source_doc",
+        "task_type": "task_type"
+      },
+      "corpus": "data/finqa_300_corpus",
+      "build_index": true,
+      "index": "outputs/index/finqa_300_subset.json",
+      "chunk_size": 1200,
+      "chunk_overlap": 160,
+      "gate": {
+        "min_records": 300,
+        "min_source_doc_coverage": 1.0,
+        "fail_on_error": true
+      }
+    }
+  ],
+  "experiments": [
+    {
+      "name": "open_bm25_baseline_v21",
+      "type": "batch",
+      "retrieval_mode": "open",
+      "methods": [
+        "direct_rag",
+        "topk",
+        "retrieve_then_program",
+        "full_context",
+        "utility_only",
+        "full_evigraph"
+      ]
+    },
+    {
+      "name": "open_tfidf_baseline_v21",
+      "type": "batch",
+      "retrieval_mode": "open_tfidf",
+      "methods": [
+        "direct_rag",
+        "topk",
+        "retrieve_then_program",
+        "full_context",
+        "utility_only",
+        "full_evigraph"
+      ]
+    },
+    {
+      "name": "open_hybrid_baseline_v21",
+      "type": "batch",
+      "retrieval_mode": "open_hybrid",
+      "methods": [
+        "direct_rag",
+        "topk",
+        "retrieve_then_program",
+        "full_context",
+        "utility_only",
+        "full_evigraph"
+      ]
+    }
+  ],
+  "limitations": [
+    "This manifest reruns BM25, TF-IDF, and deterministic numeric hybrid retrieval baselines after the v21 planner improvements.",
+    "The TF-IDF baseline requires scikit-learn but does not require API access, GPUs, or downloaded neural models.",
+    "These are local diagnostic retrieval baselines; a final paper should still add a trained neural dense retriever if feasible."
+  ]
+}

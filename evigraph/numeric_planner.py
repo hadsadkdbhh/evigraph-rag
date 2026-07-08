@@ -217,6 +217,16 @@ class HeuristicNumericPlanClient:
 
         if self._is_lookup(lowered, years):
             row_terms = self._lookup_terms(lowered) or operation_terms
+            if self._is_minimum_lookup(lowered) and len(years) >= 2:
+                return {
+                    "operation": "minimum",
+                    "node_id": self._node_id(contexts, row_terms),
+                    "values": [
+                        {"row_terms": row_terms, "year": year, "period": period}
+                        for year in self._year_series(lowered, years)
+                    ],
+                    "rationale": "heuristic minimum-over-years lookup program",
+                }
             target_year = years[0] if len(years) == 1 else ""
             return {
                 "operation": "lookup",
@@ -402,6 +412,9 @@ class HeuristicNumericPlanClient:
             re.search(r"\b(?:what (?:are|is|was|were) the )?(?:total amount|amount|value|number) of\b", lowered)
             and not any(token in lowered for token in ("average", "ratio", "percentage", "percent", "portion", "share"))
         )
+
+    def _is_minimum_lookup(self, lowered: str) -> bool:
+        return bool(re.search(r"\b(?:lowest|minimum|min)\b", lowered))
 
     def _ratio_terms(self, lowered: str) -> tuple[list[str], list[str]]:
         patterns = [
@@ -736,7 +749,7 @@ class NumericPlanExecutor:
         if operation == "sum" and self._query_requires_ratio_like_operation(query):
             return None
 
-        if operation in {"sum", "average", "product"}:
+        if operation in {"sum", "average", "product", "minimum"}:
             resolved_values = [
                 value
                 for item in plan.get("values", [])
@@ -752,6 +765,8 @@ class NumericPlanExecutor:
                 result = self.executor.sum(values)
             elif operation == "average":
                 result = self.executor.average(values)
+            elif operation == "minimum":
+                result = self.executor.minimum(values)
             else:
                 result = self.executor.product(values)
             if result is None:

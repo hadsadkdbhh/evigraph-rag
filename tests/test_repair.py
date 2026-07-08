@@ -95,11 +95,18 @@ class VerifierGuidedRepairerTest(unittest.TestCase):
         self.assertEqual(action.action_type, "REPAIR_NUMERIC_ANSWER")
         self.assertEqual(action.target_node_ids, ["right"])
 
-    def test_does_not_repair_already_supported_answer(self) -> None:
+    def test_does_not_repair_already_supported_answer_without_better_candidate(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(EvidenceNode("node", "text", "value 10", source_doc="right.md"))
         initial = Answer(text="10", citations=["node"], calculations=["planned_lookup row=value: 10 = 10"])
-        supported = {"answer_supported": True, "row_grounded": True, "operation_semantics_checked": True}
+        supported = {
+            "answer_supported": True,
+            "row_grounded": True,
+            "period_grounded": True,
+            "operation_semantics_checked": True,
+            "calculation_supported": True,
+            "arithmetically_supported": True,
+        }
 
         answer, verification, action = VerifierGuidedRepairer().repair(
             "what is the value?",
@@ -113,6 +120,210 @@ class VerifierGuidedRepairerTest(unittest.TestCase):
         self.assertIs(answer, initial)
         self.assertIs(verification, supported)
         self.assertIsNone(action)
+
+    def test_does_not_repair_pure_source_consistency_failure(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                "wrong_source",
+                "text",
+                "ipr&d 303.4 cash acquired 303.4",
+                source_doc="wrong.md",
+                metadata={"retrieval_rank": 4},
+                scores={"final_score": 4.0},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                "other_source",
+                "text",
+                "ipr&d 53.1 total purchase price net of cash acquired 182.2",
+                source_doc="other.md",
+                metadata={"retrieval_rank": 1},
+                scores={"final_score": 4.5},
+            )
+        )
+        initial = Answer(
+            text="100%",
+            citations=["wrong_source"],
+            calculations=["ratio_percent row=ipr&d denominator_row=cash acquired: 303.4 / 303.4 * 100 = 100.0%"],
+        )
+        source_failed = {
+            "answer_supported": False,
+            "row_grounded": True,
+            "period_grounded": True,
+            "operation_semantics_checked": True,
+            "arithmetically_supported": True,
+            "calculation_supported": True,
+            "source_consistent": False,
+        }
+
+        answer, verification, action = VerifierGuidedRepairer().repair(
+            "what percentage of the total cash purchase price net of cash acquired was represented by ipr&d?",
+            initial,
+            source_failed,
+            graph,
+            FakeGenerator(),
+            FakeVerifier(),
+        )
+
+        self.assertIs(answer, initial)
+        self.assertIs(verification, source_failed)
+        self.assertIsNone(action)
+
+    def test_repairs_source_consistency_failure_when_current_percent_is_implausible(self) -> None:
+        graph = EvidenceGraph()
+        weak = EvidenceNode(
+            "weak",
+            "text",
+            "purchase price 1.6 cash paid 1137.4",
+            source_doc="weak.md",
+            metadata={"retrieval_rank": 4},
+            scores={"final_score": 4.0},
+        )
+        strong = EvidenceNode(
+            "strong",
+            "text",
+            "purchase price 1139 cash paid 1137.4",
+            source_doc="strong.md",
+            metadata={"retrieval_rank": 1},
+            scores={"final_score": 3.9},
+        )
+        graph.add_node(weak)
+        graph.add_node(strong)
+        initial = Answer(
+            text="71087.5%",
+            citations=["weak"],
+            calculations=["ratio_percent row=cash paid denominator_row=purchase price: 1137.4 / 1.6 * 100 = 71087.5%"],
+        )
+        source_failed = {
+            "answer_supported": True,
+            "row_grounded": True,
+            "period_grounded": True,
+            "operation_semantics_checked": True,
+            "arithmetically_supported": True,
+            "calculation_supported": True,
+            "source_consistent": False,
+        }
+
+        class StrongerGenerator:
+            def generate_planner_first(self, query: str, support_graph: EvidenceGraph) -> Answer:
+                source_docs = {node.source_doc for node in support_graph.nodes.values()}
+                if "strong.md" in source_docs:
+                    return Answer(
+                        text="99.9%",
+                        citations=["strong"],
+                        calculations=["ratio_percent row=cash paid denominator_row=purchase price: 1137.4 / 1139 * 100 = 99.9%"],
+                    )
+                return initial
+
+            def generate(self, query: str, support_graph: EvidenceGraph) -> Answer:
+                return self.generate_planner_first(query, support_graph)
+
+        class StrongerVerifier:
+            def verify(self, query: str, answer: Answer, support_graph: EvidenceGraph) -> dict:
+                return {
+                    "answer_supported": True,
+                    "row_grounded": True,
+                    "period_grounded": True,
+                    "operation_semantics_checked": True,
+                    "arithmetically_supported": True,
+                    "calculation_supported": True,
+                    "row_operation_grounded": True,
+                    "semantically_grounded": True,
+                    "missing_evidence": [],
+                    "confidence": 0.92 if answer.text == "99.9%" else 0.85,
+                }
+
+        answer, verification, action = VerifierGuidedRepairer().repair(
+            "what portion of the purchase price is paid in cash?",
+            initial,
+            source_failed,
+            graph,
+            StrongerGenerator(),
+            StrongerVerifier(),
+        )
+
+        self.assertEqual(answer.text, "99.9%")
+        self.assertTrue(verification["repair_applied"])
+        self.assertIn("source_consistency", action.params["issues"])
+
+    def test_repairs_supported_but_weaker_operand_candidate_when_candidate_has_stronger_support(self) -> None:
+        graph = EvidenceGraph()
+        weak = EvidenceNode(
+            "weak",
+            "text",
+            "purchase price 1.6 cash paid 1137.4",
+            source_doc="weak.md",
+            metadata={"retrieval_rank": 1},
+            scores={"final_score": 4.0},
+        )
+        strong = EvidenceNode(
+            "strong",
+            "text",
+            "purchase price 1139 cash paid 1137.4",
+            source_doc="strong.md",
+            metadata={"retrieval_rank": 2},
+            scores={"final_score": 3.9},
+        )
+        graph.add_node(weak)
+        graph.add_node(strong)
+        initial = Answer(
+            text="71087.5%",
+            citations=["weak"],
+            calculations=["ratio_percent row=cash paid denominator_row=purchase price: 1137.4 / 1.6 * 100 = 71087.5%"],
+        )
+        supported_but_weak = {
+            "answer_supported": True,
+            "row_grounded": True,
+            "period_grounded": True,
+            "operation_semantics_checked": True,
+            "arithmetically_supported": True,
+            "calculation_supported": True,
+        }
+
+        class StrongerGenerator:
+            def generate_planner_first(self, query: str, support_graph: EvidenceGraph) -> Answer:
+                source_docs = {node.source_doc for node in support_graph.nodes.values()}
+                if "strong.md" in source_docs:
+                    return Answer(
+                        text="99.9%",
+                        citations=["strong"],
+                        calculations=["ratio_percent row=cash paid denominator_row=purchase price: 1137.4 / 1139 * 100 = 99.9%"],
+                    )
+                return initial
+
+            def generate(self, query: str, support_graph: EvidenceGraph) -> Answer:
+                return self.generate_planner_first(query, support_graph)
+
+        class StrongerVerifier:
+            def verify(self, query: str, answer: Answer, support_graph: EvidenceGraph) -> dict:
+                strong = answer.text == "99.9%"
+                return {
+                    "answer_supported": True,
+                    "row_grounded": True,
+                    "period_grounded": True,
+                    "operation_semantics_checked": True,
+                    "arithmetically_supported": True,
+                    "calculation_supported": True,
+                    "row_operation_grounded": True,
+                    "semantically_grounded": True,
+                    "missing_evidence": [],
+                    "confidence": 0.92 if strong else 0.85,
+                }
+
+        answer, verification, action = VerifierGuidedRepairer().repair(
+            "what portion of the purchase price is paid in cash?",
+            initial,
+            supported_but_weak,
+            graph,
+            StrongerGenerator(),
+            StrongerVerifier(),
+        )
+
+        self.assertEqual(answer.text, "99.9%")
+        self.assertTrue(verification["repair_applied"])
+        self.assertEqual(action.action_type, "REPAIR_NUMERIC_ANSWER")
 
     def test_repairs_operand_failure_even_when_row_and_operation_pass(self) -> None:
         graph = EvidenceGraph()
@@ -260,7 +471,7 @@ class VerifierGuidedRepairerTest(unittest.TestCase):
         self.assertFalse(verification["repair_applied"])
         self.assertIsNone(action)
 
-    def test_method_runner_does_not_apply_repair_in_open_retrieval(self) -> None:
+    def test_method_runner_applies_repair_in_open_retrieval(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             corpus = root / "corpus"
@@ -270,12 +481,14 @@ class VerifierGuidedRepairerTest(unittest.TestCase):
                 encoding="utf-8",
             )
             runner = MethodRunner({"run": {"output_dir": str(root / "runs")}})
+            calls = []
 
-            class RaisingRepairer:
-                def repair(self, *args, **kwargs):
-                    raise AssertionError("open retrieval should not invoke verifier-guided repair")
+            class RecordingRepairer:
+                def repair(self, query, answer, verification, graph, generator, verifier):
+                    calls.append(query)
+                    return answer, verification, None
 
-            runner.repairer = RaisingRepairer()
+            runner.repairer = RecordingRepairer()
 
             runner.run(
                 "what percent decrease for interest income occurred between 2014 and 2015?",
@@ -284,6 +497,7 @@ class VerifierGuidedRepairerTest(unittest.TestCase):
                 retrieval_mode="open",
                 log_run=False,
             )
+            self.assertEqual(len(calls), 1)
 
     def test_method_runner_allows_repair_in_source_rerank(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

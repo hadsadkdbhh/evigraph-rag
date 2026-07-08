@@ -96,6 +96,50 @@ class RowOperationDiagnosticAnalyzerTest(unittest.TestCase):
 
         self.assertNotIn("wrong_operation_type", analysis["diagnostics"][0]["labels"])
 
+    def test_percent_change_in_average_is_diagnosed_as_percent_change_intent(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            csv_path = self._write_csv(
+                root,
+                [
+                    {
+                        "id": "case-average-percent-change",
+                        "query": "what is the percentage change in average of investments from 2014 to 2015?",
+                        "answer": "3.6%",
+                        "prediction": "5.1%",
+                        "accuracy": "0.0",
+                        "calculation": "percent_change row=investments: (-33.7 - -35.5) / 35.5 * 100 = 5.1%",
+                        "run_dir": "",
+                    }
+                ],
+            )
+
+            analysis = RowOperationDiagnosticAnalyzer().analyze(csv_path)
+
+        self.assertNotIn("wrong_operation_type", analysis["diagnostics"][0]["labels"])
+
+    def test_planned_ratio_matches_ratio_percent_intent(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            csv_path = self._write_csv(
+                root,
+                [
+                    {
+                        "id": "case-planned-ratio",
+                        "query": "what percentage of long-term debt is due after 2021?",
+                        "answer": "89%",
+                        "prediction": "42.4%",
+                        "accuracy": "0.0",
+                        "calculation": "planned_ratio target=long-term debt base=total debt: 5548.1 / 13093 * 100 = 42.4%",
+                        "run_dir": "",
+                    }
+                ],
+            )
+
+            analysis = RowOperationDiagnosticAnalyzer().analyze(csv_path)
+
+        self.assertNotIn("wrong_operation_type", analysis["diagnostics"][0]["labels"])
+
     def test_diagnoses_missing_row_label_trace(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -122,6 +166,29 @@ class RowOperationDiagnosticAnalyzerTest(unittest.TestCase):
 
         self.assertIn("wrong_row_label", analysis["diagnostics"][0]["labels"])
 
+    def test_uses_csv_calculation_when_run_artifacts_are_absent(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            csv_path = self._write_csv(
+                root,
+                [
+                    {
+                        "id": "case-csv-calculation",
+                        "query": "what is the percentage change in net commodities from 2016 to 2017?",
+                        "answer": "-35.6%",
+                        "prediction": "0.5%",
+                        "accuracy": "0.0",
+                        "calculation": "ratio_percent row=net commodities denominator_row=total commodities: 1 / 200 * 100 = 0.5%",
+                        "run_dir": "",
+                    }
+                ],
+            )
+
+            analysis = RowOperationDiagnosticAnalyzer().analyze(csv_path)
+
+        self.assertEqual(analysis["primary_counts"]["wrong_operation_type"], 1)
+        self.assertIn("wrong_operation_type", analysis["diagnostics"][0]["labels"])
+
     def _write_run(self, root: Path, calculation: str, context: str) -> Path:
         run_dir = root / f"run_{len(list(root.glob('run_*')))}"
         run_dir.mkdir()
@@ -137,7 +204,7 @@ class RowOperationDiagnosticAnalyzerTest(unittest.TestCase):
 
     def _write_csv(self, root: Path, rows: list[dict[str, str]]) -> Path:
         path = root / "results.csv"
-        fieldnames = ["id", "method", "query", "answer", "prediction", "accuracy", "run_dir"]
+        fieldnames = ["id", "method", "query", "answer", "prediction", "calculation", "accuracy", "run_dir"]
         with path.open("w", encoding="utf-8", newline="") as handle:
             writer = csv.DictWriter(handle, fieldnames=fieldnames)
             writer.writeheader()

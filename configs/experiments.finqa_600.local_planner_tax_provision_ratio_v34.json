@@ -1,0 +1,54 @@
+{
+  "title": "EviGraph FinQA 600-Example Local Program Planner Tax Provision Ratio v34",
+  "config": "configs/default_local_planner.yaml",
+  "output_dir": "outputs/eval/finqa_600_local_planner_tax_provision_ratio_v34",
+  "datasets": [
+    {
+      "name": "finqa_600_subset",
+      "raw_questions": "data/raw/finqa_600_subset.jsonl",
+      "questions": "outputs/eval/finqa_600_local_planner_tax_provision_ratio_v34/finqa_questions.jsonl",
+      "field_map": {
+        "id": "id",
+        "query": "question",
+        "answer": "answer",
+        "source_doc": "source_doc",
+        "task_type": "task_type"
+      },
+      "corpus": "data/finqa_600_corpus",
+      "build_index": true,
+      "index": "outputs/index/finqa_600_subset.json",
+      "chunk_size": 1200,
+      "chunk_overlap": 160,
+      "gate": {
+        "min_records": 600,
+        "min_source_doc_coverage": 1.0,
+        "fail_on_error": true
+      }
+    }
+  ],
+  "experiments": [
+    {
+      "name": "oracle_doc_full_local_planner_v34_tax_provision_ratio",
+      "type": "batch",
+      "retrieval_mode": "oracle_doc",
+      "methods": ["full_evigraph"]
+    },
+    {
+      "name": "open_bm25_full_local_planner_v34_tax_provision_ratio",
+      "type": "batch",
+      "retrieval_mode": "open",
+      "methods": ["full_evigraph"]
+    },
+    {
+      "name": "source_rerank_full_local_planner_v34_tax_provision_ratio",
+      "type": "batch",
+      "retrieval_mode": "source_rerank",
+      "methods": ["full_evigraph"]
+    }
+  ],
+  "limitations": [
+    "This manifest carries forward v33 verifier endpoint grounding.",
+    "It adds a bounded prose component-ratio executor for income-tax-provision benefit questions.",
+    "The target failure pattern is a tax-audit settlement benefit divided by the same-sentence income tax provision, preventing later commitment tables from supplying unrelated denominators."
+  ]
+}

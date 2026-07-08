@@ -84,11 +84,14 @@ class ManifestRunnerTest(unittest.TestCase):
             self.assertTrue(Path(artifacts["row_operation_diagnostics"][0]).exists())
             self.assertEqual(len(artifacts["process_traces"]), 1)
             self.assertTrue(Path(artifacts["process_traces"][0]).exists())
+            self.assertEqual(len(artifacts["retrieval_diagnostics"]), 1)
+            self.assertTrue(Path(artifacts["retrieval_diagnostics"][0]).exists())
             self.assertTrue(Path(artifacts["summary"]).exists())
             self.assertTrue(Path(artifacts["card"]).exists())
             self.assertIn("Temp Manifest", Path(artifacts["card"]).read_text(encoding="utf-8"))
             self.assertIn("row_operation_diagnostics", Path(artifacts["card"]).read_text(encoding="utf-8"))
             self.assertIn("process_traces", Path(artifacts["card"]).read_text(encoding="utf-8"))
+            self.assertIn("retrieval_diagnostics", Path(artifacts["card"]).read_text(encoding="utf-8"))
 
     def test_full_evigraph_handles_non_default_year_pair(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -108,6 +111,32 @@ class ManifestRunnerTest(unittest.TestCase):
 
             self.assertEqual(result["answer"]["text"], "2024 is higher than 2023 by 15.5.")
             self.assertIn("calc_2024_minus_2023", result["selected_ids"])
+
+    def test_method_runner_passes_configured_adjacent_window_to_retriever(self) -> None:
+        seen_windows: list[int] = []
+
+        class FakeRetriever:
+            def retrieve(
+                self,
+                query,
+                corpus_path=None,
+                top_k=8,
+                source_doc=None,
+                retrieval_mode="oracle_doc",
+                adjacent_window=1,
+            ):
+                seen_windows.append(adjacent_window)
+                return []
+
+        with patch("evigraph.methods.CorpusRetriever", return_value=FakeRetriever()):
+            MethodRunner({"retrieval": {"adjacent_window": 2}}).run(
+                "What was revenue?",
+                "direct_rag",
+                corpus_path="unused",
+                log_run=False,
+            )
+
+        self.assertEqual(seen_windows, [2])
 
     def test_operation_planner_ablation_disables_planned_numeric_fallback_only(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

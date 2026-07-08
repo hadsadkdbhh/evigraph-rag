@@ -1,0 +1,94 @@
+{
+  "title": "EviGraph FinQA 300-Example Local Program Planner Ablation Study v28",
+  "config": "configs/default_local_planner.yaml",
+  "output_dir": "outputs/eval/finqa_300_local_planner_ablation_v28",
+  "datasets": [
+    {
+      "name": "finqa_300_subset",
+      "raw_questions": "data/raw/finqa_300_subset.jsonl",
+      "questions": "outputs/eval/finqa_300_local_planner_ablation_v28/finqa_questions.jsonl",
+      "field_map": {
+        "id": "id",
+        "query": "question",
+        "answer": "answer",
+        "source_doc": "source_doc",
+        "task_type": "task_type"
+      },
+      "corpus": "data/finqa_300_corpus",
+      "build_index": true,
+      "index": "outputs/index/finqa_300_subset.json",
+      "chunk_size": 1200,
+      "chunk_overlap": 160,
+      "gate": {
+        "min_records": 300,
+        "min_source_doc_coverage": 1.0,
+        "fail_on_error": true
+      }
+    }
+  ],
+  "experiments": [
+    {
+      "name": "oracle_doc_ablation_v28",
+      "type": "batch",
+      "retrieval_mode": "oracle_doc",
+      "methods": [
+        "direct_rag",
+        "topk",
+        "retrieve_then_program",
+        "full_context",
+        "utility_only",
+        "evigraph_wo_risk",
+        "evigraph_wo_operation_planner",
+        "evigraph_wo_verifier_grounded_rejection",
+        "evigraph_wo_verifier",
+        "evigraph_wo_support",
+        "full_evigraph"
+      ]
+    },
+    {
+      "name": "open_bm25_ablation_v28",
+      "type": "batch",
+      "retrieval_mode": "open",
+      "methods": [
+        "direct_rag",
+        "topk",
+        "retrieve_then_program",
+        "full_context",
+        "utility_only",
+        "evigraph_wo_risk",
+        "evigraph_wo_operation_planner",
+        "evigraph_wo_verifier_grounded_rejection",
+        "evigraph_wo_verifier",
+        "evigraph_wo_support",
+        "full_evigraph"
+      ]
+    },
+    {
+      "name": "source_rerank_ablation_v28",
+      "type": "batch",
+      "retrieval_mode": "source_rerank",
+      "methods": [
+        "direct_rag",
+        "topk",
+        "retrieve_then_program",
+        "full_context",
+        "utility_only",
+        "evigraph_wo_risk",
+        "evigraph_wo_operation_planner",
+        "evigraph_wo_verifier_grounded_rejection",
+        "evigraph_wo_verifier",
+        "evigraph_wo_support",
+        "full_evigraph"
+      ]
+    }
+  ],
+  "limitations": [
+    "This manifest reruns component ablations after the v28 percent-intent and operand-diagnostic improvements.",
+    "It uses the local deterministic planner and does not require LLM API credentials.",
+    "Use this manifest before claiming component deltas beside the v28 main Full EviGraph results.",
+    "Direct RAG, top-k, retrieve-then-program, full-context, and utility-only are retrieval/selection baselines.",
+    "No-operation-planner keeps retrieval, evidence graph, support extraction, executor, and verifier, but disables the local program-planning fallback.",
+    "No-verifier-grounded-rejection keeps verifier diagnostics but does not replace failed row-grounded numeric answers with insufficient-evidence responses.",
+    "No-risk, no-verifier, and no-support ablations isolate graph scoring, verification, and support-subgraph extraction in each retrieval setting."
+  ]
+}
