@@ -43,7 +43,7 @@ Each retrieved item becomes a node with utility, risk, cost, and provenance sign
 The system then selects a support subgraph, expands source context when running oracle-document analysis, executes table operations, and verifies claims against citations.
 
 This skeleton is intentionally conservative.
-The current FinQA experiments use a deterministic 300-example validation subset and report oracle-document, open BM25, BM25 with source reranking, TF-IDF, local hashed dense retrieval, and deterministic hybrid retrieval settings.
+The current FinQA experiments use a deterministic 300-example validation subset and a 600-example stress subset, and report oracle-document, open BM25, BM25 with source reranking, TF-IDF, deterministic hybrid retrieval, local hashed dense retrieval, and a sentence-transformer neural retrieval track.
 Rather than claiming benchmark-level superiority, the paper asks a narrower question: what is gained when a RAG system turns retrieved text into a selected, executable, and verified evidence state?
 
 Our current answer is a mechanism story rather than a raw leaderboard claim.
@@ -51,7 +51,7 @@ On the FinQA-300 diagnostic subset, the latest v38 table-operation EviGraph conf
 The corresponding answer-support rates are 0.850, 0.853, and 0.850, and the process trace shows high row grounding and operation-semantics checking while isolating operand selection as the dominant remaining bottleneck.
 By contrast, a GPT-5.4 Direct RAG baseline reaches higher exact match under oracle-document retrieval (0.693), open BM25 (0.523), and source reranking (0.690), but its answer-support rates remain much lower: 0.343, 0.273, and 0.340 respectively.
 This makes the current claim sharper: EviGraph is not simply an accuracy booster over a frontier external reader; it is an auditable evidence-state mechanism that closes much of the accuracy gap while exposing whether answers are actually supported by cited evidence and executable operations.
-On the larger FinQA-600 stress subset, the same v38 local-planner configuration reaches 0.502 under oracle-document retrieval, 0.368 under open BM25, and 0.498 under BM25 plus source reranking.
+On the larger FinQA-600 stress subset, the latest guarded repair configuration reaches 0.503 under oracle-document retrieval, 0.377 under open BM25, and 0.502 under BM25 plus source reranking.
 We therefore treat FinQA-300 as the mechanism table and FinQA-600 as a pressure test that exposes remaining generalization gaps.
 
 \section{Related Work}
@@ -198,7 +198,8 @@ This suite is used for mechanism debugging, not public benchmark claims.
 \subsection{Retrieval Settings}
 
 \textbf{Oracle-doc} constrains retrieval to the gold \texttt{source\_doc} and expands full source context for numerical evidence.
-\textbf{Open BM25} retrieves from the full corpus without source metadata.
+\textbf{Open BM25} retrieves from the full corpus without source metadata and is treated as a stress setting for retrieval exposure.
+\textbf{Neural dense and neural hybrid} use sentence-transformer embeddings, with the hybrid setting combining embedding cosine similarity, normalized BM25, and lightweight numeric/table overlap features; these runs are reported separately from lexical BM25.
 \textbf{BM25 + source rerank} retrieves broadly and softly promotes candidates whose source matches the known \texttt{source\_doc}; this is an analysis setting, not a deployable open-retrieval claim.
 
 \subsection{Baselines and Ablations}
@@ -248,8 +249,8 @@ We additionally compare open retrieval variants while keeping the local program 
 Open BM25 remains the strongest current non-API retrieval control for this subset.
 In the latest v21 retrieval-baseline run, open BM25 and deterministic numeric hybrid retrieval both reach 0.493 exact match, while TF-IDF reaches 0.467.
 TF-IDF is useful because it changes the lexical matching surface without using a learned retriever: it reduces wrong-row/operation counts from 53 to 36, but increases missing percent-answer failures from 31 to 49.
-The latest v38 failure-driven repair improves the full EviGraph open-BM25 result to 0.523 on FinQA-300, but the 600-example stress subset remains substantially harder at 0.368.
-The dense baseline is intentionally labeled as local hashed dense rather than neural dense retrieval; it is useful as a reproducible control, but it is not a substitute for a trained embedding retriever.
+The latest v38 failure-driven repair improves the full EviGraph open-BM25 result to 0.523 on FinQA-300, but the 600-example stress subset remains substantially harder: the guarded v43 repair reaches 0.377 under open BM25.
+The earlier dense baseline is intentionally labeled as local hashed dense; the current neural retrieval track uses sentence-transformer dense and neural-hybrid retrieval and is evaluated as a separate open-retrieval stress experiment.
 These results prevent an overbroad claim: the current system's main empirical story is not that retrieval is solved, but that evidence-state control improves the use of retrieved evidence once candidates are available.
 
 \paragraph{Retrieval coverage diagnostics.}
@@ -261,8 +262,8 @@ This diagnostic supports the paper's current bottleneck claim: improving open re
 
 \paragraph{FinQA-600 stress subset.}
 To avoid overfitting the narrative to the 300-example diagnostic subset, we also construct a deterministic 600-example FinQA validation subset using the same seed and a larger sampling pool.
-Full EviGraph v38 obtains 0.502 exact match under oracle-document retrieval, 0.368 under open BM25, and 0.498 under source reranking.
-Answer support remains substantially higher than exact match (0.818, 0.767, and 0.818), and operand-semantics checks remain high (0.970, 0.970, and 0.970), but supported wrong answers still expose unresolved operand ambiguity.
+Full EviGraph v43 obtains 0.503 exact match under oracle-document retrieval, 0.377 under open BM25, and 0.502 under source reranking.
+Answer support remains substantially higher than exact match (0.820, 0.787, and 0.822), and operand-semantics checks remain high (0.970, 0.977, and 0.970), but supported wrong answers still expose unresolved operand ambiguity.
 The drop relative to FinQA-300 is useful rather than embarrassing: it shows that the present system has a real mechanism, while operand grounding remains the key generalization bottleneck.
 
 \input{generated/finqa_300_local_planner_table_ops_v21/finqa_results_tables}

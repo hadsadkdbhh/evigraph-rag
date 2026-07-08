@@ -322,6 +322,41 @@ class ClaimVerifierTest(unittest.TestCase):
         self.assertTrue(verification["source_consistent"])
         self.assertTrue(verification["answer_supported"])
 
+    def test_source_consistency_flags_same_company_lower_rank_document_distractor(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                "ip_2005_rank1",
+                "text",
+                "purchase obligations for pulpwood logs and wood chips 2006 2400 total purchase obligations 3264",
+                source_doc="finqa_002_ip_2005_page_35_pdf_3.md",
+                metadata={"retrieval_rank": 1},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                "ip_2007_rank4",
+                "text",
+                "purchase obligations 2008 1953 lease obligations 2008 136",
+                source_doc="finqa_020_ip_2007_page_75_pdf_2.md",
+                metadata={"retrieval_rank": 4},
+            )
+        )
+        answer = Answer(
+            text="8.6%",
+            citations=["ip_2007_rank4"],
+            calculations=["ratio_percent row=lease obligations denominator_row=purchase obligations: 168 / 1953 * 100 = 8.6%"],
+        )
+
+        verification = ClaimVerifier().verify(
+            "what percent of the purchase obligations in 2006 set aside for pulpwood logs and wood chips?",
+            answer,
+            graph,
+        )
+
+        self.assertFalse(verification["source_consistent"])
+        self.assertTrue(verification["answer_supported"])
+
     def test_calculation_inputs_do_not_support_wrong_numeric_answer(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(EvidenceNode("text", "text", "interest expense of $914 million increased by $23 million", source_doc="report.md"))

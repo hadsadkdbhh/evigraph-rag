@@ -1,0 +1,20 @@
+run:
+  output_dir: outputs/runs
+retrieval:
+  top_k: 16
+selection:
+  max_nodes: 4
+  risk_threshold: 0.65
+scoring:
+  provider: rule
+  lambda_cost: 0.4
+  lambda_risk: 1.0
+  lambda_uncertainty: 0.7
+numeric_planner:
+  enabled: true
+  strict: false
+  log_errors: false
+  primary_enabled: false
+  llm_provider: heuristic
+actions:
+  enable_mock_actions: true

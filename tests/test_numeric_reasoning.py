@@ -714,6 +714,36 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "2.9%")
         self.assertIn("row=cabinets", answer.calculations[0])
 
+    def test_growth_comparison_between_reconciliation_rows(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="frt_table",
+                node_type="text",
+                content=(
+                    "| balance december 31 2002 | $ 450697000 |\n"
+                    "| --- | --- |\n"
+                    "| additions during period depreciation and amortization expense | 68125000 |\n"
+                    "| deductions during period disposition and retirements of property | -4645000 ( 4645000 ) |\n"
+                    "| balance december 31 2003 | 514177000 |\n"
+                    "| additions during period depreciation and amortization expense | 82551000 |\n"
+                    "| deductions during period disposition and retirements of property | -1390000 ( 1390000 ) |\n"
+                    "| balance december 31 2004 | 595338000 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what is the growth of the additions in comparison with the growth of the deductions during 2003 and 2004?",
+            graph,
+        )
+
+        self.assertTrue(numeric_exact_match(answer.text, "92%"))
+        self.assertIn("growth_comparison", answer.calculations[0])
+        self.assertIn("additions", answer.calculations[0])
+        self.assertIn("deductions", answer.calculations[0])
+
     def test_percentage_reduction_routes_to_percent_change(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
@@ -2206,7 +2236,7 @@ class NumericReasoningTest(unittest.TestCase):
         )
 
         self.assertEqual(answer.text, "93.5%")
-        self.assertIn("ratio_percent", answer.calculations[0])
+        self.assertIn("denominator_row=total", answer.calculations[0])
 
     def test_ratio_percent_keeps_full_source_context_when_query_year_is_inside_table(self) -> None:
         graph = EvidenceGraph()
@@ -2255,6 +2285,50 @@ class NumericReasoningTest(unittest.TestCase):
         )
 
         self.assertEqual(answer.text, "93.5%")
+        self.assertIn("denominator_row=total", answer.calculations[0])
+
+    def test_future_commitment_due_ratio_uses_split_table_total_over_prose_amount(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="neighbor_1_finqa_020_ip_2007_page_75_pdf_2_0_2",
+                node_type="text",
+                content=(
+                    "fiber supply agreements to purchase pulpwood were entered into concurrently with the 2006 "
+                    "transformation plan forestland sales. at december 31 , 2007 , total future minimum commitments "
+                    "under existing non-cancelable operating leases and purchase obligations were as follows : "
+                    "in millions 2008 2009 2010 2011 2012 thereafter .\n"
+                    "| in millions | 2008 | 2009 | 2010 | 20"
+                ),
+                source_doc="report.md",
+                metadata={"retrieval_rank": 1, "neighbor_context": True},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="retrieved_1_finqa_020_ip_2007_page_75_pdf_2_0_3",
+                node_type="text",
+                content=(
+                    "-- | --- | --- | --- | --- |\n"
+                    "| lease obligations | $ 136 | $ 116 | $ 101 |\n"
+                    "| purchase obligations ( a ) | 1953 | 294 | 261 |\n"
+                    "| total | $ 2089 | $ 410 | $ 362 |\n"
+                    "( a ) includes $ 2.4 billion relating to fiber supply agreements."
+                ),
+                source_doc="report.md",
+                metadata={"retrieval_rank": 1},
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what percentage of december 31 , 2007 , total future minimum commitments under "
+            "existing non-cancelable operating leases and purchase obligations were due to "
+            "purchase obligations for the year of 2008?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "93.5%")
+        self.assertIn("future_commitment_due_ratio", answer.calculations[0])
         self.assertIn("denominator_row=total", answer.calculations[0])
 
     def test_tax_provision_benefit_ratio_beats_later_commitments_table(self) -> None:

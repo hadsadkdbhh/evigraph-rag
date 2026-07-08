@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import Protocol
 
 from evigraph.evidence_graph import EvidenceGraph
@@ -20,10 +21,11 @@ class AnswerVerifier(Protocol):
 class VerifierGuidedRepairer:
     """Search source-local candidate repairs and accept only verifier-supported answers."""
 
-    def __init__(self, max_source_clusters: int = 8, max_nodes_per_source: int = 6, max_repair_rank: int = 2) -> None:
+    def __init__(self, max_source_clusters: int = 12, max_nodes_per_source: int = 6, max_repair_rank: int = 8) -> None:
         self.max_source_clusters = max_source_clusters
         self.max_nodes_per_source = max_nodes_per_source
         self.max_repair_rank = max_repair_rank
+        self.supported_rescore_max_rank = 2
 
     def repair(
         self,
@@ -39,7 +41,7 @@ class VerifierGuidedRepairer:
 
         issues = self._repair_issues(verification)
         attempted = 0
-        for support_graph in self._source_cluster_graphs(graph, query, answer):
+        for support_graph in self._source_cluster_graphs(graph, query, answer, verification, issues):
             attempted += 1
             planner_first = getattr(generator, "generate_planner_first", None)
             candidate = (
@@ -83,7 +85,7 @@ class VerifierGuidedRepairer:
             return False
         issues = self._repair_issues(verification)
         if issues == ["source_consistency"]:
-            return bool(verification.get("answer_supported") and self._answer_reasonableness_score(query, answer) < 0)
+            return bool(verification.get("answer_supported"))
         if issues:
             return True
         return bool(verification.get("answer_supported"))
@@ -130,6 +132,7 @@ class VerifierGuidedRepairer:
         score += 8.0 if verification.get("row_grounded") else 0.0
         score += 6.0 if verification.get("period_grounded", True) else 0.0
         score += 6.0 if verification.get("operation_semantics_checked") else 0.0
+        score += 6.0 if verification.get("source_consistent", True) else -6.0
         score += 4.0 if verification.get("semantically_grounded") else 0.0
         score += float(verification.get("confidence", 0.0))
         score += self._answer_reasonableness_score(query, answer)
@@ -155,12 +158,22 @@ class VerifierGuidedRepairer:
             return score
         return 0.0
 
-    def _source_cluster_graphs(self, graph: EvidenceGraph, query: str = "", answer: Answer | None = None) -> list[EvidenceGraph]:
+    def _source_cluster_graphs(
+        self,
+        graph: EvidenceGraph,
+        query: str = "",
+        answer: Answer | None = None,
+        verification: dict | None = None,
+        issues: list[str] | None = None,
+    ) -> list[EvidenceGraph]:
         by_source: dict[str, list[EvidenceNode]] = {}
+        allowed_families = self._trusted_answer_source_families(graph, answer, verification)
         for node in graph.nodes.values():
             if not node.source_doc:
                 continue
             if self._is_risky(node):
+                continue
+            if allowed_families and self._source_family(node.source_doc) not in allowed_families:
                 continue
             by_source.setdefault(str(node.source_doc), []).append(node)
 
@@ -168,11 +181,17 @@ class VerifierGuidedRepairer:
             by_source.items(),
             key=lambda item: self._source_rank_key(item[1], query, answer),
         )
+        max_repair_rank = self._max_repair_rank_for_issues(issues or [])
         return [
             self._source_graph(graph, nodes, query, answer)
             for _, nodes in ranked_sources[: self.max_source_clusters]
-            if nodes and min(self._retrieval_rank(node) for node in nodes) <= self.max_repair_rank
+            if nodes and min(self._retrieval_rank(node) for node in nodes) <= max_repair_rank
         ]
+
+    def _max_repair_rank_for_issues(self, issues: list[str]) -> int:
+        if issues == ["supported_operand_rescore"]:
+            return min(self.max_repair_rank, self.supported_rescore_max_rank)
+        return self.max_repair_rank
 
     def _source_graph(
         self,
@@ -231,6 +250,31 @@ class VerifierGuidedRepairer:
 
     def _is_risky(self, node: EvidenceNode) -> bool:
         return node.scores.get("misleading_risk", 0.0) >= 0.65 or node.scores.get("contradiction_risk", 0.0) >= 0.65
+
+    def _trusted_answer_source_families(
+        self,
+        graph: EvidenceGraph,
+        answer: Answer | None,
+        verification: dict | None = None,
+    ) -> set[str]:
+        if answer is None or verification is None:
+            return set()
+        if not verification.get("answer_supported"):
+            return set()
+        cited_nodes = [graph.nodes[citation] for citation in answer.citations if citation in graph.nodes]
+        trusted = [node for node in cited_nodes if self._has_trusted_source_anchor(node)]
+        return {self._source_family(node.source_doc) for node in trusted if node.source_doc}
+
+    def _has_trusted_source_anchor(self, node: EvidenceNode) -> bool:
+        if node.metadata.get("loader") == "source_doc_oracle":
+            return True
+        if node.metadata.get("rerank_boost") == "source_doc_match":
+            return True
+        chunk_id = str(node.metadata.get("chunk_id", ""))
+        return chunk_id.endswith("_full") or node.node_id.endswith("_full")
+
+    def _source_family(self, source_doc: object) -> str:
+        return Path(str(source_doc)).name.lower()
 
     def _same_answer(self, candidate: Answer, answer: Answer) -> bool:
         return candidate.text == answer.text and candidate.calculations == answer.calculations

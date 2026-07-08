@@ -54,7 +54,7 @@ class MethodRunner:
         self.generator_without_planner = SupportOnlyGenerator(planner_fallback=None)
         self.llm_direct_generator: LLMDirectRAGGenerator | None = None
         self.verifier = ClaimVerifier()
-        self.repairer = VerifierGuidedRepairer()
+        self.repairer = VerifierGuidedRepairer(max_source_clusters=12, max_repair_rank=8)
 
     def run(
         self,

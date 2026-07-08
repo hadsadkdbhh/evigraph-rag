@@ -248,6 +248,252 @@ class VerifierGuidedRepairerTest(unittest.TestCase):
         self.assertTrue(verification["repair_applied"])
         self.assertIn("source_consistency", action.params["issues"])
 
+    def test_repairs_supported_source_consistency_failure_to_higher_rank_source(self) -> None:
+        graph = EvidenceGraph()
+        current = EvidenceNode(
+            "current",
+            "text",
+            "purchase obligations 2008 1953 lease obligations 2008 168",
+            source_doc="finqa_020_ip_2007_page_75_pdf_2.md",
+            metadata={"retrieval_rank": 4},
+            scores={"final_score": 4.0},
+        )
+        higher_rank = EvidenceNode(
+            "higher_rank",
+            "text",
+            "purchase obligations for pulpwood logs and wood chips 2006 2400 total purchase obligations 3264",
+            source_doc="finqa_002_ip_2005_page_35_pdf_3.md",
+            metadata={"retrieval_rank": 1},
+            scores={"final_score": 3.9},
+        )
+        graph.add_node(current)
+        graph.add_node(higher_rank)
+        initial = Answer(
+            text="8.6%",
+            citations=["current"],
+            calculations=["ratio_percent row=lease obligations denominator_row=purchase obligations: 168 / 1953 * 100 = 8.6%"],
+        )
+        source_failed = {
+            "answer_supported": True,
+            "row_grounded": True,
+            "period_grounded": True,
+            "operation_semantics_checked": True,
+            "arithmetically_supported": True,
+            "calculation_supported": True,
+            "source_consistent": False,
+            "confidence": 0.85,
+        }
+
+        class HigherRankGenerator:
+            def generate_planner_first(self, query: str, support_graph: EvidenceGraph) -> Answer:
+                source_docs = {node.source_doc for node in support_graph.nodes.values()}
+                if "finqa_002_ip_2005_page_35_pdf_3.md" in source_docs:
+                    return Answer(
+                        text="73.5%",
+                        citations=["higher_rank"],
+                        calculations=["ratio_percent row=pulpwood contracts denominator_row=purchase obligations: 2400 / 3264 * 100 = 73.5%"],
+                    )
+                return initial
+
+            def generate(self, query: str, support_graph: EvidenceGraph) -> Answer:
+                return self.generate_planner_first(query, support_graph)
+
+        class SourceVerifier:
+            def verify(self, query: str, answer: Answer, support_graph: EvidenceGraph) -> dict:
+                return {
+                    "answer_supported": True,
+                    "row_grounded": True,
+                    "period_grounded": True,
+                    "operation_semantics_checked": True,
+                    "arithmetically_supported": True,
+                    "calculation_supported": True,
+                    "source_consistent": answer.text == "73.5%",
+                    "row_operation_grounded": True,
+                    "semantically_grounded": True,
+                    "missing_evidence": [],
+                    "confidence": 0.85,
+                }
+
+        answer, verification, action = VerifierGuidedRepairer().repair(
+            "what percent of purchase obligations in 2006 was set aside for pulpwood logs and wood chips?",
+            initial,
+            source_failed,
+            graph,
+            HigherRankGenerator(),
+            SourceVerifier(),
+        )
+
+        self.assertEqual(answer.text, "73.5%")
+        self.assertTrue(verification["repair_applied"])
+        self.assertIn("source_consistency", action.params["issues"])
+
+    def test_does_not_rescore_supported_answer_from_rank_five_source_candidate(self) -> None:
+        graph = EvidenceGraph()
+        current = EvidenceNode(
+            "current",
+            "text",
+            "weighted average discount rate service cost 2016 4.1 2017 2.9 2018 3.2",
+            source_doc="rank1.md",
+            metadata={"retrieval_rank": 1},
+            scores={"final_score": 5.0},
+        )
+        right = EvidenceNode(
+            "right",
+            "text",
+            "service cost pension plans 2016 81 2017 110 2018 136",
+            source_doc="rank5.md",
+            metadata={"retrieval_rank": 5},
+            scores={"final_score": 3.5},
+        )
+        graph.add_node(current)
+        graph.add_node(right)
+        initial = Answer(
+            text="3.4",
+            citations=["current"],
+            calculations=[
+                "planned_average values=weighted average discount rate service cost/2016, "
+                "weighted average discount rate service cost/2017, weighted average discount rate service cost/2018: "
+                "(4.1 + 2.9 + 3.2) / 3 = 3.4"
+            ],
+        )
+        supported_but_weak = {
+            "answer_supported": True,
+            "row_grounded": True,
+            "period_grounded": True,
+            "operation_semantics_checked": True,
+            "arithmetically_supported": True,
+            "calculation_supported": True,
+            "source_consistent": True,
+            "confidence": 0.85,
+        }
+
+        class RankFiveGenerator:
+            def generate_planner_first(self, query: str, support_graph: EvidenceGraph) -> Answer:
+                source_docs = {node.source_doc for node in support_graph.nodes.values()}
+                if "rank5.md" in source_docs:
+                    return Answer(
+                        text="109",
+                        citations=["right"],
+                        calculations=[
+                            "planned_average values=service cost/pension plans 2016, "
+                            "service cost/pension plans 2017, service cost/pension plans 2018: "
+                            "(81 + 110 + 136) / 3 = 109"
+                        ],
+                    )
+                return initial
+
+            def generate(self, query: str, support_graph: EvidenceGraph) -> Answer:
+                return self.generate_planner_first(query, support_graph)
+
+        class RankFiveVerifier:
+            def verify(self, query: str, answer: Answer, support_graph: EvidenceGraph) -> dict:
+                return {
+                    "answer_supported": True,
+                    "row_grounded": True,
+                    "period_grounded": True,
+                    "operation_semantics_checked": True,
+                    "arithmetically_supported": True,
+                    "calculation_supported": True,
+                    "source_consistent": True,
+                    "row_operation_grounded": answer.text == "109",
+                    "semantically_grounded": answer.text == "109",
+                    "missing_evidence": [],
+                    "confidence": 0.9 if answer.text == "109" else 0.85,
+                }
+
+        answer, verification, action = VerifierGuidedRepairer().repair(
+            "what was the average pension service cost from 2016 to 2018 in millions",
+            initial,
+            supported_but_weak,
+            graph,
+            RankFiveGenerator(),
+            RankFiveVerifier(),
+        )
+
+        self.assertIs(answer, initial)
+        self.assertIs(verification, supported_but_weak)
+        self.assertIsNone(action)
+
+    def test_repairs_source_consistency_failure_from_rank_five_source_candidate(self) -> None:
+        graph = EvidenceGraph()
+        current = EvidenceNode(
+            "current",
+            "text",
+            "annual minimum rental 2010 59 2011 9",
+            source_doc="rank1.md",
+            metadata={"retrieval_rank": 1},
+            scores={"final_score": 5.0},
+        )
+        right = EvidenceNode(
+            "right",
+            "text",
+            "annual minimum rental 2010 3160 2011 3200",
+            source_doc="rank5.md",
+            metadata={"retrieval_rank": 5},
+            scores={"final_score": 3.5},
+        )
+        graph.add_node(current)
+        graph.add_node(right)
+        initial = Answer(
+            text="-84.7%",
+            citations=["current"],
+            calculations=["percent_change: (9 - 59) / 59 * 100 = -84.7%"],
+        )
+        source_failed = {
+            "answer_supported": True,
+            "row_grounded": True,
+            "period_grounded": True,
+            "operation_semantics_checked": True,
+            "arithmetically_supported": True,
+            "calculation_supported": True,
+            "source_consistent": False,
+            "confidence": 0.85,
+        }
+
+        class RankFiveSourceGenerator:
+            def generate_planner_first(self, query: str, support_graph: EvidenceGraph) -> Answer:
+                source_docs = {node.source_doc for node in support_graph.nodes.values()}
+                if "rank5.md" in source_docs:
+                    return Answer(
+                        text="1.3%",
+                        citations=["right"],
+                        calculations=["planned_percent_change target=2011 base=2010: (3200 - 3160) / 3160 * 100 = 1.3%"],
+                    )
+                return initial
+
+            def generate(self, query: str, support_graph: EvidenceGraph) -> Answer:
+                return self.generate_planner_first(query, support_graph)
+
+        class RankFiveSourceVerifier:
+            def verify(self, query: str, answer: Answer, support_graph: EvidenceGraph) -> dict:
+                return {
+                    "answer_supported": True,
+                    "row_grounded": True,
+                    "period_grounded": True,
+                    "operation_semantics_checked": True,
+                    "arithmetically_supported": True,
+                    "calculation_supported": True,
+                    "source_consistent": answer.text == "1.3%",
+                    "row_operation_grounded": True,
+                    "semantically_grounded": True,
+                    "missing_evidence": [],
+                    "confidence": 0.9 if answer.text == "1.3%" else 0.85,
+                }
+
+        answer, verification, action = VerifierGuidedRepairer().repair(
+            "what is the percent change in minimum annual rental payment between 2010 and 2011?",
+            initial,
+            source_failed,
+            graph,
+            RankFiveSourceGenerator(),
+            RankFiveSourceVerifier(),
+        )
+
+        self.assertEqual(answer.text, "1.3%")
+        self.assertTrue(verification["repair_applied"])
+        self.assertIsNotNone(action)
+        self.assertIn("source_consistency", action.params["issues"])
+
     def test_repairs_supported_but_weaker_operand_candidate_when_candidate_has_stronger_support(self) -> None:
         graph = EvidenceGraph()
         weak = EvidenceNode(
@@ -324,6 +570,87 @@ class VerifierGuidedRepairerTest(unittest.TestCase):
         self.assertEqual(answer.text, "99.9%")
         self.assertTrue(verification["repair_applied"])
         self.assertEqual(action.action_type, "REPAIR_NUMERIC_ANSWER")
+
+    def test_does_not_replace_supported_source_matched_answer_with_cross_source_rescore(self) -> None:
+        graph = EvidenceGraph()
+        current = EvidenceNode(
+            "current",
+            "text",
+            "annual long term debt maturities 2016 204079 2017 766451",
+            source_doc="finqa_329_etr_2015_page_131_pdf_1.md",
+            metadata={"retrieval_rank": 2, "rerank_boost": "source_doc_match"},
+            scores={"final_score": 3.8},
+        )
+        distractor = EvidenceNode(
+            "distractor",
+            "text",
+            "annual long term debt maturities 2016 270852 2017 766801",
+            source_doc="finqa_019_etr_2013_page_118_pdf_2.md",
+            metadata={"retrieval_rank": 1},
+            scores={"final_score": 4.5},
+        )
+        graph.add_node(distractor)
+        graph.add_node(current)
+        initial = Answer(
+            text="275.6%",
+            citations=["current"],
+            calculations=[
+                "percent_change row=annual long term debt maturities: (766451 - 204079) / 204079 * 100 = 275.6%"
+            ],
+        )
+        supported = {
+            "answer_supported": True,
+            "row_grounded": True,
+            "period_grounded": True,
+            "operation_semantics_checked": True,
+            "arithmetically_supported": True,
+            "calculation_supported": True,
+            "confidence": 0.85,
+        }
+
+        class CrossSourceGenerator:
+            def generate_planner_first(self, query: str, support_graph: EvidenceGraph) -> Answer:
+                source_docs = {node.source_doc for node in support_graph.nodes.values()}
+                if "finqa_019_etr_2013_page_118_pdf_2.md" in source_docs:
+                    return Answer(
+                        text="183.1%",
+                        citations=["distractor"],
+                        calculations=[
+                            "percent_change row=annual long term debt maturities: (766801 - 270852) / 270852 * 100 = 183.1%"
+                        ],
+                    )
+                return initial
+
+            def generate(self, query: str, support_graph: EvidenceGraph) -> Answer:
+                return self.generate_planner_first(query, support_graph)
+
+        class SupportedVerifier:
+            def verify(self, query: str, answer: Answer, support_graph: EvidenceGraph) -> dict:
+                return {
+                    "answer_supported": True,
+                    "row_grounded": True,
+                    "period_grounded": True,
+                    "operation_semantics_checked": True,
+                    "arithmetically_supported": True,
+                    "calculation_supported": True,
+                    "row_operation_grounded": True,
+                    "semantically_grounded": True,
+                    "missing_evidence": [],
+                    "confidence": 0.95 if answer.text == "183.1%" else 0.85,
+                }
+
+        answer, verification, action = VerifierGuidedRepairer().repair(
+            "what is the percent change in annual long-term debt maturities from 2016 to 2017?",
+            initial,
+            supported,
+            graph,
+            CrossSourceGenerator(),
+            SupportedVerifier(),
+        )
+
+        self.assertIs(answer, initial)
+        self.assertIs(verification, supported)
+        self.assertIsNone(action)
 
     def test_repairs_operand_failure_even_when_row_and_operation_pass(self) -> None:
         graph = EvidenceGraph()
@@ -427,7 +754,7 @@ class VerifierGuidedRepairerTest(unittest.TestCase):
 
         self.assertEqual(next(iter(support_graph.nodes)), "aligned")
 
-    def test_rejects_low_rank_self_consistent_repair_candidate(self) -> None:
+    def test_rejects_repair_candidate_outside_top_eight_window(self) -> None:
         graph = EvidenceGraph()
         wrong = EvidenceNode(
             "wrong",
@@ -442,7 +769,7 @@ class VerifierGuidedRepairerTest(unittest.TestCase):
             "text",
             "interest income table 2014 119 2015 99",
             source_doc="right.md",
-            metadata={"retrieval_rank": 3},
+            metadata={"retrieval_rank": 9},
             scores={"final_score": 3.0},
         )
         graph.add_node(wrong)

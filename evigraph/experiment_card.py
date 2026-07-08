@@ -183,7 +183,7 @@ class ExperimentCard:
     def _default_limitations(self) -> list[str]:
         return [
             "The mock dataset is too small to support paper-level claims.",
-            "The current retrieval backend is lexical and does not yet test embedding retrievers.",
+            "Open retrieval settings must be reported separately: BM25, deterministic hybrid, local hashed dense, and neural retrieval are distinct controls.",
             "Multimodal evidence is represented through text/table surrogates in the MVP.",
             "Metrics are MVP-level and should be expanded before paper submission.",
         ]

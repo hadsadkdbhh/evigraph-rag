@@ -14,6 +14,53 @@ retrieval performance without inflating claims beyond the evidence.
 
 ## Current Baseline
 
+Latest guarded open-retrieval repair:
+
+- v43 guarded top-8 repair manifest:
+  - `configs/experiments.finqa_600.local_planner_guarded_top8_repair_v43.json`
+- Outputs:
+  - `outputs/eval/finqa_600_local_planner_guarded_top8_repair_v43/summary.md`
+  - `outputs/eval/finqa_600_local_planner_guarded_top8_repair_v43/v41_vs_v43.md`
+  - `outputs/eval/finqa_600_local_planner_guarded_top8_repair_v43/v42_vs_v43.md`
+- Change:
+  - Keeps v41 source-consistency and future-commitment split-table repairs.
+  - Allows top-8 verifier-guided repair for explicit failures such as
+    source-consistency, but restricts already-supported operand rescoring to
+    the original rank-2 window. This avoids v42 regressions where a correct
+    supported answer was replaced by another verifier-supported but weaker
+    operand candidate.
+- Tests:
+  - `python -m unittest discover -s tests`: 381 tests OK.
+- Current FinQA-600 local-planner result:
+  - Oracle-doc: 0.503.
+  - Open BM25: 0.377.
+  - Source rerank: 0.502.
+- Interpretation:
+  - Source-rerank has crossed the 0.50 target.
+  - Open BM25 has not crossed 0.40 and should be framed as an open-retrieval
+    stress setting, not a solved deployment result.
+  - v43 vs v41 is net-flat on Open BM25: three target-only wins and three
+    baseline-only losses. Keep the guarded repair for safety, but future Open
+    gains should come from retrieval recall and source exposure rather than
+    broader operand repair.
+
+Current true neural retrieval track:
+
+- Neural retrieval code paths exist in `evigraph/retrieval.py`:
+  - `open_neural_dense`
+  - `open_neural_hybrid`
+- Readiness check:
+  - `scripts/check_neural_retrieval_ready.py`
+- Full EviGraph top-16 neural retrieval manifest:
+  - `configs/experiments.finqa_600.neural_retrieval_full_evigraph_v43.json`
+- Local dependency file:
+  - `requirements-neural-retrieval.txt`
+- Purpose:
+  - Test whether sentence-transformer dense retrieval and neural hybrid
+    retrieval pull more gold sources into the open top-k pool.
+  - Keep these results separate from BM25 and source-rerank; do not call
+    source-rerank a deployable open-retrieval method.
+
 Latest bounded repair:
 
 - v38 full-source year-compatibility manifests:

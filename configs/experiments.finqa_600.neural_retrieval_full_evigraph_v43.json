@@ -1,0 +1,54 @@
+{
+  "title": "EviGraph FinQA 600-Example Neural Retrieval Full EviGraph v43",
+  "config": "configs/default_local_planner_top16.yaml",
+  "output_dir": "outputs/eval/finqa_600_neural_retrieval_full_evigraph_v43",
+  "datasets": [
+    {
+      "name": "finqa_600_subset",
+      "raw_questions": "data/raw/finqa_600_subset.jsonl",
+      "questions": "outputs/eval/finqa_600_neural_retrieval_full_evigraph_v43/finqa_questions.jsonl",
+      "field_map": {
+        "id": "id",
+        "query": "question",
+        "answer": "answer",
+        "source_doc": "source_doc",
+        "task_type": "task_type"
+      },
+      "corpus": "data/finqa_600_corpus",
+      "build_index": true,
+      "index": "outputs/index/finqa_600_subset.json",
+      "chunk_size": 1200,
+      "chunk_overlap": 160,
+      "gate": {
+        "min_records": 600,
+        "min_source_doc_coverage": 1.0,
+        "fail_on_error": true
+      }
+    }
+  ],
+  "experiments": [
+    {
+      "name": "open_bm25_full_evigraph_top16_v43",
+      "type": "batch",
+      "retrieval_mode": "open",
+      "methods": ["full_evigraph"]
+    },
+    {
+      "name": "open_neural_dense_full_evigraph_top16_v43",
+      "type": "batch",
+      "retrieval_mode": "open_neural_dense",
+      "methods": ["full_evigraph"]
+    },
+    {
+      "name": "open_neural_hybrid_full_evigraph_top16_v43",
+      "type": "batch",
+      "retrieval_mode": "open_neural_hybrid",
+      "methods": ["full_evigraph"]
+    }
+  ],
+  "limitations": [
+    "This manifest is an open-retrieval stress experiment, not an oracle or source-rerank result.",
+    "It raises retrieval top_k to 16 to test whether more candidate evidence plus verifier-guided repair exposes the gold source.",
+    "It requires sentence-transformers for the neural dense and neural hybrid settings; set EVIGRAPH_NEURAL_DENSE_MODEL to override the default sentence-transformers/all-MiniLM-L6-v2 model."
+  ]
+}

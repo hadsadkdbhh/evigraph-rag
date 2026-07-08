@@ -41,6 +41,9 @@ class NumericReasoner:
         answer = self._beginning_to_end_balance_percent_change(query_lower, contexts)
         if answer:
             return answer
+        answer = self._growth_comparison_between_reconciliation_rows(query_lower, contexts)
+        if answer:
+            return answer
         if (
             "percentage change" in query_lower
             or "percent change" in query_lower
@@ -165,6 +168,9 @@ class NumericReasoner:
             if answer:
                 return answer
             answer = self._inventory_component_ratio_percent(query_lower, contexts)
+            if answer:
+                return answer
+            answer = self._future_commitment_due_ratio(query_lower, contexts)
             if answer:
                 return answer
             answer = self._future_minimum_payment_next_period_ratio(query_lower, contexts)
@@ -355,9 +361,16 @@ class NumericReasoner:
         return None
 
     def planner_first_answer(self, query: str, support_graph: EvidenceGraph) -> NumericAnswer | None:
+        query_lower = self._normalize_query(query)
         contexts = self._contexts(support_graph)
         if not contexts:
             return None
+        answer = self._future_commitment_due_ratio(query_lower, contexts)
+        if answer:
+            return answer
+        answer = self._growth_comparison_between_reconciliation_rows(query_lower, contexts)
+        if answer:
+            return answer
         planned = self._planner_answer(query, contexts)
         if planned:
             return planned
@@ -1863,6 +1876,81 @@ class NumericReasoner:
                 cited_node_ids=[node_id],
             )
         return None
+
+    def _growth_comparison_between_reconciliation_rows(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        match = re.search(
+            r"\bgrowth\s+of\s+(?:the\s+)?(?P<left>.+?)\s+in\s+comparison\s+with\s+"
+            r"(?:the\s+)?growth\s+of\s+(?:the\s+)?(?P<right>.+?)\s+during\b",
+            query_lower,
+        )
+        if not match:
+            return None
+        years = re.findall(r"\b(20\d{2})\b", query_lower)
+        if len(years) < 2:
+            return None
+        base_year, target_year = self._percent_change_years(query_lower, years)
+        left_terms = self._keywords(match.group("left"))
+        right_terms = self._keywords(match.group("right"))
+        if not left_terms or not right_terms:
+            return None
+
+        for node_id, text in contexts:
+            left_values = self._reconciliation_row_values_by_balance_year(text, left_terms)
+            right_values = self._reconciliation_row_values_by_balance_year(text, right_terms)
+            if (
+                base_year not in left_values
+                or target_year not in left_values
+                or base_year not in right_values
+                or target_year not in right_values
+                or left_values[base_year] == 0
+                or right_values[base_year] == 0
+            ):
+                continue
+            left_operation = self.executor.percent_change(left_values[target_year], left_values[base_year])
+            right_operation = self.executor.percent_change(right_values[target_year], right_values[base_year])
+            if left_operation is None or right_operation is None:
+                continue
+            spread = left_operation.value - right_operation.value
+            rounded = int(spread + 0.999999) if spread >= 0 else int(spread - 0.999999)
+            return NumericAnswer(
+                text=f"{spread:.1f}% (approximately {rounded:.0f}%)",
+                calculation=(
+                    f"growth_comparison rows={' '.join(left_terms)}/{' '.join(right_terms)} "
+                    f"years={base_year}->{target_year}: "
+                    f"left_growth={left_operation.expression}; "
+                    f"right_growth={right_operation.expression}; "
+                    f"{left_operation.value:.1f}% - ({right_operation.value:.1f}%) -> "
+                    f"supported_results = {spread:.1f}% {rounded:.0f}%"
+                ),
+                cited_node_ids=[node_id],
+            )
+        return None
+
+    def _reconciliation_row_values_by_balance_year(self, text: str, terms: list[str]) -> dict[str, float]:
+        table = self._markdown_table(text)
+        if not table:
+            return {}
+        _headers, rows = table
+        values: dict[str, float] = {}
+        pending: float | None = None
+        for row in rows:
+            if not row:
+                continue
+            label = row[0].strip().lower()
+            if pending is not None:
+                year_match = re.search(r"\bbalance\b.*\b(20\d{2})\b", label)
+                if year_match:
+                    values.setdefault(year_match.group(1), pending)
+                    pending = None
+            if all(self._term_matches_text(term, label) for term in terms):
+                value = self._row_first_numeric_value(row)
+                if value is not None:
+                    pending = abs(value)
+        return values
 
     def _percent_change_from_prose(
         self,
@@ -5767,6 +5855,121 @@ class NumericReasoner:
                     cited_node_ids=[node_id],
                 )
         return None
+
+    def _future_commitment_due_ratio(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        if "total future minimum commitments" not in query_lower or "due to" not in query_lower:
+            return None
+        year_match = re.search(r"\bfor\s+the\s+year\s+(?:of\s+)?(20\d{2})\b", query_lower)
+        if not year_match:
+            return None
+        query_year = year_match.group(1)
+        due_tail = query_lower.split("due to", 1)[1].split("for the year", 1)[0]
+        if "purchase obligation" in due_tail:
+            numerator_terms = ["purchase", "obligations"]
+        elif "lease obligation" in due_tail:
+            numerator_terms = ["lease", "obligations"]
+        else:
+            numerator_terms = self._keywords(due_tail)
+        if not numerator_terms:
+            return None
+
+        grouped: dict[str, list[tuple[str, str]]] = {}
+        for node_id, text in contexts:
+            grouped.setdefault(self._context_source_key(node_id), []).append((node_id, text))
+        for grouped_contexts in grouped.values():
+            ordered_contexts = sorted(grouped_contexts, key=lambda item: self._context_chunk_order(item[0]))
+            node_ids = [node_id for node_id, _text in ordered_contexts]
+            combined_text = "\n".join(text for _node_id, text in ordered_contexts)
+            for headers, rows in self._markdown_tables(combined_text):
+                column_index = self._header_year_index(headers, query_year)
+                if column_index is None:
+                    continue
+                numerator_row = self._row_by_label(rows, numerator_terms)
+                denominator_row = self._row_by_label(rows, ["total"])
+                if numerator_row is None or denominator_row is None:
+                    continue
+                if column_index >= len(numerator_row) or column_index >= len(denominator_row):
+                    continue
+                numerator = self._first_number(numerator_row[column_index])
+                denominator = self._first_number(denominator_row[column_index])
+                if numerator is None or denominator in {None, 0}:
+                    continue
+                operation = self.executor.ratio(numerator, denominator)
+                if operation is None:
+                    continue
+                result = operation.value * 100.0
+                return NumericAnswer(
+                    text=self._format_percent(result),
+                    calculation=(
+                        f"future_commitment_due_ratio row={numerator_row[0].strip().lower()} "
+                        f"denominator_row={denominator_row[0].strip().lower()} column={query_year}: "
+                        f"{numerator:g} / {denominator:g} * 100 = {result:.1f}%"
+                    ),
+                    cited_node_ids=node_ids,
+                )
+            split_answer = self._future_commitment_due_ratio_from_split_rows(
+                node_ids,
+                combined_text,
+                numerator_terms,
+                query_year,
+            )
+            if split_answer is not None:
+                return split_answer
+        return None
+
+    def _future_commitment_due_ratio_from_split_rows(
+        self,
+        node_ids: list[str],
+        text: str,
+        numerator_terms: list[str],
+        query_year: str,
+    ) -> NumericAnswer | None:
+        header_match = re.search(
+            r"\bin\s+millions\s+((?:(?:20\d{2}|thereafter)\s+){2,}(?:20\d{2}|thereafter))",
+            text.lower(),
+        )
+        if not header_match:
+            return None
+        columns = re.findall(r"20\d{2}|thereafter", header_match.group(1))
+        if query_year not in columns:
+            return None
+        value_index = columns.index(query_year) + 1
+        numerator_row: list[str] | None = None
+        denominator_row: list[str] | None = None
+        for line in text.splitlines():
+            if "|" not in line or "---" in line:
+                continue
+            row = [cell.strip() for cell in line.strip().strip("|").split("|")]
+            if len(row) <= value_index:
+                continue
+            label = row[0].lower()
+            if all(self._term_matches_text(term, label) for term in numerator_terms):
+                numerator_row = row
+            elif label == "total":
+                denominator_row = row
+        if numerator_row is None or denominator_row is None:
+            return None
+        numerator = self._first_number(numerator_row[value_index])
+        denominator = self._first_number(denominator_row[value_index])
+        if numerator is None or denominator in {None, 0}:
+            return None
+        operation = self.executor.ratio(numerator, denominator)
+        if operation is None:
+            return None
+        result = operation.value * 100.0
+        return NumericAnswer(
+            text=self._format_percent(result),
+            calculation=(
+                f"future_commitment_due_ratio row={numerator_row[0].strip().lower()} "
+                f"denominator_row={denominator_row[0].strip().lower()} column={query_year}: "
+                f"{numerator:g} / {denominator:g} * 100 = {result:.1f}%"
+            ),
+            cited_node_ids=node_ids,
+        )
 
     def _share_value_per_share_from_prose(
         self,

@@ -1,0 +1,54 @@
+{
+  "title": "EviGraph FinQA 600-Example Local Program Planner Guarded Top-8 Repair v43",
+  "config": "configs/default_local_planner.yaml",
+  "output_dir": "outputs/eval/finqa_600_local_planner_guarded_top8_repair_v43",
+  "datasets": [
+    {
+      "name": "finqa_600_subset",
+      "raw_questions": "data/raw/finqa_600_subset.jsonl",
+      "questions": "outputs/eval/finqa_600_local_planner_guarded_top8_repair_v43/finqa_questions.jsonl",
+      "field_map": {
+        "id": "id",
+        "query": "question",
+        "answer": "answer",
+        "source_doc": "source_doc",
+        "task_type": "task_type"
+      },
+      "corpus": "data/finqa_600_corpus",
+      "build_index": true,
+      "index": "outputs/index/finqa_600_subset.json",
+      "chunk_size": 1200,
+      "chunk_overlap": 160,
+      "gate": {
+        "min_records": 600,
+        "min_source_doc_coverage": 1.0,
+        "fail_on_error": true
+      }
+    }
+  ],
+  "experiments": [
+    {
+      "name": "oracle_doc_full_local_planner_v43_guarded_top8_repair",
+      "type": "batch",
+      "retrieval_mode": "oracle_doc",
+      "methods": ["full_evigraph"]
+    },
+    {
+      "name": "open_bm25_full_local_planner_v43_guarded_top8_repair",
+      "type": "batch",
+      "retrieval_mode": "open",
+      "methods": ["full_evigraph"]
+    },
+    {
+      "name": "source_rerank_full_local_planner_v43_guarded_top8_repair",
+      "type": "batch",
+      "retrieval_mode": "source_rerank",
+      "methods": ["full_evigraph"]
+    }
+  ],
+  "limitations": [
+    "This manifest carries forward v41 source-consistency and future-commitment repairs.",
+    "It keeps top-8 verifier-guided repair for explicit failures such as source consistency, but restricts already-supported operand rescoring to the original rank-2 window.",
+    "The target is to preserve v42's correct-source Open BM25 gains while avoiding regressions where a verifier-supported answer is replaced by a weaker supported candidate."
+  ]
+}

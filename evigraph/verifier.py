@@ -294,6 +294,11 @@ class ClaimVerifier:
             for node in cited_nodes
             if (family := self._source_family(node.source_doc or node.metadata.get("source_doc")))
         }
+        cited_sources = {
+            source
+            for node in cited_nodes
+            if (source := self._source_key(node.source_doc or node.metadata.get("source_doc")))
+        }
         if not cited_families:
             return True
 
@@ -304,16 +309,16 @@ class ClaimVerifier:
             and self._retrieval_rank(node) < 999
             and node.node_type != "verifier_judgment"
         ]
-        families = {self._source_family(node.source_doc or node.metadata.get("source_doc")) for node in ranked_nodes}
-        families.discard("")
-        if len(families) <= 1:
+        source_keys = {self._source_key(node.source_doc or node.metadata.get("source_doc")) for node in ranked_nodes}
+        source_keys.discard("")
+        if len(source_keys) <= 1:
             return True
 
         cited_best_rank = min(
             (
                 self._retrieval_rank(node)
                 for node in ranked_nodes
-                if self._source_family(node.source_doc or node.metadata.get("source_doc")) in cited_families
+                if self._source_key(node.source_doc or node.metadata.get("source_doc")) in cited_sources
             ),
             default=999,
         )
@@ -339,6 +344,18 @@ class ClaimVerifier:
                 continue
             if stats["count"] >= 3 and stats["best_rank"] < cited_best_rank:
                 return False
+        source_stats: dict[str, dict[str, float | str]] = {}
+        for node in top_nodes:
+            source = self._source_key(node.source_doc or node.metadata.get("source_doc"))
+            family = self._source_family(node.source_doc or node.metadata.get("source_doc"))
+            if not source or source in cited_sources or family not in cited_families:
+                continue
+            stats = source_stats.setdefault(source, {"best_rank": 999.0, "overlap": 0.0, "family": family})
+            stats["best_rank"] = min(float(stats["best_rank"]), float(self._retrieval_rank(node)))
+            stats["overlap"] = float(stats["overlap"]) + float(len(query_terms & set(_grounding_terms(node.text()))))
+        for stats in source_stats.values():
+            if float(stats["best_rank"]) < cited_best_rank and float(stats["overlap"]) >= 2:
+                return False
         return True
 
     def _source_family(self, source_doc: object) -> str:
@@ -350,6 +367,11 @@ class ClaimVerifier:
             return match.group(1)
         stem = Path(name).stem
         return re.split(r"[_\-.]", stem)[0] if stem else name
+
+    def _source_key(self, source_doc: object) -> str:
+        if source_doc is None:
+            return ""
+        return Path(str(source_doc)).name.lower()
 
     def _retrieval_rank(self, node: Any) -> int:
         try:
@@ -649,7 +671,7 @@ def _expected_operation(query: str) -> set[str] | None:
             "related to",
         ]
     ):
-        return {"ratio_percent", "ratio_between_years"}
+        return {"ratio_percent", "ratio_between_years", "future_commitment_due_ratio"}
     if re.search(r"\bratio\b", query_lower) and (
         len(re.findall(r"\b20\d{2}\b", query_lower)) >= 2
         or (
@@ -686,6 +708,7 @@ def _calculation_operation(calculation: str) -> str | None:
         "percent_delta": "percent_delta",
         "ratio_percent": "ratio_percent",
         "increase_component_ratio_percent": "ratio_percent",
+        "future_commitment_due_ratio": "ratio_percent",
         "future_minimum_payment_next_period_ratio": "ratio_percent",
         "component_amount_ratio": "ratio_percent",
         "ratio_between_years": "ratio_between_years",
