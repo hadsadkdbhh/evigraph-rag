@@ -57,7 +57,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--primary-name", default="bm25")
     parser.add_argument("--candidate-name", default="neural_hybrid")
-    parser.add_argument("--policy", default="fallback_numeric_calculation", choices=["fallback_numeric_calculation", "strict_supported_fallback"])
+    parser.add_argument(
+        "--policy",
+        default="fallback_numeric_calculation",
+        choices=["fallback_numeric_calculation", "strict_supported_fallback", "confidence"],
+    )
     parser.add_argument("--title", default="EviGraph Retrieval Portfolio")
     parser.add_argument("--output-csv-name", default="portfolio.csv")
     parser.add_argument("--report-name", default="portfolio_report.md")

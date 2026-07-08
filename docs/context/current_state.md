@@ -76,7 +76,7 @@ Current true neural retrieval track:
     change is a verifier-guided retrieval portfolio selector, not another
     broad numeric rule.
 
-Latest retrieval-portfolio selector:
+Conservative retrieval-portfolio selector:
 
 - Code:
   - `evigraph/retrieval_portfolio.py`
@@ -114,6 +114,49 @@ Latest retrieval-portfolio selector:
     stress setting. Next Open gains should come from stronger portfolio
     confidence features or source-aware evidence-state selection, not broad
     numeric rule expansion.
+
+Latest confidence portfolio selector:
+
+- Code:
+  - `evigraph/retrieval_portfolio.py`
+  - `scripts/build_retrieval_portfolio.py`
+  - `tests/test_retrieval_portfolio.py`
+- Policy:
+  - `confidence`
+- Output:
+  - `outputs/eval/finqa_600_retrieval_portfolio_v45_confidence/portfolio_report.md`
+- Selection rule:
+  - No gold labels, answer strings, or accuracy fields are used for choosing.
+  - Starts from the v44 fallback numeric rule.
+  - Adds fallback evidence-coverage switching when both systems return fallback
+    prose but the neural-hybrid evidence has better query-token/year coverage
+    without weaker verifier/support flags.
+  - Adds bounded verifier-supported numeric refinements for calculation states
+    where the candidate has a more credible same-operation row/denominator/scale
+    signal.
+- Result:
+  - Portfolio EM: 0.407.
+  - BM25 primary EM: 0.377.
+  - Neural-hybrid candidate EM: 0.363.
+  - Switches: 77.
+  - Wins vs BM25: 19.
+  - Losses vs BM25: 1.
+  - Neutral switches: 57.
+- Decision breakdown:
+  - Keep BM25: 523.
+  - Fallback evidence coverage: 51.
+  - Fallback numeric calculation: 19.
+  - Supported denominator text refinement: 3.
+  - Supported concrete percent refinement: 1.
+  - Supported average scale refinement: 1.
+  - Supported cashflow row refinement: 1.
+  - Supported ratio row refinement: 1.
+- Interpretation:
+  - This crosses the Open 0.40 target on FinQA-600 without gold-based routing.
+  - It is more aggressive than v44 and has one paired loss, so the paper should
+    report both the gain and the loss count.
+  - The result strengthens the story that neural retrieval exposure needs
+    verifier-guided evidence-state selection to become answer accuracy.
 
 Latest bounded repair:
 

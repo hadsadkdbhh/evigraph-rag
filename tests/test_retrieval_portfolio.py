@@ -53,6 +53,67 @@ class RetrievalPortfolioTest(unittest.TestCase):
 
         self.assertEqual(rows[0]["portfolio_choice"], "neural_hybrid")
 
+    def test_confidence_switches_when_fallback_candidate_has_better_evidence_coverage(self) -> None:
+        primary = self._row(
+            query="what is the interest expense in 2015 assuming all debt is interest bearing debt",
+            prediction="Based on the selected evidence: revolving facility expires in 2020.",
+            calculation="",
+            answer_supported="True",
+            calculation_supported="False",
+        )
+        candidate = self._row(
+            query=primary["query"],
+            prediction="Based on the selected evidence: interest expense for 2015 and debt balances are discussed.",
+            calculation="",
+            answer_supported="True",
+            calculation_supported="False",
+        )
+
+        decision = choose_row(primary, candidate, policy="confidence")
+
+        self.assertEqual(decision.source, "candidate")
+        self.assertEqual(decision.reason, "confidence_fallback_evidence_coverage")
+
+    def test_confidence_keeps_primary_when_candidate_has_weaker_support(self) -> None:
+        primary = self._row(
+            query="what is the interest expense in 2015",
+            prediction="Based on the selected evidence: interest expense.",
+            calculation="",
+            answer_supported="True",
+            calculation_supported="False",
+        )
+        candidate = self._row(
+            query=primary["query"],
+            prediction="Based on the selected evidence: interest expense in 2015.",
+            calculation="",
+            answer_supported="False",
+            calculation_supported="False",
+            operation_semantics_checked="False",
+            row_operation_grounded="False",
+            semantically_grounded="False",
+        )
+
+        decision = choose_row(primary, candidate, policy="confidence")
+
+        self.assertEqual(decision.source, "primary")
+
+    def test_confidence_switches_supported_average_scale_refinement(self) -> None:
+        primary = self._row(
+            prediction="3.08",
+            calculation="average_high_low_price row=third quarter: (4.61 + 1.56) / 2 = 3.08",
+            answer_supported="True",
+        )
+        candidate = self._row(
+            prediction="30",
+            calculation="average_high_low_price row=third: (32.91 + 27.09) / 2 = 30.00",
+            answer_supported="True",
+        )
+
+        decision = choose_row(primary, candidate, policy="confidence")
+
+        self.assertEqual(decision.source, "candidate")
+        self.assertEqual(decision.reason, "confidence_supported_average_scale_refinement")
+
     def _row(self, **overrides: str) -> dict[str, str]:
         row = {
             "dataset": "finqa_test",
