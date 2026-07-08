@@ -97,6 +97,31 @@ class RetrievalPortfolioTest(unittest.TestCase):
 
         self.assertEqual(decision.source, "primary")
 
+    def test_confidence_requires_all_query_years_for_fallback_change_questions(self) -> None:
+        primary = self._row(
+            query="what is the percentage change in average investments from 2014 to 2015?",
+            prediction="Based on the selected evidence: average investments increased in 2002 and 2003.",
+            calculation="",
+            answer_supported="False",
+            operation_semantics_checked="False",
+            row_operation_grounded="False",
+            semantically_grounded="False",
+        )
+        candidate = self._row(
+            query=primary["query"],
+            prediction="Based on the selected evidence: investments in equities declined in 2014.",
+            calculation="",
+            answer_supported="False",
+            operation_semantics_checked="False",
+            row_operation_grounded="False",
+            semantically_grounded="False",
+        )
+
+        decision = choose_row(primary, candidate, policy="confidence")
+
+        self.assertEqual(decision.source, "primary")
+        self.assertEqual(decision.reason, "confidence_keep_primary")
+
     def test_confidence_switches_supported_average_scale_refinement(self) -> None:
         primary = self._row(
             prediction="3.08",

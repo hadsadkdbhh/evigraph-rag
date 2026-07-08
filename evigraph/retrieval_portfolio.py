@@ -251,6 +251,8 @@ def _fallback_evidence_coverage_improves(primary: dict[str, str], candidate: dic
     query_years = _years(primary.get("query", ""))
     primary_years = _years(primary.get("prediction", ""))
     candidate_years = _years(candidate.get("prediction", ""))
+    if _requires_complete_year_coverage(primary.get("query", "")) and not query_years <= candidate_years:
+        return False
     covers_missing_query_year = bool(query_years & candidate_years) and not bool(query_years & primary_years)
     return candidate_coverage > primary_coverage + 0.10 or covers_missing_query_year
 
@@ -364,6 +366,14 @@ def _content_tokens(text: str) -> list[str]:
 
 def _years(text: str) -> set[str]:
     return set(re.findall(r"\b(?:19|20)\d{2}\b", text))
+
+
+def _requires_complete_year_coverage(query: str) -> bool:
+    query_years = _years(query)
+    if len(query_years) < 2:
+        return False
+    lowered = query.lower()
+    return "change" in lowered or "from" in lowered
 
 
 def _prediction_magnitude(row: dict[str, str]) -> float:

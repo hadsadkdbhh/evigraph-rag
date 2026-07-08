@@ -18,8 +18,8 @@ from evigraph.retrieval_portfolio import (
 
 def main() -> int:
     args = _parse_args()
-    primary_rows = read_csv(args.primary_csv)
-    candidate_rows = read_csv(args.candidate_csv)
+    primary_rows = _filter_method(read_csv(args.primary_csv), args.method)
+    candidate_rows = _filter_method(read_csv(args.candidate_csv), args.method)
     rows = build_portfolio_rows(
         primary_rows,
         candidate_rows,
@@ -57,6 +57,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--primary-name", default="bm25")
     parser.add_argument("--candidate-name", default="neural_hybrid")
+    parser.add_argument("--method", default=None, help="Optional method name to keep, e.g. full_evigraph.")
     parser.add_argument(
         "--policy",
         default="fallback_numeric_calculation",
@@ -66,6 +67,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--output-csv-name", default="portfolio.csv")
     parser.add_argument("--report-name", default="portfolio_report.md")
     return parser.parse_args()
+
+
+def _filter_method(rows: list[dict[str, str]], method: str | None) -> list[dict[str, str]]:
+    if not method:
+        return rows
+    return [row for row in rows if row.get("method") == method]
 
 
 if __name__ == "__main__":

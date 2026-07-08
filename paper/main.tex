@@ -254,9 +254,12 @@ The earlier dense baseline is intentionally labeled as local hashed dense; the c
 On FinQA-600 with retrieval top-\(K=16\), BM25 reaches 0.362 exact match with source hit@16 of 0.905, neural dense reaches 0.253 with source hit@16 of 0.745, and neural hybrid reaches 0.363 with source hit@16 of 0.927.
 Thus neural hybrid increases gold-source exposure but does not yet translate that exposure into higher final accuracy.
 The paired analysis is nevertheless useful: BM25 top-8 and neural-hybrid top-16 have complementary correct sets, with an oracle portfolio union of 248/600 (0.413).
-A no-gold retrieval-portfolio selector that switches from BM25 to neural hybrid using fallback evidence coverage, executable numeric calculations, and verifier-supported calculation-refinement signals reaches 0.407 exact match, improving over the BM25 top-8 v43 result of 0.377 with 77 switches, 19 paired wins, and 1 paired loss.
+A no-gold retrieval-portfolio selector that switches from BM25 to neural hybrid using fallback evidence coverage, executable numeric calculations, and verifier-supported calculation-refinement signals reaches 0.407 exact match, improving over the BM25 top-8 v43 result of 0.377 with 74 switches, 18 paired wins, and no paired losses after adding a two-year coverage guard for fallback percent-change questions.
 This points to a concrete next method step: selecting across retrieval portfolios with verifier and support-graph signals, rather than treating a single retriever's top-\(K\) prefix as the evidence state.
 These results prevent an overbroad claim: the current system's main empirical story is not that retrieval is solved, but that evidence-state control improves the use of retrieved evidence once candidates are available.
+Table~\ref{tab:retrieval-portfolio-ablation} makes the tradeoff explicit: the conservative v44 selector has no observed paired losses but leaves many hybrid-only wins unused, the v45 confidence selector crosses the 0.40 open-retrieval line with one paired loss, and the guarded v46 selector preserves the same rounded exact match while removing that loss through a complete-year-coverage guard.
+
+\input{generated/retrieval_portfolio_ablation/finqa_retrieval_portfolio_ablation}
 
 \paragraph{Retrieval coverage diagnostics.}
 The v28 manifest now emits retrieval diagnostics for every retrieval setting.

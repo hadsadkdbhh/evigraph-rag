@@ -115,7 +115,7 @@ Conservative retrieval-portfolio selector:
     confidence features or source-aware evidence-state selection, not broad
     numeric rule expansion.
 
-Latest confidence portfolio selector:
+Latest guarded confidence portfolio selector:
 
 - Code:
   - `evigraph/retrieval_portfolio.py`
@@ -124,13 +124,17 @@ Latest confidence portfolio selector:
 - Policy:
   - `confidence`
 - Output:
-  - `outputs/eval/finqa_600_retrieval_portfolio_v45_confidence/portfolio_report.md`
+  - `outputs/eval/finqa_600_retrieval_portfolio_v46_guarded_confidence/portfolio_report.md`
 - Selection rule:
   - No gold labels, answer strings, or accuracy fields are used for choosing.
   - Starts from the v44 fallback numeric rule.
   - Adds fallback evidence-coverage switching when both systems return fallback
     prose but the neural-hybrid evidence has better query-token/year coverage
     without weaker verifier/support flags.
+  - Adds a complete-year-coverage guard for fallback percent-change questions
+    with two query years. This blocks the v45 loss on
+    `RE/2015/page_33.pdf-2`, where the neural-hybrid fallback mentioned only
+    2014 for a 2014-to-2015 change question.
   - Adds bounded verifier-supported numeric refinements for calculation states
     where the candidate has a more credible same-operation row/denominator/scale
     signal.
@@ -138,13 +142,13 @@ Latest confidence portfolio selector:
   - Portfolio EM: 0.407.
   - BM25 primary EM: 0.377.
   - Neural-hybrid candidate EM: 0.363.
-  - Switches: 77.
-  - Wins vs BM25: 19.
-  - Losses vs BM25: 1.
-  - Neutral switches: 57.
+  - Switches: 74.
+  - Wins vs BM25: 18.
+  - Losses vs BM25: 0.
+  - Neutral switches: 56.
 - Decision breakdown:
-  - Keep BM25: 523.
-  - Fallback evidence coverage: 51.
+  - Keep BM25: 526.
+  - Fallback evidence coverage: 48.
   - Fallback numeric calculation: 19.
   - Supported denominator text refinement: 3.
   - Supported concrete percent refinement: 1.
@@ -153,10 +157,30 @@ Latest confidence portfolio selector:
   - Supported ratio row refinement: 1.
 - Interpretation:
   - This crosses the Open 0.40 target on FinQA-600 without gold-based routing.
-  - It is more aggressive than v44 and has one paired loss, so the paper should
-    report both the gain and the loss count.
+  - It is more aggressive than v44 but guarded against the only observed v45
+    paired loss, so the paper should report v44/v45/v46 as a risk/coverage
+    tradeoff.
   - The result strengthens the story that neural retrieval exposure needs
     verifier-guided evidence-state selection to become answer accuracy.
+
+Retrieval portfolio paper table:
+
+- Files:
+  - `paper/generated/retrieval_portfolio_ablation/finqa_retrieval_portfolio_ablation.tex`
+  - `paper/generated/retrieval_portfolio_ablation/finqa_retrieval_portfolio_ablation.md`
+- FinQA-600 block:
+  - BM25 top-8 primary: 0.377.
+  - Neural-hybrid top-16: 0.363.
+  - Conservative portfolio v44: 0.388, 19 switches, 7 wins, 0 losses.
+  - Confidence portfolio v45: 0.407, 77 switches, 19 wins, 1 loss.
+  - Guarded confidence portfolio v46: 0.407, 74 switches, 18 wins, 0 losses.
+- FinQA-300 cross-setting sanity check:
+  - BM25 primary Full EviGraph: 0.493.
+  - Neural-hybrid Full EviGraph: 0.507.
+  - Guarded confidence portfolio Full EviGraph: 0.503, 18 switches, 3 wins,
+    0 losses.
+  - Treat this as a sanity check on the v21 neural-retrieval baseline outputs,
+    not as the main stress-setting result.
 
 Latest bounded repair:
 

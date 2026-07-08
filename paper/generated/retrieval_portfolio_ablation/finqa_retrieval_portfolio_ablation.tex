@@ -1,0 +1,22 @@
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Selector & EM & Switches & Wins & Losses \\
+\midrule
+BM25 top-8 primary & 0.377 & 0 & -- & -- \\
+Neural-hybrid top-16 & 0.363 & 600 & -- & -- \\
+Conservative portfolio v44 & 0.388 & 19 & 7 & 0 \\
+Confidence portfolio v45 & 0.407 & 77 & 19 & 1 \\
+Guarded confidence portfolio v46 & 0.407 & 74 & 18 & 0 \\
+\midrule
+\multicolumn{5}{l}{\textit{FinQA-300 cross-setting sanity check}} \\
+BM25 primary, Full EviGraph & 0.493 & 0 & -- & -- \\
+Neural-hybrid, Full EviGraph & 0.507 & 300 & -- & -- \\
+Guarded confidence portfolio, Full EviGraph & 0.503 & 18 & 3 & 0 \\
+\bottomrule
+\end{tabular}
+\caption{Retrieval-portfolio ablation. The FinQA-600 block uses the v43 BM25 top-8 and neural-hybrid top-16 Full EviGraph runs; the portfolio selector is no-gold and chooses between completed evidence states using prediction, calculation, query coverage, year coverage, and verifier/support flags. The FinQA-300 block is a cross-setting sanity check using the v21 neural retrieval baseline outputs, not the main stress setting.}
+\label{tab:retrieval-portfolio-ablation}
+\end{table}
