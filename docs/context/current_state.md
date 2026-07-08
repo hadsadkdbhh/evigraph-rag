@@ -16,19 +16,22 @@ retrieval performance without inflating claims beyond the evidence.
 
 Latest bounded repair:
 
-- v37 listed-year query-unit manifests:
-  - `configs/experiments.finqa_300.local_planner_listed_year_query_unit_v37.json`
-  - `configs/experiments.finqa_600.local_planner_listed_year_query_unit_v37.json`
+- v38 full-source year-compatibility manifests:
+  - `configs/experiments.finqa_300.local_planner_full_source_year_compat_v38.json`
+  - `configs/experiments.finqa_600.local_planner_full_source_year_compat_v38.json`
 - Outputs:
-  - `outputs/eval/finqa_300_local_planner_listed_year_query_unit_v37/summary.md`
-  - `outputs/eval/finqa_600_local_planner_listed_year_query_unit_v37/summary.md`
-  - `outputs/eval/finqa_300_local_planner_listed_year_query_unit_v37/v36_vs_v37.md`
-  - `outputs/eval/finqa_600_local_planner_listed_year_query_unit_v37/v36_vs_v37.md`
+  - `outputs/eval/finqa_300_local_planner_full_source_year_compat_v38/summary.md`
+  - `outputs/eval/finqa_600_local_planner_full_source_year_compat_v38/summary.md`
+  - `outputs/eval/finqa_300_local_planner_full_source_year_compat_v38/v37_vs_v38.md`
+  - `outputs/eval/finqa_600_local_planner_full_source_year_compat_v38/v37_vs_v38.md`
 - Change:
   - Carries forward v35 year-range sum and v36 listed-year average repairs.
   - Makes listed-year average prose extraction respect the query unit when
     parsing `respectively` amounts. Example: if the query asks `in billions`,
     `$13.0 billion` stays `13.0` instead of being scaled to `13000`.
+  - Keeps full source-document chunks year-compatible when the query year
+    appears later inside the source text, even if the report-year filename or
+    header contains a different year.
   - Keeps continuous year ranges such as `from 2008 to 2010` on the existing
     year-range average path.
 - Fixed examples:
@@ -38,21 +41,23 @@ Latest bounded repair:
     `(503 + 974) / 2 = 738.5`.
   - `PNC/2011/page_78.pdf-1`: listed-year average now computes
     `(13.0 + 13.2) / 2 = 13.1` in billions instead of `13100.0`.
+  - `IP/2007/page_75.pdf-1` and `IP/2007/page_75.pdf-2`: full-source
+    context is no longer filtered out before the 2008 commitments table; the
+    denominator is the 2008 `total` row instead of a prose fallback.
 - Tests:
-  - `python -m unittest discover -s tests`: 373 tests OK.
+  - `python -m unittest discover -s tests`: 374 tests OK.
 - Current headline local-planner result:
   - FinQA-300: Oracle 0.670, Open BM25 0.523, Source rerank 0.670.
-  - FinQA-600: Oracle 0.498, Open BM25 0.368, Source rerank 0.495.
-- Delta against v36:
-  - FinQA-300: Oracle +1 target-only, Open unchanged, Source +1 target-only,
-    no paired regressions.
-  - FinQA-600: Oracle +1 target-only, Open unchanged, Source +1 target-only,
+  - FinQA-600: Oracle 0.502, Open BM25 0.368, Source rerank 0.498.
+- Delta against v37:
+  - FinQA-300: unchanged across all three retrieval settings.
+  - FinQA-600: Oracle +2 target-only, Open unchanged, Source +2 target-only,
     no paired regressions.
 - Remaining biggest target:
-  - FinQA-600 is still just below the 0.50 Oracle/Source line. Continue with
-    concrete supported-wrong numeric clusters, especially
-    `ambiguous_supported_wrong_number`, wrong row labels, wrong operations, and
-    wrong year/period cases. Do not broaden generic rules.
+  - FinQA-600 Oracle has crossed 0.50; Source rerank is still just below 0.50.
+    Continue with concrete source-only failures such as `ETR/2015/page_131`,
+    `BLK/2012/page_37`, and `LMT/2015/page_99`, plus supported-wrong numeric
+    clusters. Do not broaden generic rules.
 
 Latest failure-driven operand repair:
 
@@ -366,9 +371,9 @@ Latest documented FinQA-600 local planner exact match:
 
 | Setting | Accuracy |
 | --- | ---: |
-| Oracle-doc full EviGraph | 0.403 |
-| Open BM25 full EviGraph | 0.295 |
-| BM25 + source-rerank full EviGraph | 0.400 |
+| Oracle-doc full EviGraph | 0.502 |
+| Open BM25 full EviGraph | 0.368 |
+| BM25 + source-rerank full EviGraph | 0.498 |
 
 Latest documented FinQA-300 non-API open retrieval controls:
 

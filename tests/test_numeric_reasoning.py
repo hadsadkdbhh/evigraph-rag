@@ -2208,6 +2208,55 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "93.5%")
         self.assertIn("ratio_percent", answer.calculations[0])
 
+    def test_ratio_percent_keeps_full_source_context_when_query_year_is_inside_table(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="retrieved_1_finqa_379_ip_2007_page_75_pdf_1_2008_context",
+                node_type="text",
+                content=(
+                    "at december 31 , 2007 , total future minimum commitments were as follows : "
+                    "in millions 2008 2009 2010.\n"
+                    "| in millions | 2008 | 2009 | 2010 |\n"
+                    "| --- | --- | --- | --- |\n"
+                    "| purchase obligations ( a ) | 1953 | 294 | 261 |\n"
+                ),
+                source_doc="report.md",
+                metadata={"retrieval_rank": 1},
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="retrieved_2_finqa_379_ip_2007_page_75_pdf_1_full",
+                node_type="text",
+                content=(
+                    "# FinQA Evidence IP/2007/page_75.pdf-1\n"
+                    "- Source dataset: dreamerdeo/finqa\n"
+                    "- Split: validation\n"
+                    "during 2007 the company discussed commitments and contingencies.\n"
+                    "another 2007-only header line keeps the query year outside the first lines.\n"
+                    "## Table\n"
+                    "| in millions | 2008 | 2009 | 2010 | 2011 | 2012 | thereafter |\n"
+                    "| --- | --- | --- | --- | --- | --- | --- |\n"
+                    "| lease obligations | $ 136 | $ 116 | $ 101 | $ 84 | $ 67 | $ 92 |\n"
+                    "| purchase obligations ( a ) | 1953 | 294 | 261 | 235 | 212 | 1480 |\n"
+                    "| total | $ 2089 | $ 410 | $ 362 | $ 319 | $ 279 | $ 1572 |\n"
+                ),
+                source_doc="report.md",
+                metadata={"retrieval_rank": 2},
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "what percentage of december 31 , 2007 , total future minimum commitments under "
+            "existing non-cancelable operating leases and purchase obligations were due to "
+            "purchase obligations for the year of 2008?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "93.5%")
+        self.assertIn("denominator_row=total", answer.calculations[0])
+
     def test_tax_provision_benefit_ratio_beats_later_commitments_table(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

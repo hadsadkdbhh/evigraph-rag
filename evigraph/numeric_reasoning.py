@@ -4484,6 +4484,8 @@ class NumericReasoner:
         return [item for _, item in sorted(enumerate(contexts), key=score)]
 
     def _context_year_compatible(self, query_year: str, node_id: str, text: str) -> bool:
+        if node_id.lower().endswith("_full") and re.search(rf"\b{re.escape(query_year)}\b", text):
+            return True
         header = " ".join(text.splitlines()[:8]).lower()
         source = f"{node_id.lower()} {header}"
         years = set(re.findall(r"\b(20\d{2})\b", source))
