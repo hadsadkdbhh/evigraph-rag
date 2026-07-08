@@ -253,7 +253,8 @@ The latest v38 failure-driven repair improves the full EviGraph open-BM25 result
 The earlier dense baseline is intentionally labeled as local hashed dense; the current neural retrieval track uses sentence-transformer dense and neural-hybrid retrieval and is evaluated as a separate open-retrieval stress experiment.
 On FinQA-600 with retrieval top-\(K=16\), BM25 reaches 0.362 exact match with source hit@16 of 0.905, neural dense reaches 0.253 with source hit@16 of 0.745, and neural hybrid reaches 0.363 with source hit@16 of 0.927.
 Thus neural hybrid increases gold-source exposure but does not yet translate that exposure into higher final accuracy.
-The paired analysis is nevertheless useful: BM25 top-8 and neural-hybrid top-16 have complementary correct sets, with an oracle portfolio union of 248/600 (0.413) and a simple verifier-score portfolio reaching 0.385.
+The paired analysis is nevertheless useful: BM25 top-8 and neural-hybrid top-16 have complementary correct sets, with an oracle portfolio union of 248/600 (0.413).
+A no-gold retrieval-portfolio selector that switches from BM25 to neural hybrid only when the BM25 answer is a fallback text response and the hybrid answer contains an executable numeric calculation reaches 0.388 exact match, improving over the BM25 top-8 v43 result of 0.377 with 19 switches, 7 wins, and no paired losses.
 This points to a concrete next method step: selecting across retrieval portfolios with verifier and support-graph signals, rather than treating a single retriever's top-\(K\) prefix as the evidence state.
 These results prevent an overbroad claim: the current system's main empirical story is not that retrieval is solved, but that evidence-state control improves the use of retrieved evidence once candidates are available.
 

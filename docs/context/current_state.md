@@ -76,6 +76,45 @@ Current true neural retrieval track:
     change is a verifier-guided retrieval portfolio selector, not another
     broad numeric rule.
 
+Latest retrieval-portfolio selector:
+
+- Code:
+  - `evigraph/retrieval_portfolio.py`
+  - `scripts/build_retrieval_portfolio.py`
+  - `tests/test_retrieval_portfolio.py`
+- Inputs:
+  - BM25 top-8 v43:
+    `outputs/eval/finqa_600_local_planner_guarded_top8_repair_v43/finqa_600_subset_open_bm25_full_local_planner_v43_guarded_top8_repair.csv`
+  - Neural-hybrid top-16 v43:
+    `outputs/eval/finqa_600_neural_retrieval_full_evigraph_v43/finqa_600_subset_open_neural_hybrid_full_evigraph_top16_v43.csv`
+- Output:
+  - `outputs/eval/finqa_600_retrieval_portfolio_v44/portfolio_report.md`
+- Selection rule:
+  - No gold labels or accuracy fields are used for choosing.
+  - Keep BM25 by default.
+  - Switch to neural hybrid only when BM25 produced a fallback prose response
+    without calculation and neural hybrid produced a non-fallback numeric answer
+    with an executable calculation.
+- Result:
+  - Portfolio EM: 0.388.
+  - BM25 primary EM: 0.377.
+  - Neural-hybrid candidate EM: 0.363.
+  - Switches: 19.
+  - Wins vs BM25: 7.
+  - Losses vs BM25: 0.
+  - Neutral switches: 12.
+- Strict verifier-supported variant:
+  - `outputs/eval/finqa_600_retrieval_portfolio_v44_strict/portfolio_report.md`
+  - EM 0.385, 15 switches, 5 wins, 0 losses.
+- Interpretation:
+  - This is a real but modest open-retrieval gain.
+  - It supports the paper story that neural retrieval improves evidence exposure
+    but needs verifier-guided evidence-state selection to become accuracy.
+  - It still does not cross the Open BM25 0.40 target, so Open BM25 remains a
+    stress setting. Next Open gains should come from stronger portfolio
+    confidence features or source-aware evidence-state selection, not broad
+    numeric rule expansion.
+
 Latest bounded repair:
 
 - v38 full-source year-compatibility manifests:
