@@ -38,7 +38,10 @@ Current blockers:
 - The paper now has a first-pass related-work section, but it still needs final tightening and citation polish.
 - The method figure is now present as a lightweight LaTeX diagram, but it should be polished if space allows.
 - Open retrieval now includes lexical BM25, sentence-transformer dense retrieval, neural hybrid retrieval, and a no-gold guarded retrieval-portfolio selector.
-- FinQA-600 is now available as a larger pressure test, but a public second benchmark is still missing.
+- FinQA-600 is now available as a larger pressure test.
+- A small public TAT-QA-20 arithmetic pilot now runs through the same manifest
+  pipeline; it reduces the FinQA-only concern, but it is a portability check
+  rather than a full second-benchmark claim.
 - The paper needs a full reproducibility checklist and a clear code/data release note.
 - The exact-match results are diagnostic, not strong enough to sell as benchmark superiority.
 - The current FinQA-600 open-retrieval target has crossed 0.40 with guarded
@@ -82,8 +85,9 @@ Priority 2: strengthen the empirical story.
 - Add ablations for no risk scoring, no verifier, no evidence-graph selection,
   no operation planner, planner without verifier-grounded rejection, and top-k
   with the same answer generator.
-- Add a real public second dataset beyond the current three-example synthetic
-  stress suite once exact commands and adapters are stable.
+- Scale the new public TAT-QA pilot beyond 20 examples only after the adapter
+  and failure reports remain stable; until then, report it as a small
+  cross-benchmark pilot.
 - Keep oracle-doc, open BM25, hybrid/dense open retrieval, and source-rerank analysis in separate table blocks.
 - Track failure categories and row/operation diagnostics after every manifest run and prioritize the largest open-retrieval error classes.
 

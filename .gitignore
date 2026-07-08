@@ -5,5 +5,7 @@ venv/
 outputs/runs/
 outputs/index/
 outputs/eval/
+outputs/logs/
 outputs/pipeline/
+outputs/tmp_*.json
 .env

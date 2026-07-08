@@ -207,6 +207,34 @@ Statistical confidence and cross-benchmark smoke:
   - Top-K and utility-only: 1/3.
   - Treat as cross-format smoke only, not a public benchmark claim.
 
+Public TAT-QA pilot:
+
+- Builder:
+  - `scripts/build_tatqa_subset.py`
+  - Test: `tests/test_tatqa_subset_builder.py`
+- Generated repo data:
+  - `data/raw/tatqa_20_subset.jsonl`
+  - `data/tatqa_20_corpus/`
+- Manifest:
+  - `configs/experiments.tatqa_20.local_planner.json`
+- Run output:
+  - `outputs/eval/tatqa_20_local_planner/summary.md`
+  - `outputs/eval/tatqa_20_local_planner/tatqa_20_open_bm25_full_retrieval_diagnostics.md`
+- Results:
+  - Oracle-doc Full EviGraph: EM 0.500, support 0.800.
+  - Open BM25 Full EviGraph: EM 0.450, support 0.850.
+  - Open BM25 source_hit@8: 1.000, source_top1: 0.750.
+  - Failure report: 11/20 failed examples; all open failures have source hit,
+    so the pilot supports the claim that source exposure alone is insufficient.
+- Paper files:
+  - `paper/generated/tatqa_20_cross_benchmark/tatqa_20_results.tex`
+  - `paper/generated/tatqa_20_cross_benchmark/tatqa_20_results.md`
+- Interpretation:
+  - This is a public cross-benchmark pilot, not a full TAT-QA benchmark claim.
+  - Gold derivations are not serialized into the retrieval corpus.
+  - Use it to answer the reviewer concern that the pipeline is FinQA-only,
+    while keeping headline claims on FinQA-300/600.
+
 Figure planning:
 
 - Planning document:

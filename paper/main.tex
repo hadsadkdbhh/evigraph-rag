@@ -28,7 +28,7 @@ Anonymous Authors
 \begin{abstract}
 Retrieval-augmented generation systems often treat retrieved passages as usable evidence, even when the retrieved context is incomplete, noisy, or numerically under-specified.
 We study evidence-state control: a pipeline that converts retrieved candidates into an explicit evidence graph, scores their utility and risk, selects a compact support subgraph, executes table-oriented numerical operations, and verifies generated claims against cited support.
-On deterministic 300- and 600-example FinQA validation subsets, we evaluate EviGraph-RAG against direct RAG, retrieve-then-program, full-context, utility-only, retrieval-baseline, external LLM Direct RAG, and component-ablation controls, with a small stress suite used only as a cross-format smoke test.
+On deterministic 300- and 600-example FinQA validation subsets, we evaluate EviGraph-RAG against direct RAG, retrieve-then-program, full-context, utility-only, retrieval-baseline, external LLM Direct RAG, and component-ablation controls, with a small public TAT-QA pilot and a synthetic stress suite used only as portability checks.
 The current results support a conservative mechanism claim: retrieval exposure alone does not reliably become answer accuracy, while verifier-guided evidence-state selection improves the use of heterogeneous retrieved candidates and exposes when high exact match lacks cited numerical support.
 \end{abstract}
 
@@ -44,6 +44,7 @@ The system then selects a support subgraph, expands source context when running 
 
 This skeleton is intentionally conservative.
 The current FinQA experiments use a deterministic 300-example validation subset and a 600-example stress subset, and report oracle-document, open BM25, BM25 with source reranking, TF-IDF, deterministic hybrid retrieval, local hashed dense retrieval, and a sentence-transformer neural retrieval track.
+We also add a small public TAT-QA pilot to check whether the same manifest-driven pipeline runs on a second financial table/text QA dataset without relying on FinQA-specific serialization.
 Rather than claiming benchmark-level superiority, the paper asks a narrower question: what is gained when a RAG system turns retrieved text into a selected, executable, and verified evidence state?
 
 Our current answer is a mechanism story rather than a raw leaderboard claim: the system's value is not merely retrieving more text, but deciding which retrieved evidence state is executable and supportable.
@@ -192,6 +193,10 @@ edges: support, derivation, temporal alignment, conflict \\
 \textbf{FinQA.} We use a deterministic 300-example validation subset from \texttt{dreamerdeo/finqa}, preserving source-document metadata for oracle-document and source-rerank analysis.
 The corpus serializes source pre-text, tables, and post-text to Markdown and excludes gold answers and gold evidence annotations from retrieval.
 
+\textbf{TAT-QA pilot.} We construct a 20-example arithmetic pilot from the public TAT-QA development set using a fixed seed.
+Each source document is serialized as Markdown containing the table and paragraphs, while gold derivations are excluded from the retrieval corpus.
+This pilot is used to test portability of the evidence-state pipeline on a second public financial table/text QA format, not to claim full TAT-QA benchmark performance.
+
 \textbf{Stress Suite.} We also maintain a synthetic stress suite with official reports and distracting forecast/draft/press evidence.
 This suite is used for mechanism debugging, not public benchmark claims.
 It tests whether the evidence-state pipeline can transfer beyond FinQA serialization by rejecting distracting non-governing documents in a small controlled setting.
@@ -279,8 +284,15 @@ The drop relative to FinQA-300 is useful rather than embarrassing: it shows that
 
 \input{generated/finqa_300_local_planner_table_ops_v21/finqa_results_tables}
 
-\paragraph{Cross-format stress suite.}
-As a small second-dataset smoke test, we run the same manifest pipeline on three synthetic numerical questions over official reports with forecast/draft/press distractors.
+\paragraph{Public TAT-QA pilot and cross-format stress suite.}
+As a small public cross-benchmark pilot, we run the same manifest pipeline on 20 arithmetic examples sampled from the TAT-QA development set.
+Full EviGraph reaches 0.500 exact match under oracle-document retrieval and 0.450 under open BM25.
+The open setting retrieves the gold source document for all 20 examples, but 11 examples remain wrong despite source exposure.
+This reinforces the paper's mechanism claim: retrieval exposure is necessary but does not by itself determine a supportable numeric evidence state.
+
+\input{generated/tatqa_20_cross_benchmark/tatqa_20_results}
+
+We also run a three-example synthetic stress suite over official reports with forecast/draft/press distractors.
 Full EviGraph answers all three examples correctly while top-\(K\) and utility-only selectors answer one of three.
 Because \(n=3\), this is not a public benchmark claim; its purpose is to verify that the evidence-state machinery is not hard-coded to FinQA serialization.
 
