@@ -26,8 +26,8 @@ state-of-the-art financial QA benchmark paper.
 Current strengths:
 
 - End-to-end reproducible pipeline with manifest-driven experiments.
-- Deterministic 100-example FinQA validation subset with source documents recorded.
-- Four clearly separated retrieval settings: oracle-doc, open BM25, deterministic open hybrid, and source-rerank analysis.
+- Deterministic 300-example and 600-example FinQA validation subsets with source documents recorded.
+- Clearly separated retrieval settings: oracle-doc, open BM25, neural dense, neural hybrid, retrieval portfolio selection, and source-rerank analysis.
 - Generated paper tables for exact match, support diagnostics, and failure categories.
 - Generated row/operation diagnostic tables that split wrong numeric answers by operand, year/period, row-label, operation-type, and ambiguous supported wrong-number signals.
 - Formal subgraph-selection objective with monotone submodular structure.
@@ -37,13 +37,13 @@ Current blockers:
 
 - The paper now has a first-pass related-work section, but it still needs final tightening and citation polish.
 - The method figure is now present as a lightweight LaTeX diagram, but it should be polished if space allows.
-- Open retrieval now includes lexical BM25 and a deterministic lexical/numeric hybrid reranker, but no dense baseline is present.
-- The current FinQA subset is too small for final benchmark claims.
+- Open retrieval now includes lexical BM25, sentence-transformer dense retrieval, neural hybrid retrieval, and a no-gold guarded retrieval-portfolio selector.
+- FinQA-600 is now available as a larger pressure test, but a public second benchmark is still missing.
 - The paper needs a full reproducibility checklist and a clear code/data release note.
 - The exact-match results are diagnostic, not strong enough to sell as benchmark superiority.
-- The next phase target is to lift FinQA-300 exact match to at least 0.50+
-  oracle-doc, 0.45+ source-rerank, and 0.35+ open BM25 before treating the
-  FinQA-300 table as a positive empirical result.
+- The current FinQA-600 open-retrieval target has crossed 0.40 with guarded
+  portfolio selection, but this should be framed as evidence-state selection
+  over heterogeneous retrieval states rather than a solved retrieval benchmark.
 
 ## Submission-Safe Claim Strategy
 
@@ -75,13 +75,15 @@ Priority 2: strengthen the empirical story.
 
 - Use `docs/next_phase_goals.md` as the target gate for the next empirical
   phase.
-- Add a dense retrieval baseline for open retrieval; the deterministic hybrid baseline is present but does not yet improve exact match over BM25.
+- Keep dense/neural-hybrid retrieval baselines and retrieval-portfolio selection
+  in a separate open-retrieval stress block.
 - Add BM25 top-k reader, LLM direct RAG, retrieve-then-program, and top-k plus
   local numeric executor baselines.
 - Add ablations for no risk scoring, no verifier, no evidence-graph selection,
   no operation planner, planner without verifier-grounded rejection, and top-k
   with the same answer generator.
-- Scale FinQA beyond the 100-example smoke subset once exact commands and caching are stable.
+- Add a real public second dataset beyond the current three-example synthetic
+  stress suite once exact commands and adapters are stable.
 - Keep oracle-doc, open BM25, hybrid/dense open retrieval, and source-rerank analysis in separate table blocks.
 - Track failure categories and row/operation diagnostics after every manifest run and prioritize the largest open-retrieval error classes.
 

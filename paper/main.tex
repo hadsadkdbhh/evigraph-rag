@@ -28,8 +28,8 @@ Anonymous Authors
 \begin{abstract}
 Retrieval-augmented generation systems often treat retrieved passages as usable evidence, even when the retrieved context is incomplete, noisy, or numerically under-specified.
 We study evidence-state control: a pipeline that converts retrieved candidates into an explicit evidence graph, scores their utility and risk, selects a compact support subgraph, executes table-oriented numerical operations, and verifies generated claims against cited support.
-On a deterministic 300-example FinQA validation subset, we evaluate EviGraph-RAG against direct RAG, retrieve-then-program, full-context, utility-only, retrieval-baseline, external LLM Direct RAG, and component-ablation controls; we also add a 600-example FinQA stress subset to test whether the diagnostic story survives a larger sample.
-The current results support a conservative mechanism claim: operation planning and evidence-graph selection improve exact match over local direct RAG, while verifier diagnostics expose when a stronger external reader achieves higher exact match without correspondingly strong cited support.
+On deterministic 300- and 600-example FinQA validation subsets, we evaluate EviGraph-RAG against direct RAG, retrieve-then-program, full-context, utility-only, retrieval-baseline, external LLM Direct RAG, and component-ablation controls, with a small stress suite used only as a cross-format smoke test.
+The current results support a conservative mechanism claim: retrieval exposure alone does not reliably become answer accuracy, while verifier-guided evidence-state selection improves the use of heterogeneous retrieved candidates and exposes when high exact match lacks cited numerical support.
 \end{abstract}
 
 \section{Introduction}
@@ -46,12 +46,12 @@ This skeleton is intentionally conservative.
 The current FinQA experiments use a deterministic 300-example validation subset and a 600-example stress subset, and report oracle-document, open BM25, BM25 with source reranking, TF-IDF, deterministic hybrid retrieval, local hashed dense retrieval, and a sentence-transformer neural retrieval track.
 Rather than claiming benchmark-level superiority, the paper asks a narrower question: what is gained when a RAG system turns retrieved text into a selected, executable, and verified evidence state?
 
-Our current answer is a mechanism story rather than a raw leaderboard claim.
+Our current answer is a mechanism story rather than a raw leaderboard claim: the system's value is not merely retrieving more text, but deciding which retrieved evidence state is executable and supportable.
 On the FinQA-300 diagnostic subset, the latest v38 table-operation EviGraph configuration reaches 0.670 exact match under oracle-document retrieval, 0.523 under open BM25, and 0.670 under BM25 plus source reranking.
 The corresponding answer-support rates are 0.850, 0.853, and 0.850, and the process trace shows high row grounding and operation-semantics checking while isolating operand selection as the dominant remaining bottleneck.
 By contrast, a GPT-5.4 Direct RAG baseline reaches higher exact match under oracle-document retrieval (0.693), open BM25 (0.523), and source reranking (0.690), but its answer-support rates remain much lower: 0.343, 0.273, and 0.340 respectively.
 This makes the current claim sharper: EviGraph is not simply an accuracy booster over a frontier external reader; it is an auditable evidence-state mechanism that closes much of the accuracy gap while exposing whether answers are actually supported by cited evidence and executable operations.
-On the larger FinQA-600 stress subset, the latest guarded repair configuration reaches 0.503 under oracle-document retrieval, 0.377 under open BM25, and 0.502 under BM25 plus source reranking.
+On the larger FinQA-600 stress subset, the latest guarded repair configuration reaches 0.503 under oracle-document retrieval, 0.377 under open BM25, and 0.502 under BM25 plus source reranking; adding verifier-guided retrieval-portfolio selection raises the open setting to 0.407 without paired losses against BM25.
 We therefore treat FinQA-300 as the mechanism table and FinQA-600 as a pressure test that exposes remaining generalization gaps.
 
 \section{Related Work}
@@ -194,6 +194,7 @@ The corpus serializes source pre-text, tables, and post-text to Markdown and exc
 
 \textbf{Stress Suite.} We also maintain a synthetic stress suite with official reports and distracting forecast/draft/press evidence.
 This suite is used for mechanism debugging, not public benchmark claims.
+It tests whether the evidence-state pipeline can transfer beyond FinQA serialization by rejecting distracting non-governing documents in a small controlled setting.
 
 \subsection{Retrieval Settings}
 
@@ -261,6 +262,8 @@ Table~\ref{tab:retrieval-portfolio-ablation} makes the tradeoff explicit: the co
 
 \input{generated/retrieval_portfolio_ablation/finqa_retrieval_portfolio_ablation}
 
+\input{generated/statistical_confidence/main_confidence_table}
+
 \paragraph{Retrieval coverage diagnostics.}
 The v28 manifest now emits retrieval diagnostics for every retrieval setting.
 On FinQA-300 Open BM25, the gold source document appears in the top-\(8\) retrieved set for 269/300 examples (0.897), and appears at rank 1 for 151/300 examples (0.503).
@@ -275,6 +278,13 @@ Answer support remains substantially higher than exact match (0.820, 0.787, and 
 The drop relative to FinQA-300 is useful rather than embarrassing: it shows that the present system has a real mechanism, while operand grounding remains the key generalization bottleneck.
 
 \input{generated/finqa_300_local_planner_table_ops_v21/finqa_results_tables}
+
+\paragraph{Cross-format stress suite.}
+As a small second-dataset smoke test, we run the same manifest pipeline on three synthetic numerical questions over official reports with forecast/draft/press distractors.
+Full EviGraph answers all three examples correctly while top-\(K\) and utility-only selectors answer one of three.
+Because \(n=3\), this is not a public benchmark claim; its purpose is to verify that the evidence-state machinery is not hard-coded to FinQA serialization.
+
+\input{generated/cross_benchmark_stress/stress_suite_results}
 
 \section{Failure Analysis}
 

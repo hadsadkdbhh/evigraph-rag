@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import math
 import re
 from collections import Counter
 from dataclasses import dataclass
@@ -120,6 +121,9 @@ def render_portfolio_report(
     candidate_name: str,
 ) -> str:
     summary = summarize_portfolio(rows, primary_name=primary_name, candidate_name=candidate_name)
+    portfolio_low, portfolio_high = _wilson_interval(round(summary["accuracy"] * summary["n"]), summary["n"])
+    primary_low, primary_high = _wilson_interval(round(summary["primary_accuracy"] * summary["n"]), summary["n"])
+    candidate_low, candidate_high = _wilson_interval(round(summary["candidate_accuracy"] * summary["n"]), summary["n"])
     lines = [
         f"# {title}",
         "",
@@ -133,6 +137,16 @@ def render_portfolio_report(
         f"- Wins vs primary: {summary['wins_vs_primary']}",
         f"- Losses vs primary: {summary['losses_vs_primary']}",
         f"- Neutral switches: {summary['neutral_switches']}",
+        "",
+        "## Confidence",
+        "",
+        "| selector | EM | 95% Wilson CI |",
+        "| --- | ---: | --- |",
+        f"| portfolio | {_fmt(summary['accuracy'])} | [{_fmt(portfolio_low)}, {_fmt(portfolio_high)}] |",
+        f"| primary ({_escape(primary_name)}) | {_fmt(summary['primary_accuracy'])} | [{_fmt(primary_low)}, {_fmt(primary_high)}] |",
+        f"| candidate ({_escape(candidate_name)}) | {_fmt(summary['candidate_accuracy'])} | [{_fmt(candidate_low)}, {_fmt(candidate_high)}] |",
+        "",
+        f"Paired McNemar p-value vs primary: {_fmt(_mcnemar_exact_p(summary['wins_vs_primary'], summary['losses_vs_primary']))}",
         "",
         "## Decision Breakdown",
         "",
@@ -406,6 +420,25 @@ def _float(value: str | None) -> float:
     if value in (None, ""):
         return 0.0
     return float(value)
+
+
+def _wilson_interval(correct: int, n: int, z: float = 1.96) -> tuple[float, float]:
+    if n <= 0:
+        return 0.0, 0.0
+    phat = correct / n
+    denom = 1 + z * z / n
+    center = (phat + z * z / (2 * n)) / denom
+    margin = z * math.sqrt((phat * (1 - phat) + z * z / (4 * n)) / n) / denom
+    return max(0.0, center - margin), min(1.0, center + margin)
+
+
+def _mcnemar_exact_p(target_only: int, baseline_only: int) -> float:
+    discordant = target_only + baseline_only
+    if discordant == 0:
+        return 1.0
+    smaller = min(target_only, baseline_only)
+    tail = sum(math.comb(discordant, k) for k in range(smaller + 1)) * (0.5**discordant)
+    return min(1.0, 2 * tail)
 
 
 def _fmt(value: float) -> str:

@@ -1,0 +1,18 @@
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{llrr}
+\toprule
+Setting & Method & EM & 95\% Wilson CI \\
+\midrule
+FinQA-600 Open & BM25 primary & 0.377 & [0.339, 0.416] \\
+FinQA-600 Open & Guarded portfolio & 0.407 & [0.368, 0.446] \\
+FinQA-300 Open & BM25 Full EviGraph & 0.493 & [0.437, 0.550] \\
+FinQA-300 Open & Guarded portfolio & 0.503 & [0.447, 0.560] \\
+Stress suite & Top-\(K\) & 0.333 & [0.061, 0.792] \\
+Stress suite & Full EviGraph & 1.000 & [0.438, 1.000] \\
+\bottomrule
+\end{tabular}
+\caption{Confidence intervals for the current main and sanity-check results. The FinQA-600 portfolio improves over its BM25 primary with 18 paired wins and 0 losses (exact McNemar \(p<0.001\)). The FinQA-300 portfolio sanity check has 3 wins and 0 losses but is not significant at conventional levels because only 18 examples are switched. The three-example stress suite is a cross-benchmark smoke test, so its interval is intentionally wide.}
+\label{tab:confidence}
+\end{table}

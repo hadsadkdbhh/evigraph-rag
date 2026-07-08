@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from evigraph.retrieval_portfolio import build_portfolio_rows, choose_row
+from evigraph.retrieval_portfolio import build_portfolio_rows, choose_row, render_portfolio_report
 
 
 class RetrievalPortfolioTest(unittest.TestCase):
@@ -138,6 +138,16 @@ class RetrievalPortfolioTest(unittest.TestCase):
 
         self.assertEqual(decision.source, "candidate")
         self.assertEqual(decision.reason, "confidence_supported_average_scale_refinement")
+
+    def test_report_includes_confidence_statistics(self) -> None:
+        primary = self._row(prediction="Based on the selected evidence: prose", calculation="", accuracy="0.0")
+        candidate = self._row(prediction="17.0%", calculation="percent_change = 17.0", accuracy="1.0")
+        rows = build_portfolio_rows([primary], [candidate], policy="confidence")
+
+        report = render_portfolio_report(rows, title="test", primary_name="bm25", candidate_name="hybrid")
+
+        self.assertIn("95% Wilson CI", report)
+        self.assertIn("Paired McNemar p-value", report)
 
     def _row(self, **overrides: str) -> dict[str, str]:
         row = {

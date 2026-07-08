@@ -182,6 +182,42 @@ Retrieval portfolio paper table:
   - Treat this as a sanity check on the v21 neural-retrieval baseline outputs,
     not as the main stress-setting result.
 
+Statistical confidence and cross-benchmark smoke:
+
+- Portfolio reports now include Wilson 95% confidence intervals and exact
+  McNemar p-values.
+- Generated files:
+  - `paper/generated/statistical_confidence/main_confidence_report.md`
+  - `paper/generated/statistical_confidence/main_confidence_table.tex`
+  - `paper/generated/statistical_confidence/main_confidence_table.md`
+  - `paper/generated/cross_benchmark_stress/stress_suite_results.tex`
+  - `paper/generated/cross_benchmark_stress/stress_suite_results.md`
+- FinQA-600 Open:
+  - BM25 primary: 0.377, 95% Wilson CI [0.339, 0.416].
+  - Guarded portfolio: 0.407, 95% Wilson CI [0.368, 0.446].
+  - Paired wins/losses vs BM25: 18/0, exact McNemar p < 0.001.
+- FinQA-300 Open Full EviGraph sanity check:
+  - BM25 primary: 0.493, 95% Wilson CI [0.437, 0.550].
+  - Guarded portfolio: 0.503, 95% Wilson CI [0.447, 0.560].
+  - Paired wins/losses vs BM25: 3/0, exact McNemar p = 0.250.
+- Synthetic stress suite:
+  - Manifest: `configs/experiments.stress.json`.
+  - Output: `outputs/eval/stress/summary.md`.
+  - Full EviGraph: 3/3.
+  - Top-K and utility-only: 1/3.
+  - Treat as cross-format smoke only, not a public benchmark claim.
+
+Figure planning:
+
+- Planning document:
+  - `docs/figure_plan.md`
+- Figure 1 should show the pipeline: query, heterogeneous retrievers, candidate
+  evidence graph, verifier-guided selector, local executor, verifier, answer
+  trace.
+- Figure 2 should show the portfolio mechanism: BM25 evidence state,
+  neural-hybrid evidence state, no-gold confidence selector, v44/v45/v46
+  tradeoff.
+
 Latest bounded repair:
 
 - v38 full-source year-compatibility manifests:
