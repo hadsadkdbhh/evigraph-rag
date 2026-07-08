@@ -14,51 +14,45 @@ retrieval performance without inflating claims beyond the evidence.
 
 ## Current Baseline
 
-In-flight bounded repair:
+Latest bounded repair:
 
-- v36 listed-year average manifests:
-  - `configs/experiments.finqa_300.local_planner_listed_year_average_v36.json`
-  - `configs/experiments.finqa_600.local_planner_listed_year_average_v36.json`
+- v37 listed-year query-unit manifests:
+  - `configs/experiments.finqa_300.local_planner_listed_year_query_unit_v37.json`
+  - `configs/experiments.finqa_600.local_planner_listed_year_query_unit_v37.json`
+- Outputs:
+  - `outputs/eval/finqa_300_local_planner_listed_year_query_unit_v37/summary.md`
+  - `outputs/eval/finqa_600_local_planner_listed_year_query_unit_v37/summary.md`
+  - `outputs/eval/finqa_300_local_planner_listed_year_query_unit_v37/v36_vs_v37.md`
+  - `outputs/eval/finqa_600_local_planner_listed_year_query_unit_v37/v36_vs_v37.md`
 - Change:
-  - Adds a bounded average executor for explicitly listed, non-contiguous
-    years such as `2013 and 2011`.
-  - Fixes verifier expected-operation logic so `operations` is not mistaken for
-    the word `ratio`.
+  - Carries forward v35 year-range sum and v36 listed-year average repairs.
+  - Makes listed-year average prose extraction respect the query unit when
+    parsing `respectively` amounts. Example: if the query asks `in billions`,
+    `$13.0 billion` stays `13.0` instead of being scaled to `13000`.
   - Keeps continuous year ranges such as `from 2008 to 2010` on the existing
     year-range average path.
-- Fixed smoke:
-  - `DISH/2013/page_138.pdf-3`: `what was the average revenue from
-    discontinued operations in 2013 and 2011, in millions?`
-  - Old v35 Oracle/Source/Open: `503 / 974 = 0.52`.
-  - New local smoke: `(503 + 974) / 2 = 738.5`, verifier-supported.
+- Fixed examples:
+  - `BDX/2018/page_82.pdf-4`: year-range sum now computes
+    `113 + 138 + 137 = 388`.
+  - `DISH/2013/page_138.pdf-3`: listed-year average now computes
+    `(503 + 974) / 2 = 738.5`.
+  - `PNC/2011/page_78.pdf-1`: listed-year average now computes
+    `(13.0 + 13.2) / 2 = 13.1` in billions instead of `13100.0`.
 - Tests:
-  - `python -m unittest discover -s tests`: 372 tests OK.
-- Status:
-  - Run the v36 FinQA-300 and FinQA-600 manifests before treating this as the
-    new headline result.
-
-In-flight bounded repair:
-
-- v35 year-range sum manifests:
-  - `configs/experiments.finqa_300.local_planner_year_range_sum_v35.json`
-  - `configs/experiments.finqa_600.local_planner_year_range_sum_v35.json`
-- Change:
-  - Expands total-over-year-range queries such as `2016-2018` into the full
-    inclusive year series for sum execution.
-  - Keeps this scoped to sum-style execution and local planner aggregate
-    behavior; this is not a broad new arithmetic rule.
-- Fixed smoke:
-  - `BDX/2018/page_82.pdf-4`: `what is the total net pension cost from
-    2016-2018, in millions?`
-  - Old v34 Oracle/Source: `113 + 137 = 250`, omitting 2017.
-  - New local smoke: `113 + 138 + 137 = 388`.
-- Tests:
-  - `python -m unittest discover -s tests`: 367 tests OK.
-- Status:
-  - FinQA-300 v35 matched v34 exactly: Oracle 0.667, Open BM25 0.520,
-    Source rerank 0.667.
-  - FinQA-600 v35 improved v34 by one Oracle/Source case and had no paired
-    regressions: Oracle 0.495, Open BM25 0.365, Source rerank 0.492.
+  - `python -m unittest discover -s tests`: 373 tests OK.
+- Current headline local-planner result:
+  - FinQA-300: Oracle 0.670, Open BM25 0.523, Source rerank 0.670.
+  - FinQA-600: Oracle 0.498, Open BM25 0.368, Source rerank 0.495.
+- Delta against v36:
+  - FinQA-300: Oracle +1 target-only, Open unchanged, Source +1 target-only,
+    no paired regressions.
+  - FinQA-600: Oracle +1 target-only, Open unchanged, Source +1 target-only,
+    no paired regressions.
+- Remaining biggest target:
+  - FinQA-600 is still just below the 0.50 Oracle/Source line. Continue with
+    concrete supported-wrong numeric clusters, especially
+    `ambiguous_supported_wrong_number`, wrong row labels, wrong operations, and
+    wrong year/period cases. Do not broaden generic rules.
 
 Latest failure-driven operand repair:
 

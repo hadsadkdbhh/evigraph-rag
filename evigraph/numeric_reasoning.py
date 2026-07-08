@@ -742,7 +742,12 @@ class NumericReasoner:
                 cited_node_ids=[node_id],
             )
         for node_id, text in contexts:
-            values = self._prose_multi_year_values_for_query(query_lower, text, query_years)
+            values = self._prose_multi_year_values_for_query(
+                query_lower,
+                text,
+                query_years,
+                respect_query_unit=True,
+            )
             if not values:
                 continue
             ordered = [values[year] for year in query_years if year in values]
@@ -2243,6 +2248,7 @@ class NumericReasoner:
         query_lower: str,
         text: str,
         years: list[str],
+        respect_query_unit: bool = False,
     ) -> dict[str, float] | None:
         if not years:
             return None
@@ -2259,13 +2265,22 @@ class NumericReasoner:
                 best_sentence = sentence
         if not best_sentence:
             return None
-        values = self._respectively_ordered_values(best_sentence, years)
+        values = self._respectively_ordered_values(
+            best_sentence,
+            years,
+            query_lower=query_lower if respect_query_unit else None,
+        )
         if not values:
             return None
         values["__row_label__"] = self._prose_row_label(best_sentence, query_lower)
         return values
 
-    def _respectively_ordered_values(self, sentence: str, years: list[str]) -> dict[str, float] | None:
+    def _respectively_ordered_values(
+        self,
+        sentence: str,
+        years: list[str],
+        query_lower: str | None = None,
+    ) -> dict[str, float] | None:
         lower_sentence = sentence.lower()
         if "respectively" not in lower_sentence:
             return None
@@ -2283,7 +2298,7 @@ class NumericReasoner:
             flags=re.IGNORECASE,
         )
         numeric_values = [
-            self._scaled_number(value, scale.lower() if scale and scale.lower() != "shares" else None)
+            self._scaled_respectively_value(value, scale, query_lower)
             for dollar, value, scale in matches
             if dollar or scale
         ]
@@ -2294,7 +2309,7 @@ class NumericReasoner:
                 flags=re.IGNORECASE,
             )
             numeric_values = [
-                self._scaled_number(value, scale.lower() if scale and scale.lower() != "shares" else None)
+                self._scaled_respectively_value(value, scale, query_lower)
                 for dollar, value, scale in matches
                 if dollar or scale
             ]
@@ -2304,6 +2319,12 @@ class NumericReasoner:
         if all(year in aligned for year in years):
             return {year: aligned[year] for year in years}
         return None
+
+    def _scaled_respectively_value(self, value: str, scale: str | None, query_lower: str | None) -> float:
+        normalized_scale = scale.lower() if scale and scale.lower() != "shares" else None
+        if query_lower is not None:
+            return self._scaled_to_query_unit(value, normalized_scale, query_lower)
+        return self._scaled_number(value, normalized_scale)
 
     def _respectively_year_values(
         self,

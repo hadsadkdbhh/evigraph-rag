@@ -2796,6 +2796,30 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "738.5")
         self.assertIn("listed_year_average", answer.calculations[0])
 
+    def test_listed_year_average_respects_query_unit_for_respectively_prose(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "At December 31, 2011 and 2010, the unpaid principal balance outstanding "
+                    "of loans sold as a participant in these programs was $13.0 billion and "
+                    "$13.2 billion, respectively."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "for december 31, 2011 and december 31, 2010, what was the average unpaid "
+            "principal balance outstanding of loans sold as a participant in these programs, in billions?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "13.1")
+        self.assertIn("listed_year_average", answer.calculations[0])
+
     def test_year_range_average_prefers_inline_exact_row_over_truncated_table_row(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
