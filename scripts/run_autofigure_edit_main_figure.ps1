@@ -142,6 +142,24 @@ if ($Provider -eq "custom" -and ((Test-PlaceholderValue $BaseUrl) -or (Test-NonA
 if ($Provider -eq "custom" -and $BaseUrl -notmatch "^https?://") {
     throw "AF_BASE_URL must start with http:// or https://."
 }
+if ($Provider -eq "custom" -and $BaseUrl -match "teio\.me") {
+    if ([string]::IsNullOrWhiteSpace($ImageProvider)) {
+        $ImageProvider = "openai"
+    }
+    if ([string]::IsNullOrWhiteSpace($ImageBaseUrl)) {
+        $ImageBaseUrl = $BaseUrl
+    }
+    if ([string]::IsNullOrWhiteSpace($ImageApiKey)) {
+        $ImageApiKey = $ApiKey
+    }
+    if ([string]::IsNullOrWhiteSpace($ImageModel)) {
+        $ImageModel = "gpt-image-2"
+    }
+    if ([string]::IsNullOrWhiteSpace($SvgModel)) {
+        $SvgModel = "gpt-5.5"
+    }
+    Write-Host "Detected teio.me custom provider; using image model '$ImageModel' and SVG model '$SvgModel'."
+}
 if (($SamBackend -eq "roboflow" -or $SamBackend -eq "fal") -and [string]::IsNullOrWhiteSpace($SamApiKey)) {
     throw "SAM backend '$SamBackend' requires a key. Set ROBOFLOW_API_KEY, FAL_KEY, or AF_SAM_API_KEY."
 }
@@ -209,18 +227,26 @@ Push-Location $AutoFigureDir
 try {
     $env:PYTHONUTF8 = "1"
     $env:PYTHONIOENCODING = "utf-8"
-    $rawLogPath = Join-Path $outDir "autofigure_run.raw.log"
+    $rawOutPath = Join-Path $outDir "autofigure_run.raw.out.log"
+    $rawErrPath = Join-Path $outDir "autofigure_run.raw.err.log"
     $logPath = Join-Path $outDir "autofigure_run.log"
     Write-Host "AutoFigure-Edit log: $logPath"
     if ($useConda) {
-        & conda run -n $CondaEnv python @args *> $rawLogPath
+        $process = Start-Process -FilePath "conda" -ArgumentList (@("run", "-n", $CondaEnv, "python") + $args) -NoNewWindow -Wait -PassThru -RedirectStandardOutput $rawOutPath -RedirectStandardError $rawErrPath
     } else {
-        & $Python @args *> $rawLogPath
+        $process = Start-Process -FilePath $Python -ArgumentList $args -NoNewWindow -Wait -PassThru -RedirectStandardOutput $rawOutPath -RedirectStandardError $rawErrPath
     }
-    $exitCode = $LASTEXITCODE
+    $exitCode = $process.ExitCode
     $logText = ""
-    if (Test-Path -LiteralPath $rawLogPath) {
-        $logText = Get-Content -LiteralPath $rawLogPath -Raw -ErrorAction SilentlyContinue
+    $rawPieces = @()
+    if (Test-Path -LiteralPath $rawOutPath) {
+        $rawPieces += Get-Content -LiteralPath $rawOutPath -Raw -ErrorAction SilentlyContinue
+    }
+    if (Test-Path -LiteralPath $rawErrPath) {
+        $rawPieces += Get-Content -LiteralPath $rawErrPath -Raw -ErrorAction SilentlyContinue
+    }
+    $logText = ($rawPieces -join "`n")
+    if (-not [string]::IsNullOrWhiteSpace($logText)) {
         if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
             $logText = $logText -replace [regex]::Escape($ApiKey), "[AF_API_KEY]"
         }
@@ -230,8 +256,12 @@ try {
         if (-not [string]::IsNullOrWhiteSpace($SamApiKey)) {
             $logText = $logText -replace [regex]::Escape($SamApiKey), "[AF_SAM_API_KEY]"
         }
+        $logText = $logText -replace 'sk-[A-Za-z0-9_-]{20,}', '[AF_API_KEY]'
+        $logText = $logText -replace '(--api_key\s+)\S+', '$1[AF_API_KEY]'
+        $logText = $logText -replace '(--sam_api_key\s+)\S+', '$1[AF_SAM_API_KEY]'
         Set-Content -LiteralPath $logPath -Value $logText -Encoding utf8
-        Remove-Item -LiteralPath $rawLogPath -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $rawOutPath -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $rawErrPath -Force -ErrorAction SilentlyContinue
     }
     if (-not [string]::IsNullOrWhiteSpace($logText)) {
         $tail = ($logText -split "`r?`n") | Select-Object -Last 30
