@@ -31,6 +31,14 @@ function Get-EnvValue {
     return $value
 }
 
+function Test-PlaceholderValue {
+    param([string]$Value)
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return $false
+    }
+    return $Value -match "你的|路径|your|python 3\.10|Python 3\.10"
+}
+
 if ([string]::IsNullOrWhiteSpace($Python)) { $Python = Get-EnvValue "AF_PYTHON" }
 if ([string]::IsNullOrWhiteSpace($CondaEnv)) { $CondaEnv = Get-EnvValue "AF_CONDA_ENV" }
 if ([string]::IsNullOrWhiteSpace($Provider)) { $Provider = Get-EnvValue "AF_PROVIDER" }
@@ -48,17 +56,34 @@ if ([string]::IsNullOrWhiteSpace($CondaEnv)) {
     $CondaEnv = "autofigure-edit"
 }
 $useConda = $false
+$condaEnvAvailable = $false
+$condaCmd = Get-Command conda -ErrorAction SilentlyContinue
+if ($condaCmd) {
+    $envList = conda env list | Out-String
+    if ($envList -match "(^|\s)$([regex]::Escape($CondaEnv))(\s|$)") {
+        $condaEnvAvailable = $true
+    }
+}
+if (Test-PlaceholderValue $Python) {
+    Write-Host "Ignoring placeholder AF_PYTHON value and using conda env '$CondaEnv' when available."
+    $Python = ""
+}
 if ([string]::IsNullOrWhiteSpace($Python)) {
-    $condaCmd = Get-Command conda -ErrorAction SilentlyContinue
-    if ($condaCmd) {
-        $envList = conda env list | Out-String
-        if ($envList -match "(^|\s)$([regex]::Escape($CondaEnv))(\s|$)") {
-            $useConda = $true
-        } else {
-            $Python = "python"
-        }
+    if ($condaEnvAvailable) {
+        $useConda = $true
     } else {
         $Python = "python"
+    }
+} else {
+    $pythonCommand = Get-Command $Python -ErrorAction SilentlyContinue
+    $pythonPathExists = Test-Path -LiteralPath $Python
+    if (-not $pythonCommand -and -not $pythonPathExists) {
+        if ($condaEnvAvailable) {
+            Write-Host "AF_PYTHON '$Python' is not executable; falling back to conda env '$CondaEnv'."
+            $useConda = $true
+        } else {
+            throw "AF_PYTHON is set but not executable: $Python. Clear AF_PYTHON or set it to a real python.exe path."
+        }
     }
 }
 if ([string]::IsNullOrWhiteSpace($Provider)) {
