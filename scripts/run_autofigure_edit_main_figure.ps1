@@ -19,6 +19,31 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+function Get-EnvValue {
+    param([string]$Name)
+    $value = [Environment]::GetEnvironmentVariable($Name, "Process")
+    if ([string]::IsNullOrWhiteSpace($value)) {
+        $value = [Environment]::GetEnvironmentVariable($Name, "User")
+    }
+    if ([string]::IsNullOrWhiteSpace($value)) {
+        $value = [Environment]::GetEnvironmentVariable($Name, "Machine")
+    }
+    return $value
+}
+
+if ([string]::IsNullOrWhiteSpace($Python)) { $Python = Get-EnvValue "AF_PYTHON" }
+if ([string]::IsNullOrWhiteSpace($CondaEnv)) { $CondaEnv = Get-EnvValue "AF_CONDA_ENV" }
+if ([string]::IsNullOrWhiteSpace($Provider)) { $Provider = Get-EnvValue "AF_PROVIDER" }
+if ([string]::IsNullOrWhiteSpace($ApiKey)) { $ApiKey = Get-EnvValue "AF_API_KEY" }
+if ([string]::IsNullOrWhiteSpace($BaseUrl)) { $BaseUrl = Get-EnvValue "AF_BASE_URL" }
+if ([string]::IsNullOrWhiteSpace($ImageProvider)) { $ImageProvider = Get-EnvValue "AF_IMAGE_PROVIDER" }
+if ([string]::IsNullOrWhiteSpace($ImageApiKey)) { $ImageApiKey = Get-EnvValue "AF_IMAGE_API_KEY" }
+if ([string]::IsNullOrWhiteSpace($ImageBaseUrl)) { $ImageBaseUrl = Get-EnvValue "AF_IMAGE_BASE_URL" }
+if ([string]::IsNullOrWhiteSpace($ImageModel)) { $ImageModel = Get-EnvValue "AF_IMAGE_MODEL" }
+if ([string]::IsNullOrWhiteSpace($SvgModel)) { $SvgModel = Get-EnvValue "AF_SVG_MODEL" }
+if ([string]::IsNullOrWhiteSpace($SamBackend)) { $SamBackend = Get-EnvValue "AF_SAM_BACKEND" }
+if ([string]::IsNullOrWhiteSpace($SamApiKey)) { $SamApiKey = Get-EnvValue "AF_SAM_API_KEY" }
+
 if ([string]::IsNullOrWhiteSpace($CondaEnv)) {
     $CondaEnv = "autofigure-edit"
 }
@@ -44,9 +69,9 @@ if ([string]::IsNullOrWhiteSpace($SamBackend)) {
 }
 if ([string]::IsNullOrWhiteSpace($SamApiKey)) {
     if ($SamBackend -eq "roboflow") {
-        $SamApiKey = $env:ROBOFLOW_API_KEY
+        $SamApiKey = Get-EnvValue "ROBOFLOW_API_KEY"
     } elseif ($SamBackend -eq "fal") {
-        $SamApiKey = $env:FAL_KEY
+        $SamApiKey = Get-EnvValue "FAL_KEY"
     }
 }
 if ([string]::IsNullOrWhiteSpace($ApiKey)) {

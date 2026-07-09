@@ -4,6 +4,18 @@ $repoRoot = (Resolve-Path "$PSScriptRoot\..").Path
 $autoFigureDir = "C:\Users\24431\Documents\AutoFigure-Edit"
 $condaEnv = if ($env:AF_CONDA_ENV) { $env:AF_CONDA_ENV } else { "autofigure-edit" }
 
+function Get-EnvValue {
+    param([string]$Name)
+    $value = [Environment]::GetEnvironmentVariable($Name, "Process")
+    if ([string]::IsNullOrWhiteSpace($value)) {
+        $value = [Environment]::GetEnvironmentVariable($Name, "User")
+    }
+    if ([string]::IsNullOrWhiteSpace($value)) {
+        $value = [Environment]::GetEnvironmentVariable($Name, "Machine")
+    }
+    return $value
+}
+
 Write-Host "Repo: $repoRoot"
 Write-Host "AutoFigure-Edit: $autoFigureDir"
 Write-Host "Conda env: $condaEnv"
@@ -45,7 +57,7 @@ $secrets = @(
 )
 
 foreach ($name in $secrets) {
-    $value = [Environment]::GetEnvironmentVariable($name)
+    $value = Get-EnvValue $name
     if ([string]::IsNullOrWhiteSpace($value)) {
         Write-Host "$name=missing"
     } else {
