@@ -11,19 +11,26 @@ OUT_DIR = ROOT / "paper" / "figures"
 
 
 PALETTE = {
-    "ink": "#1f2933",
-    "muted": "#5f6b7a",
-    "line": "#9aa7b5",
-    "blue": "#2f6f9f",
-    "green": "#2f7d5c",
-    "amber": "#b7791f",
-    "red": "#b74b4b",
-    "panel": "#f7f9fb",
+    "ink": "#1c2430",
+    "muted": "#667085",
+    "line": "#aab4c0",
+    "blue": "#3b6f8f",
+    "blue_fill": "#edf4f8",
+    "green": "#4f7f68",
+    "green_fill": "#eef6f1",
+    "amber": "#b58a3a",
+    "amber_fill": "#fbf6ec",
+    "rose": "#a45f5f",
+    "rose_fill": "#fbf0f0",
+    "slate": "#475467",
+    "panel": "#f6f7f9",
     "white": "#ffffff",
 }
 
 
-def _box(ax, xy, width, height, title, body="", fc="#ffffff", ec="#9aa7b5", fontsize=8.5):
+def _box(ax, xy, width, height, title, body="", fc=None, ec=None, fontsize=8.5):
+    fc = fc or PALETTE["white"]
+    ec = ec or PALETTE["line"]
     x, y = xy
     patch = FancyBboxPatch(
         (x, y),
@@ -109,7 +116,7 @@ def render_pipeline() -> None:
         0.23,
         "Question",
         "Total senior notes issued\nin fiscal 2018 and 2017?",
-        fc="#eef6fb",
+        fc=PALETTE["blue_fill"],
         ec=PALETTE["blue"],
         fontsize=8.6,
     )
@@ -135,9 +142,9 @@ def render_pipeline() -> None:
         ha="left",
     )
     graph_nodes = [
-        ((0.34, 0.62), "prose node\n$10.0B in 2018\n$14.0B in 2017", PALETTE["green"], "#f2f8f5"),
-        ((0.34, 0.38), "table chunk\nsame source\nwrong row risk", PALETTE["amber"], "#fff8ee"),
-        ((0.51, 0.50), "distractor\nnearby finance\nnumbers", PALETTE["red"], "#fdf4f4"),
+        ((0.34, 0.62), "prose node\n$10.0B in 2018\n$14.0B in 2017", PALETTE["green"], PALETTE["green_fill"]),
+        ((0.34, 0.38), "table chunk\nsame source\nwrong row risk", PALETTE["amber"], PALETTE["amber_fill"]),
+        ((0.51, 0.50), "distractor\nnearby finance\nnumbers", PALETTE["rose"], PALETTE["rose_fill"]),
     ]
     for (x, y), label, edge, fill in graph_nodes:
         _box(ax, (x, y), 0.13, 0.15, "", label, fc=fill, ec=edge, fontsize=7.9)
@@ -152,7 +159,7 @@ def render_pipeline() -> None:
         0.18,
         "State selector",
         "utility - risk\nsupport flags\nsource/year match",
-        fc="#f4fbf7",
+        fc=PALETTE["green_fill"],
         ec=PALETTE["green"],
         fontsize=8.2,
     )
@@ -163,7 +170,7 @@ def render_pipeline() -> None:
         0.18,
         "Executor",
         "year-labeled prose sum\n10 + 14 = 24",
-        fc="#fff8ee",
+        fc=PALETTE["amber_fill"],
         ec=PALETTE["amber"],
         fontsize=8.2,
     )
@@ -174,7 +181,7 @@ def render_pipeline() -> None:
         0.45,
         "Verified answer",
         "24 billion\n\nchecks:\nsource\ncitation\narithmetic\noperation",
-        fc="#f7f9fb",
+        fc=PALETTE["panel"],
         ec=PALETTE["ink"],
         fontsize=7.8,
     )
@@ -184,14 +191,14 @@ def render_pipeline() -> None:
     _arrow(ax, (0.64, 0.57), (0.66, 0.71), PALETTE["green"], rad=0.15)
     _arrow(ax, (0.735, 0.62), (0.735, 0.53), PALETTE["amber"])
     _arrow(ax, (0.81, 0.44), (0.84, 0.52), PALETTE["ink"], rad=-0.12)
-    _arrow(ax, (0.86, 0.46), (0.81, 0.68), PALETTE["red"], rad=-0.18, lw=1.0)
+    _arrow(ax, (0.86, 0.46), (0.81, 0.68), PALETTE["rose"], rad=-0.18, lw=1.0)
 
     ax.text(
         0.54,
         0.24,
         "risk edges and verifier feedback\nprevent treating every retrieved number as evidence",
         fontsize=7.4,
-        color=PALETTE["red"],
+        color=PALETTE["rose"],
         ha="center",
         va="center",
     )
@@ -217,7 +224,7 @@ def render_portfolio_experiment() -> None:
 
     labels = ["BM25\nprimary", "Neural\nhybrid", "v44\ncons.", "v45\nconf.", "v46\nguard"]
     em = [0.377, 0.363, 0.388, 0.407, 0.407]
-    colors = [PALETTE["blue"], "#7aa7bf", PALETTE["green"], PALETTE["amber"], PALETTE["green"]]
+    colors = [PALETTE["blue"], "#8fb2c3", PALETTE["green"], PALETTE["amber"], PALETTE["green"]]
     bars = ax.bar(range(len(em)), em, color=colors, edgecolor=PALETTE["ink"], linewidth=0.6)
     ax.set_ylim(0.32, 0.43)
     ax.set_ylabel("Exact match", fontsize=8.5)
@@ -225,7 +232,7 @@ def render_portfolio_experiment() -> None:
     ax.set_xticks(range(len(labels)))
     ax.set_xticklabels(labels, fontsize=7.5)
     ax.tick_params(axis="y", labelsize=7.5)
-    ax.grid(axis="y", color="#d8dee6", linewidth=0.6, alpha=0.8)
+    ax.grid(axis="y", color="#d9dee6", linewidth=0.6, alpha=0.8)
     ax.spines[["top", "right"]].set_visible(False)
     for bar, val in zip(bars, em):
         ax.text(bar.get_x() + bar.get_width() / 2, val + 0.003, f"{val:.3f}", ha="center", va="bottom", fontsize=7.5)
@@ -244,10 +251,10 @@ def render_portfolio_experiment() -> None:
     mech.set_ylim(0, 1)
     mech.axis("off")
     mech.set_title("B. Evidence-state routing", fontsize=9.6, fontweight="bold", pad=6)
-    _box(mech, (0.04, 0.70), 0.41, 0.17, "BM25 state", "source-hit but\nfallback or wrong\noperand", fc="#f2f7fb", ec=PALETTE["blue"], fontsize=7.8)
-    _box(mech, (0.56, 0.70), 0.40, 0.17, "Hybrid state", "complementary\ncoverage or executable\ncalculation", fc="#f2f8f5", ec=PALETTE["green"], fontsize=7.8)
+    _box(mech, (0.04, 0.70), 0.41, 0.17, "BM25 state", "source-hit but\nfallback or wrong\noperand", fc=PALETTE["blue_fill"], ec=PALETTE["blue"], fontsize=7.8)
+    _box(mech, (0.56, 0.70), 0.40, 0.17, "Hybrid state", "complementary\ncoverage or executable\ncalculation", fc=PALETTE["green_fill"], ec=PALETTE["green"], fontsize=7.8)
     _box(mech, (0.20, 0.40), 0.60, 0.17, "No-gold confidence selector", "fallback status, query/year coverage,\ncalculation, support flags", fc=PALETTE["panel"], ec=PALETTE["line"], fontsize=7.8)
-    _box(mech, (0.22, 0.13), 0.56, 0.15, "Guarded output", "switch only when evidence state is\nmore executable and not weaker", fc="#f4fbf7", ec=PALETTE["green"], fontsize=7.8)
+    _box(mech, (0.22, 0.13), 0.56, 0.15, "Guarded output", "switch only when evidence state is\nmore executable and not weaker", fc=PALETTE["green_fill"], ec=PALETTE["green"], fontsize=7.8)
     _arrow(mech, (0.25, 0.70), (0.40, 0.58), PALETTE["blue"])
     _arrow(mech, (0.75, 0.70), (0.60, 0.58), PALETTE["green"])
     _arrow(mech, (0.50, 0.40), (0.50, 0.28), PALETTE["green"])
@@ -293,7 +300,7 @@ def render_experimental_story() -> None:
     # B. Retrieval portfolio on FinQA-600.
     labels = ["BM25", "Hybrid", "Guarded\nportfolio"]
     values = [0.377, 0.363, 0.407]
-    ax2.bar(labels, values, color=[PALETTE["blue"], "#7aa7bf", PALETTE["green"]], edgecolor=PALETTE["ink"], linewidth=0.5)
+    ax2.bar(labels, values, color=[PALETTE["blue"], "#8fb2c3", PALETTE["green"]], edgecolor=PALETTE["ink"], linewidth=0.5)
     ax2.set_title("B. FinQA-600 open retrieval", fontsize=9.2, fontweight="bold")
     ax2.set_ylabel("EM", fontsize=8)
     ax2.set_ylim(0.33, 0.43)
@@ -326,11 +333,11 @@ def render_experimental_story() -> None:
 
     # D. Accuracy-support gap.
     points = [
-        ("GPT-5.4\nDirect RAG", 0.523, 0.273, PALETTE["red"], (0.004, 0.010)),
+        ("GPT-5.4\nDirect RAG", 0.523, 0.273, PALETTE["rose"], (0.004, 0.010)),
         ("Direct RAG", 0.453, 0.740, PALETTE["amber"], (0.004, 0.010)),
         ("Retrieve-\nprogram", 0.483, 0.803, PALETTE["blue"], (0.004, 0.010)),
         ("Full\nEviGraph", 0.517, 0.840, PALETTE["green"], (-0.010, 0.030)),
-        ("Full v38", 0.523, 0.853, "#1f8a70", (0.004, 0.000)),
+        ("Full v38", 0.523, 0.853, "#5a8f76", (0.004, 0.000)),
     ]
     for label, em, support, color, offset in points:
         ax4.scatter(em, support, s=46, color=color, edgecolor=PALETTE["ink"], linewidth=0.4)
@@ -349,7 +356,7 @@ def render_experimental_story() -> None:
 
 
 def _style_axis(ax) -> None:
-    ax.grid(axis="y", color="#d8dee6", linewidth=0.6, alpha=0.8)
+    ax.grid(axis="y", color="#d9dee6", linewidth=0.6, alpha=0.8)
     ax.spines[["top", "right"]].set_visible(False)
 
 
