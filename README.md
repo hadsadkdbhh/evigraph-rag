@@ -7,6 +7,16 @@ outputs as candidate evidence states, scores their utility and risks, selects a
 minimal reliable support subgraph, and generates grounded answers from that
 subgraph only.
 
+## Submission Artifact Index
+
+For the current AAAI-oriented paper package, start with:
+
+- `docs/submission_artifact_index.md`
+
+That file records the current reportable FinQA-300, FinQA-600, TAT-QA-50, and
+TAT-QA-100 results, the command map for regenerating each table, and the claim
+boundaries that should not be crossed in the paper.
+
 ## Reproducible FinQA-300 Pipeline
 
 The current primary experiment is the 300-example FinQA local-planner diagnostic

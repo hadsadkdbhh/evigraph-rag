@@ -1,6 +1,6 @@
 # AAAI-27 Submission Readiness Plan
 
-Verified against the official AAAI-27 conference pages on 2026-06-20.
+Verified against the official AAAI-27 conference pages on 2026-07-09.
 
 Sources:
 
@@ -12,9 +12,13 @@ Sources:
 - Abstract deadline: 2026-07-21, 11:59 PM UTC-12.
 - Full paper deadline: 2026-07-28, 11:59 PM UTC-12.
 - Supplementary material and code deadline: 2026-07-31, 11:59 PM UTC-12.
-- Main-track submissions may use up to 7 pages of technical content, with additional pages only for references.
+- Main-track submissions may use up to 7 pages of main content, with maximum
+  total length of 9 pages; pages beyond page 7 are reserved exclusively for
+  references.
 - Reviewers are not required to inspect supplementary material, so core claims, tables, and proofs needed for evaluation must fit in the main paper.
 - The reproducibility checklist is mandatory.
+- The official AAAI-27 Author Kit is linked from the main technical track call
+  and must be used for the final compile.
 - Code and data can be submitted as supplementary material, so this repository should remain runnable from a clean checkout.
 
 ## Current Submission Position
@@ -46,7 +50,13 @@ Current blockers:
 - A fixed-seed TAT-QA-100 portability check now clears the planned second-dataset
   gate with 0.520 oracle-doc and 0.410 open BM25 exact match. Use this as
   cross-format evidence, not as a full TAT-QA leaderboard claim.
-- The paper needs a full reproducibility checklist and a clear code/data release note.
+- A submission artifact index now maps the main tables, portability checks,
+  confidence intervals, and reproduction commands in
+  `docs/submission_artifact_index.md`; the remaining reproducibility work is a
+  final clean-checkout run plus a concise code/data release note.
+- Local LaTeX compilation is currently blocked because `paper/main.tex` uses
+  `aaai27`, but the official `aaai27.sty` file from the AAAI-27 Author Kit is
+  not checked into `paper/` or available in the TeX search path.
 - The exact-match results are diagnostic, not strong enough to sell as benchmark superiority.
 - The current FinQA-600 open-retrieval target has crossed 0.40 with guarded
   portfolio selection, but this should be framed as evidence-state selection
@@ -76,7 +86,8 @@ Priority 1: make the paper defensible.
 - Tighten related work around RAG, financial/table QA, and verifiable/tool-augmented QA.
 - Polish the method figure if space allows.
 - Keep the formal subgraph-selection proof concise enough for the 7-page limit.
-- Add a reproducibility checklist draft and map every reported table to a command.
+- Use `docs/submission_artifact_index.md` as the reproducibility checklist and
+  command map; keep it synchronized with every reported table.
 
 Priority 2: strengthen the empirical story.
 
