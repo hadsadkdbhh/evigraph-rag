@@ -156,7 +156,7 @@ if ($Provider -eq "custom" -and $BaseUrl -match "teio\.me") {
         $ImageModel = "gpt-image-2"
     }
     if ([string]::IsNullOrWhiteSpace($SvgModel)) {
-        $SvgModel = "gpt-5.5"
+        $SvgModel = "gpt-5.4"
     }
     Write-Host "Detected teio.me custom provider; using image model '$ImageModel' and SVG model '$SvgModel'."
 }
