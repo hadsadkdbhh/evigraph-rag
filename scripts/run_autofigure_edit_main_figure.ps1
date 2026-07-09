@@ -227,6 +227,7 @@ Push-Location $AutoFigureDir
 try {
     $env:PYTHONUTF8 = "1"
     $env:PYTHONIOENCODING = "utf-8"
+    $env:PYTHONUNBUFFERED = "1"
     $rawOutPath = Join-Path $outDir "autofigure_run.raw.out.log"
     $rawErrPath = Join-Path $outDir "autofigure_run.raw.err.log"
     $logPath = Join-Path $outDir "autofigure_run.log"
