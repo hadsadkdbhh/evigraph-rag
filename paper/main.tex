@@ -163,12 +163,12 @@ This targets failures where a selected chunk contains the right row and years in
 Generated answers are verified against the selected support graph.
 The verifier checks citation presence, source-number consistency, calculation-result consistency, operation-type consistency, and whether calculation row labels are lexically grounded in the query.
 
-\begin{figure}[t]
+\begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/evigraph_pipeline.pdf}
-\caption{EviGraph-RAG pipeline. Retrieved candidates are not treated as final evidence: the system builds a candidate evidence graph, selects a risk-adjusted evidence state, executes local numerical operations, and verifies the answer trace against cited support. Source-rerank is marked as an analysis-only diagnostic rather than a deployable open-retrieval setting.}
+\caption{EviGraph-RAG teaser example. A real TAT-QA failure-driven case illustrates the central mechanism: retrieval exposes a pool of candidate passages, tables, and distracting numeric evidence, while EviGraph selects an executable evidence state, performs the grounded operation, and verifies the final answer trace.}
 \label{fig:method}
-\end{figure}
+\end{figure*}
 
 \section{Experiments}
 
@@ -249,16 +249,23 @@ This points to a concrete next method step: selecting across retrieval portfolio
 These results prevent an overbroad claim: the current system's main empirical story is not that retrieval is solved, but that evidence-state control improves the use of retrieved evidence once candidates are available.
 Table~\ref{tab:retrieval-portfolio-ablation} makes the tradeoff explicit: the conservative v44 selector has no observed paired losses but leaves many hybrid-only wins unused, the v45 confidence selector crosses the 0.40 open-retrieval line with one paired loss, and the guarded v46 selector preserves the same rounded exact match while removing that loss through a complete-year-coverage guard.
 
-\begin{figure}[t]
+\begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/retrieval_portfolio_mechanism.pdf}
 \caption{Retrieval-portfolio mechanism and result. On FinQA-600 open retrieval, neural-hybrid retrieval improves some candidate evidence states but does not by itself improve exact match. A no-gold guarded confidence selector chooses between completed BM25 and neural-hybrid evidence states using fallback status, query/year coverage, executable calculations, and verifier/support flags, improving over BM25 with 18 paired wins and no paired losses.}
 \label{fig:retrieval-portfolio}
-\end{figure}
+\end{figure*}
 
 \input{generated/retrieval_portfolio_ablation/finqa_retrieval_portfolio_ablation}
 
 \input{generated/statistical_confidence/main_confidence_table}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/experimental_story_panel.pdf}
+\caption{Experimental story panel. The results are organized around the paper's mechanism claim: component ablations show that planner and graph-based evidence selection matter, the FinQA-600 retrieval portfolio improves open-retrieval evidence-state choice, TAT-QA-50/100 checks show cross-format portability, and the EM/support scatter shows why exact match alone is insufficient for numerically grounded RAG.}
+\label{fig:experimental-story}
+\end{figure*}
 
 \paragraph{Retrieval coverage diagnostics.}
 The v28 manifest now emits retrieval diagnostics for every retrieval setting.

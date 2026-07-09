@@ -142,12 +142,16 @@ Generated artifacts:
 - `paper/figures/evigraph_pipeline.png`
 - `paper/figures/retrieval_portfolio_mechanism.pdf`
 - `paper/figures/retrieval_portfolio_mechanism.png`
+- `paper/figures/experimental_story_panel.pdf`
+- `paper/figures/experimental_story_panel.png`
 
 Use these for:
 
-- Figure 1: the end-to-end EviGraph-RAG evidence-state control pipeline.
+- Figure 1: the EviGraph-RAG teaser example and evidence-state control pipeline.
 - Figure 2: the retrieval-portfolio mechanism and FinQA-600 open-retrieval
   ablation result.
+- Figure 3: the multi-panel experimental story covering component gains,
+  retrieval portfolio selection, TAT-QA portability, and EM/support gap.
 
 ### FinQA-300 Mechanism/Ablation Table
 

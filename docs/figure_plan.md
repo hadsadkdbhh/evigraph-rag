@@ -10,7 +10,7 @@ Render command:
 python .\scripts\render_paper_figures.py
 ```
 
-## Figure 1: Pipeline Figure
+## Figure 1: Teaser / Pipeline Figure
 
 Current artifact:
 
@@ -20,7 +20,8 @@ Current artifact:
 
 Purpose:
 
-- Show the end-to-end evidence-state control pipeline.
+- Show the end-to-end evidence-state control pipeline through a concrete
+  TAT-QA failure-driven example.
 - Make clear that retrieval outputs are candidates, not final context.
 - Emphasize auditable intermediate artifacts: graph, support subgraph,
   operation trace, verifier result.
@@ -88,6 +89,25 @@ Recommended panels:
    - v45 confidence: 0.407, 19 wins, 1 loss.
    - v46 guarded confidence: 0.407, 18 wins, 0 losses.
 
+## Figure 3: Experimental Story Panel
+
+Current artifact:
+
+- `paper/figures/experimental_story_panel.pdf`
+- `paper/figures/experimental_story_panel.png`
+- Included in `paper/main.tex` as Figure~\ref{fig:experimental-story}.
+
+Purpose:
+
+- Summarize the empirical story in one place, following the main-paper figure
+  style used by recent RAG/GraphRAG papers: one panel states the mechanism, the
+  remaining panels show where the evidence comes from.
+- Panel A: FinQA-300 component gains for planner, support graph, and graph-vs-
+  utility selection.
+- Panel B: FinQA-600 retrieval portfolio result.
+- Panel C: TAT-QA-50/100 portability gates.
+- Panel D: exact match versus verifier-checked answer support.
+
 Visual emphasis:
 
 - The mechanism is "choose evidence state", not "choose final answer by gold".
@@ -114,3 +134,4 @@ flowchart LR
 - Figure 1 appears in Method and replaces the earlier text-box pipeline figure.
 - Figure 2 appears in the Open-Retrieval Baseline Stress Test subsection near
   the retrieval portfolio ablation table.
+- Figure 3 appears after the confidence table as a compact empirical summary.
