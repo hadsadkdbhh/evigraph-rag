@@ -8,6 +8,7 @@ Source run:
 - v47 retrieval diagnostics: `outputs/eval/tatqa_50_direction_repair_v47/tatqa_50_open_bm25_full_v47_retrieval_diagnostics.md`
 - v48 output summary: `outputs/eval/tatqa_50_non_vested_ratio_v48/summary.md`
 - v49 output summary: `outputs/eval/tatqa_50_activity_share_average_v49/summary.md`
+- v50 output summary: `outputs/eval/tatqa_50_senior_notes_issuance_sum_v50/summary.md`
 
 | setting | method | n | EM | support | source_hit@8 |
 | --- | --- | ---: | ---: | ---: | ---: |
@@ -20,6 +21,8 @@ Source run:
 | Open BM25 | Full EviGraph v48 | 50 | 0.420 | 0.900 | 0.960 |
 | Oracle-doc | Full EviGraph v49 | 50 | 0.520 | 0.740 | n/a |
 | Open BM25 | Full EviGraph v49 | 50 | 0.440 | 0.900 | 0.960 |
+| Oracle-doc | Full EviGraph v50 | 50 | 0.540 | 0.740 | n/a |
+| Open BM25 | Full EviGraph v50 | 50 | 0.460 | 0.900 | 0.960 |
 
 Interpretation:
 
@@ -32,7 +35,9 @@ Interpretation:
 - v48 improves Open BM25 from 0.400 to 0.420 with 1 paired win and 0 losses over v47.
 - v49 adds a bounded activity-share average repair for multi-header TAT-QA tables where activity rows such as `Shares vested` must use `Number of Shares` columns rather than per-share value rows.
 - v49 improves Open BM25 from 0.420 to 0.440 with 1 paired win and 0 losses over v48; Oracle-doc remains 0.520 with no paired changes.
+- v50 adds a bounded senior-notes issuance-sum repair for year-labeled prose amounts such as `$10.0 billion in fiscal 2018` plus `$14.0 billion in fiscal 2017`.
+- v50 improves Oracle-doc from 0.520 to 0.540 and Open BM25 from 0.440 to 0.460, with 1 paired win and 0 losses in each setting over v49.
 - Open BM25 retrieves the gold source for 48/50 examples, but exact match remains bounded by unresolved evidence-state and operand-selection failures.
-- The v49 open failure report has 28 failed examples; 26/50 examples remain wrong despite source exposure, supporting the claim that retrieval exposure alone is insufficient.
+- The v50 open failure report has 27 failed examples; 25/50 examples remain wrong despite source exposure, supporting the claim that retrieval exposure alone is insufficient.
 - The largest open failure category remains `wrong_numeric_operation_or_row` with 17 examples.
 - Row/operation diagnostics split 20 wrong numeric rows into 15 `ambiguous_supported_wrong_number`, 2 `wrong_year_or_period`, 1 `wrong_row_label`, and 2 `wrong_operation_type`.

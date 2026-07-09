@@ -312,6 +312,10 @@ class NumericReasoner:
         if answer:
             return answer
 
+        answer = self._year_labeled_prose_issuance_sum(query_lower, contexts)
+        if answer:
+            return answer
+
         answer = self._respectively_prose_sum(query_lower, contexts)
         if answer:
             return answer
@@ -5735,6 +5739,86 @@ class NumericReasoner:
             if year_rows:
                 label, value = min(year_rows, key=lambda item: int(item[0]))
                 return value, f"{' '.join(terms)}/{label}"
+        return None, ""
+
+    def _year_labeled_prose_issuance_sum(
+        self,
+        query_lower: str,
+        contexts: list[tuple[str, str]],
+    ) -> NumericAnswer | None:
+        if "total" not in query_lower or "value" not in query_lower:
+            return None
+        if "senior notes" not in query_lower or "long-term" not in query_lower:
+            return None
+        if not any(term in query_lower for term in ["issued", "issuance", "issuances"]):
+            return None
+        query_years: list[str] = []
+        for year in re.findall(r"\b(20\d{2})\b", query_lower):
+            if year not in query_years:
+                query_years.append(year)
+        if len(query_years) < 2:
+            return None
+
+        for node_id, text in contexts:
+            for sentence in self._prose_sentences(text):
+                sentence_lower = sentence.lower()
+                if "senior notes" not in sentence_lower or "long-term" not in sentence_lower:
+                    continue
+                if not all(year in sentence_lower for year in query_years):
+                    continue
+                values: list[float] = []
+                scales: list[str] = []
+                labels: list[str] = []
+                for year in query_years:
+                    value, scale = self._year_labeled_prose_amount(sentence_lower, year)
+                    if value is None:
+                        values = []
+                        break
+                    values.append(value)
+                    scales.append(scale)
+                    labels.append(f"{year}:{value:g} {scale}".strip())
+                if len(values) != len(query_years):
+                    continue
+                operation = self.executor.sum(values)
+                if operation is None:
+                    continue
+                common_scale = scales[0] if scales and all(scale == scales[0] for scale in scales) else ""
+                suffix = f" {common_scale}" if common_scale else ""
+                return NumericAnswer(
+                    text=self._format_number(operation.value),
+                    calculation=(
+                        f"year_labeled_prose_issuance_sum {', '.join(labels)}: "
+                        f"{operation.expression}{suffix}"
+                    ),
+                    cited_node_ids=[node_id],
+                )
+        return None
+
+    def _year_labeled_prose_amount(self, sentence_lower: str, year: str) -> tuple[float | None, str]:
+        amount_pattern = r"\$?\s*([-+]?\d[\d,]*(?:\.\d+)?)\s*(billion|million|thousand)?"
+        before = re.search(
+            amount_pattern + rf"\s+in\s+fiscal\s+{year}\b",
+            sentence_lower,
+            flags=re.IGNORECASE,
+        )
+        if before:
+            return self._to_float(before.group(1)), (before.group(2) or "").lower()
+
+        after = re.search(
+            rf"\bfiscal\s+{year}\b[^.?!;]{{0,140}}?\bof\s+" + amount_pattern,
+            sentence_lower,
+            flags=re.IGNORECASE,
+        )
+        if after:
+            return self._to_float(after.group(1)), (after.group(2) or "").lower()
+
+        after_without_of = re.search(
+            rf"\bfiscal\s+{year}\b[^.?!;]{{0,140}}?" + amount_pattern,
+            sentence_lower,
+            flags=re.IGNORECASE,
+        )
+        if after_without_of:
+            return self._to_float(after_without_of.group(1)), (after_without_of.group(2) or "").lower()
         return None, ""
 
     def _respectively_prose_sum(

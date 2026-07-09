@@ -4694,6 +4694,32 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "2000")
         self.assertIn("table_row_sum", answer.calculations[0])
 
+    def test_long_term_senior_notes_issued_sum_from_year_labeled_prose(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="text",
+                node_type="text",
+                content=(
+                    "Working capital and total assets sequentially increased in nearly all of "
+                    "the fiscal 2015 to 2018 periods presented primarily due to the favorable "
+                    "impacts to our net current assets resulting from our net income generated "
+                    "during the periods presented and the issuances of long-term senior notes "
+                    "of $10.0 billion in fiscal 2018, and $14.0 billion in fiscal 2017."
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "What was the total value of long-term senior notes that were issued in fiscal 2018 and fiscal 2017?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "24")
+        self.assertIn("year_labeled_prose_issuance_sum", answer.calculations[0])
+        self.assertIn("10 + 14", answer.calculations[0])
+
     def test_combined_respectively_amounts_sum(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
