@@ -41,8 +41,8 @@ Current blockers:
 - FinQA-600 is now available as a larger pressure test.
 - A small public TAT-QA-50 arithmetic pilot now runs through the same manifest
   pipeline; it reduces the FinQA-only concern, but it is a portability check
-  rather than a full second-benchmark claim. The latest v47 direction repair
-  reaches 0.480 oracle-doc and 0.400 open BM25 exact match on this pilot.
+  rather than a full second-benchmark claim. The latest v48 repair reaches
+  0.520 oracle-doc and 0.420 open BM25 exact match on this pilot.
 - The paper needs a full reproducibility checklist and a clear code/data release note.
 - The exact-match results are diagnostic, not strong enough to sell as benchmark superiority.
 - The current FinQA-600 open-retrieval target has crossed 0.40 with guarded

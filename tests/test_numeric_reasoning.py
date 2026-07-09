@@ -2823,6 +2823,62 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertEqual(answer.text, "105%")
         self.assertIn("plus : four times tower cash flow", answer.calculations[0])
 
+    def test_non_vested_shares_vested_ratio_uses_share_column_and_year_end_denominator(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| Non-vested awards | Shares | Weighted-Average Grant Date Fair Value |\n"
+                    "| --- | --- | --- |\n"
+                    "| Non-vested at December 31, 2018 | 1,187,586 | $41.12 |\n"
+                    "| Granted | 473,550 | $53.53 |\n"
+                    "| Vested | (365,223) | $41.83 |\n"
+                    "| Forfeited | (12,632) | $50.49 |\n"
+                    "| Non-vested at December 31, 2019 | 1,283,281 | $45.40 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "What is the percentage of non-vested shares vested in 2019 as a percentage of the total non-vested shares at December 31, 2019?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "28.5%")
+        self.assertIn("non_vested_share_activity_ratio", answer.calculations[0])
+        self.assertIn("365223 / 1283281", answer.calculations[0])
+
+    def test_non_vested_shares_forfeited_ratio_uses_share_column_and_year_end_denominator(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="table",
+                node_type="text",
+                content=(
+                    "| Non-vested awards | Shares | Weighted-Average Grant Date Fair Value |\n"
+                    "| --- | --- | --- |\n"
+                    "| Non-vested at December 31, 2018 | 1,187,586 | $41.12 |\n"
+                    "| Granted | 473,550 | $53.53 |\n"
+                    "| Vested | (365,223) | $41.83 |\n"
+                    "| Forfeited | (12,632) | $50.49 |\n"
+                    "| Non-vested at December 31, 2019 | 1,283,281 | $45.40 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "What is the percentage of non-vested shares forfeited in 2019 as a percentage of the total non-vested shares at December 31, 2019?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "1%")
+        self.assertIn("non_vested_share_activity_ratio", answer.calculations[0])
+        self.assertIn("12632 / 1283281", answer.calculations[0])
+
     def test_row_average_from_entity_table(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(

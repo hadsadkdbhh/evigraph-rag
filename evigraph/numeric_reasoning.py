@@ -3313,6 +3313,16 @@ class NumericReasoner:
                 contexts = compatible_contexts
 
         for node_id, text in contexts:
+            non_vested_answer = self._non_vested_share_activity_ratio(
+                node_id,
+                query_lower,
+                text,
+                query_year,
+            )
+            if non_vested_answer is not None:
+                return non_vested_answer
+
+        for node_id, text in contexts:
             table_answer = self._ratio_percent_from_table_columns(
                 node_id,
                 query_lower,
@@ -4214,6 +4224,77 @@ class NumericReasoner:
                 f"denominator_row={denominator_row[0].strip().lower()} "
                 f"column={headers[column_index].strip().lower()}: "
                 f"{numerator:g} / {denominator:g} * 100 = {result:.1f}%"
+            ),
+            cited_node_ids=[node_id],
+        )
+
+    def _non_vested_share_activity_ratio(
+        self,
+        node_id: str,
+        query_lower: str,
+        text: str,
+        query_year: str | None,
+    ) -> NumericAnswer | None:
+        if "non-vested" not in query_lower or "shares" not in query_lower or "as a percentage of" not in query_lower:
+            return None
+        activity = None
+        if "forfeited" in query_lower:
+            activity = "forfeited"
+        elif "vested" in query_lower:
+            activity = "vested"
+        if activity is None:
+            return None
+        table = self._markdown_table(text)
+        if not table:
+            return None
+        headers, rows = table
+        share_column = next((index for index, header in enumerate(headers) if "share" in header.lower()), None)
+        if share_column is None:
+            return None
+        target_year = query_year or (re.findall(r"\b(20\d{2})\b", query_lower) or [None])[0]
+        if target_year is None:
+            return None
+        numerator_row = next(
+            (
+                row
+                for row in rows
+                if row
+                and row[0].strip().lower() == activity
+            ),
+            None,
+        )
+        denominator_row = next(
+            (
+                row
+                for row in rows
+                if row
+                and "non-vested" in row[0].lower()
+                and target_year in row[0]
+            ),
+            None,
+        )
+        if numerator_row is None or denominator_row is None:
+            return None
+        if share_column >= len(numerator_row) or share_column >= len(denominator_row):
+            return None
+        numerator = self._first_number(numerator_row[share_column])
+        denominator = self._first_number(denominator_row[share_column])
+        if numerator is None or denominator in {None, 0}:
+            return None
+        numerator = abs(numerator)
+        operation = self.executor.ratio(numerator, denominator)
+        if operation is None:
+            return None
+        result = operation.value * 100.0
+        numerator_text = f"{numerator:.0f}" if float(numerator).is_integer() else f"{numerator:g}"
+        denominator_text = f"{denominator:.0f}" if float(denominator).is_integer() else f"{denominator:g}"
+        return NumericAnswer(
+            text=self._format_percent(result),
+            calculation=(
+                f"non_vested_share_activity_ratio row={numerator_row[0].strip().lower()} "
+                f"denominator_row={denominator_row[0].strip().lower()} "
+                f"column={headers[share_column].strip().lower()}: "
+                f"{numerator_text} / {denominator_text} * 100 = {result:.1f}%"
             ),
             cited_node_ids=[node_id],
         )
