@@ -1,0 +1,48 @@
+Create a polished publication-ready scientific illustration for the EviGraph-RAG method.
+
+The figure title must be: "EviGraph-RAG Evidence-State Reasoning".
+
+The figure should be a wide academic methodology diagram with thick black panel borders, clean white background, muted pastel colors, rounded boxes, graph nodes, hyperedge loops, and a dashed feedback arrow.
+
+Layout:
+1. Top banner:
+   - Title: "EviGraph-RAG Evidence-State Reasoning"
+   - Subtitle: "retrieved text/tables are candidate evidence states, not final evidence"
+
+2. Left panel named "Retrieved Candidates":
+   - Show four document icons.
+   - Two documents contain compact numeric tags: "10.0B 2018" and "14.0B 2017".
+   - Bottom note: "retrieved by BM25 / hybrid retriever".
+
+3. Center panel named "Candidate Evidence Graph":
+   - Show a graph G=(V,E).
+   - Use circular nodes:
+     v1: "2018 10.0B"
+     v2: "2017 14.0B"
+     v3: "table risk"
+     v4: "nearby nums"
+     v5: "source cue"
+   - Draw a green support hyperedge around v1 and v2, labeled "support hyperedge".
+   - Draw a red risk hyperedge around v3 and v4, labeled "risk hyperedge".
+   - Draw a blue edge/source cue relation to v5.
+
+4. Right panel named "EviGraph Agent Loop":
+   - Three stacked blocks:
+     "Select State" with body "max utility minus risk"
+     "Execute Operation" with body "select years; sum(10,14)"
+     "Verify Trace" with body "citation; arithmetic; operation"
+   - Add a dashed red feedback arrow from Verify Trace back to Select State, labeled "repair / rethink".
+
+5. Far-right panel named "Verified Answer":
+   - Include a green shield/check badge.
+   - Answer text: "24 billion".
+
+6. Bottom legend:
+   - Support hyperedge
+   - Risk hyperedge
+   - Source cue
+   - Flow
+   - Feedback
+
+Style reference:
+The target style is a clean ICLR/AAAI-style scientific figure similar to knowledge hypergraph and agent-loop diagrams: thick black outlines, strong modular layout, muted teal/blue/amber/rose/lavender palette, readable labels, and minimal clutter. Do not use cartoon mascots, logos, fake watermarks, or decorative gradients.
