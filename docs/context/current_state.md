@@ -217,6 +217,8 @@ Public TAT-QA pilot:
   - `data/tatqa_20_corpus/`
   - `data/raw/tatqa_50_subset.jsonl`
   - `data/tatqa_50_corpus/`
+  - `data/raw/tatqa_100_subset.jsonl`
+  - `data/tatqa_100_corpus/`
 - Manifest:
   - `configs/experiments.tatqa_20.local_planner.json`
   - `configs/experiments.tatqa_50.local_planner.json`
@@ -224,6 +226,7 @@ Public TAT-QA pilot:
   - `configs/experiments.tatqa_50.non_vested_ratio_v48.json`
   - `configs/experiments.tatqa_50.activity_share_average_v49.json`
   - `configs/experiments.tatqa_50.senior_notes_issuance_sum_v50.json`
+  - `configs/experiments.tatqa_100.senior_notes_issuance_sum_v50.json`
 - Run output:
   - `outputs/eval/tatqa_20_local_planner/summary.md`
   - `outputs/eval/tatqa_20_local_planner/tatqa_20_open_bm25_full_retrieval_diagnostics.md`
@@ -237,6 +240,8 @@ Public TAT-QA pilot:
   - `outputs/eval/tatqa_50_activity_share_average_v49/tatqa_50_open_bm25_full_v49_retrieval_diagnostics.md`
   - `outputs/eval/tatqa_50_senior_notes_issuance_sum_v50/summary.md`
   - `outputs/eval/tatqa_50_senior_notes_issuance_sum_v50/tatqa_50_open_bm25_full_v50_retrieval_diagnostics.md`
+  - `outputs/eval/tatqa_100_portability_v50/summary.md`
+  - `outputs/eval/tatqa_100_portability_v50/tatqa_100_open_bm25_full_v50_retrieval_diagnostics.md`
 - Results:
   - TAT-QA-20 Oracle-doc Full EviGraph: EM 0.500, support 0.800.
   - TAT-QA-20 Open BM25 Full EviGraph: EM 0.450, support 0.850.
@@ -266,14 +271,28 @@ Public TAT-QA pilot:
     wrong_numeric_operation_or_row = 17. Row/operation diagnostics split 20
     wrong numeric rows into 15 ambiguous_supported_wrong_number, 2
     wrong_year_or_period, 1 wrong_row_label, and 2 wrong_operation_type.
+  - TAT-QA-100 v50 Oracle-doc Full EviGraph: EM 0.520, support 0.750.
+  - TAT-QA-100 v50 Open BM25 Full EviGraph: EM 0.410, support 0.850.
+  - TAT-QA-100 Open BM25 source_hit@8: 0.900, source_top1: 0.670.
+  - TAT-QA-100 clears the planned portability gate: Oracle-doc >= 0.45 and
+    Open BM25 >= 0.35.
+  - TAT-QA-100 open failure report: 59/100 failed examples; 49/100 are
+    wrong_with_source_hit.
+  - Largest TAT-QA-100 open failure class:
+    wrong_numeric_operation_or_row = 35. Row/operation diagnostics split 37
+    wrong numeric rows into 26 ambiguous_supported_wrong_number, 5
+    wrong_operation_type, 3 wrong_year_or_period, and 3 wrong_row_label.
 - Paper files:
   - `paper/generated/tatqa_20_cross_benchmark/tatqa_20_results.tex`
   - `paper/generated/tatqa_20_cross_benchmark/tatqa_20_results.md`
   - `paper/generated/tatqa_50_cross_benchmark/tatqa_50_results.tex`
   - `paper/generated/tatqa_50_cross_benchmark/tatqa_50_results.md`
+  - `paper/generated/tatqa_100_portability_v50/tatqa_100_results.tex`
+  - `paper/generated/tatqa_100_portability_v50/tatqa_100_results.md`
 - Interpretation:
-  - Use TAT-QA-50 as the main public cross-benchmark pilot in the paper; keep
-    TAT-QA-20 as an earlier smoke result only.
+  - Use TAT-QA-50 as the failure-driven public cross-benchmark pilot and
+    TAT-QA-100 as the scaled portability check; keep TAT-QA-20 as an earlier
+    smoke result only.
   - This is a public cross-benchmark pilot, not a full TAT-QA benchmark claim.
   - Gold derivations are not serialized into the retrieval corpus.
   - Use it to answer the reviewer concern that the pipeline is FinQA-only,

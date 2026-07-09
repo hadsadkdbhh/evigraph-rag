@@ -1,0 +1,46 @@
+{
+  "title": "TAT-QA-100 Portability Check v50",
+  "config": "configs/default_local_planner.yaml",
+  "output_dir": "outputs/eval/tatqa_100_portability_v50",
+  "datasets": [
+    {
+      "name": "tatqa_100",
+      "questions": "data/raw/tatqa_100_subset.jsonl",
+      "corpus": "data/tatqa_100_corpus",
+      "build_index": true,
+      "index": "outputs/index/tatqa_100_portability_v50.json",
+      "chunk_size": 1200,
+      "chunk_overlap": 160,
+      "retrieval_mode": "oracle_doc",
+      "gate": {
+        "min_records": 100,
+        "min_source_doc_coverage": 1.0,
+        "fail_on_error": true
+      }
+    }
+  ],
+  "experiments": [
+    {
+      "name": "oracle_doc_full_v50",
+      "type": "batch",
+      "retrieval_mode": "oracle_doc",
+      "methods": [
+        "full_evigraph"
+      ],
+      "progress_every": 10
+    },
+    {
+      "name": "open_bm25_full_v50",
+      "type": "batch",
+      "retrieval_mode": "open",
+      "methods": [
+        "full_evigraph"
+      ],
+      "progress_every": 10
+    }
+  ],
+  "limitations": [
+    "This manifest expands the public TAT-QA portability check from 50 to 100 fixed-seed arithmetic examples.",
+    "It reports only oracle-doc and open BM25 settings to test whether the v47-v50 adapter generalizes beyond the inspected TAT-QA-50 pilot."
+  ]
+}

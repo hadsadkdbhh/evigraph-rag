@@ -28,7 +28,7 @@ Anonymous Authors
 \begin{abstract}
 Retrieval-augmented generation systems often treat retrieved passages as usable evidence, even when the retrieved context is incomplete, noisy, or numerically under-specified.
 We study evidence-state control: a pipeline that converts retrieved candidates into an explicit evidence graph, scores their utility and risk, selects a compact support subgraph, executes table-oriented numerical operations, and verifies generated claims against cited support.
-On deterministic 300- and 600-example FinQA validation subsets, we evaluate EviGraph-RAG against direct RAG, retrieve-then-program, full-context, utility-only, retrieval-baseline, external LLM Direct RAG, and component-ablation controls, with a 50-example public TAT-QA pilot and a synthetic stress suite used only as portability checks.
+On deterministic 300- and 600-example FinQA validation subsets, we evaluate EviGraph-RAG against direct RAG, retrieve-then-program, full-context, utility-only, retrieval-baseline, external LLM Direct RAG, and component-ablation controls, with 50- and 100-example public TAT-QA pilots and a synthetic stress suite used only as portability checks.
 The current results support a conservative mechanism claim: retrieval exposure alone does not reliably become answer accuracy, while verifier-guided evidence-state selection improves the use of heterogeneous retrieved candidates and exposes when high exact match lacks cited numerical support.
 \end{abstract}
 
@@ -193,7 +193,7 @@ edges: support, derivation, temporal alignment, conflict \\
 \textbf{FinQA.} We use a deterministic 300-example validation subset from \texttt{dreamerdeo/finqa}, preserving source-document metadata for oracle-document and source-rerank analysis.
 The corpus serializes source pre-text, tables, and post-text to Markdown and excludes gold answers and gold evidence annotations from retrieval.
 
-\textbf{TAT-QA pilot.} We construct a 50-example arithmetic pilot from the public TAT-QA development set using a fixed seed.
+\textbf{TAT-QA pilot.} We construct 50- and 100-example arithmetic pilots from the public TAT-QA development set using a fixed seed.
 Each source document is serialized as Markdown containing the table and paragraphs, while gold derivations are excluded from the retrieval corpus.
 This pilot is used to test portability of the evidence-state pipeline on a second public financial table/text QA format, not to claim full TAT-QA benchmark performance.
 
@@ -291,6 +291,11 @@ The open setting retrieves the gold source document for 48/50 examples, but exac
 This reinforces the paper's mechanism claim: retrieval exposure is necessary but does not by itself determine a supportable numeric evidence state.
 
 \input{generated/tatqa_50_cross_benchmark/tatqa_50_results}
+
+We then scale the same fixed-seed TAT-QA adapter to 100 arithmetic examples as a portability check rather than as a full benchmark claim.
+Full EviGraph reaches 0.520 exact match under oracle-document retrieval and 0.410 under open BM25, clearing the planned portability gates of 0.45 and 0.35 respectively.
+
+\input{generated/tatqa_100_portability_v50/tatqa_100_results}
 
 We also run a three-example synthetic stress suite over official reports with forecast/draft/press distractors.
 Full EviGraph answers all three examples correctly while top-\(K\) and utility-only selectors answer one of three.
