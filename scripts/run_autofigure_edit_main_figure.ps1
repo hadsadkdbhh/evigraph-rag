@@ -36,7 +36,15 @@ function Test-PlaceholderValue {
     if ([string]::IsNullOrWhiteSpace($Value)) {
         return $false
     }
-    return $Value -match "你的|路径|your|python 3\.10|Python 3\.10"
+    return $Value -match "your|placeholder|example|api key|base url|compatible|python 3\.10|Python 3\.10|path|address"
+}
+
+function Test-NonAsciiValue {
+    param([string]$Value)
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return $false
+    }
+    return $Value -match "[^\x00-\x7F]"
 }
 
 if ([string]::IsNullOrWhiteSpace($Python)) { $Python = Get-EnvValue "AF_PYTHON" }
@@ -102,8 +110,17 @@ if ([string]::IsNullOrWhiteSpace($SamApiKey)) {
 if ([string]::IsNullOrWhiteSpace($ApiKey)) {
     throw "Set AF_API_KEY first. Example: `$env:AF_API_KEY='your_key'"
 }
+if ((Test-PlaceholderValue $ApiKey) -or (Test-NonAsciiValue $ApiKey)) {
+    throw "AF_API_KEY still looks like placeholder text. Set it to the real model API key, not words like 'your API key'."
+}
 if ($Provider -eq "custom" -and [string]::IsNullOrWhiteSpace($BaseUrl)) {
     throw "Provider custom requires AF_BASE_URL ending in /v1. Example: `$env:AF_BASE_URL='https://your-api.example/v1'"
+}
+if ($Provider -eq "custom" -and ((Test-PlaceholderValue $BaseUrl) -or (Test-NonAsciiValue $BaseUrl))) {
+    throw "AF_BASE_URL still looks like placeholder text. Set it to a real OpenAI-compatible /v1 URL, for example https://example.com/v1."
+}
+if ($Provider -eq "custom" -and $BaseUrl -notmatch "^https?://") {
+    throw "AF_BASE_URL must start with http:// or https://."
 }
 if (($SamBackend -eq "roboflow" -or $SamBackend -eq "fal") -and [string]::IsNullOrWhiteSpace($SamApiKey)) {
     throw "SAM backend '$SamBackend' requires a key. Set ROBOFLOW_API_KEY, FAL_KEY, or AF_SAM_API_KEY."
@@ -170,6 +187,8 @@ if ($Mode -eq "regenerate") {
 
 Push-Location $AutoFigureDir
 try {
+    $env:PYTHONUTF8 = "1"
+    $env:PYTHONIOENCODING = "utf-8"
     if ($useConda) {
         & conda run -n $CondaEnv python @args
     } else {

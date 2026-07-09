@@ -16,6 +16,22 @@ function Get-EnvValue {
     return $value
 }
 
+function Test-PlaceholderValue {
+    param([string]$Value)
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return $false
+    }
+    return $Value -match "your|placeholder|example|api key|base url|compatible|python 3\.10|Python 3\.10|path|address"
+}
+
+function Test-NonAsciiValue {
+    param([string]$Value)
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return $false
+    }
+    return $Value -match "[^\x00-\x7F]"
+}
+
 Write-Host "Repo: $repoRoot"
 Write-Host "AutoFigure-Edit: $autoFigureDir"
 Write-Host "Conda env: $condaEnv"
@@ -60,6 +76,8 @@ foreach ($name in $secrets) {
     $value = Get-EnvValue $name
     if ([string]::IsNullOrWhiteSpace($value)) {
         Write-Host "$name=missing"
+    } elseif ((Test-PlaceholderValue $value) -or (Test-NonAsciiValue $value)) {
+        Write-Host "$name=invalid(placeholder-or-non-ascii,length=$($value.Length))"
     } else {
         Write-Host "$name=set(length=$($value.Length))"
     }
