@@ -1,10 +1,22 @@
 # Figure Plan for AAAI Submission
 
-This is a planning document, not the final artwork. The goal is to keep the
-figures aligned with the paper story: retrieval exposure is necessary but not
-sufficient; EviGraph-RAG contributes verifier-guided evidence-state selection.
+This document tracks the paper figures. The current figures are reproducibly
+rendered from `scripts/render_paper_figures.py`; do not hand-edit the exported
+PDF/PNG files.
+
+Render command:
+
+```powershell
+python .\scripts\render_paper_figures.py
+```
 
 ## Figure 1: Pipeline Figure
+
+Current artifact:
+
+- `paper/figures/evigraph_pipeline.pdf`
+- `paper/figures/evigraph_pipeline.png`
+- Included in `paper/main.tex` as Figure~\ref{fig:method}.
 
 Purpose:
 
@@ -46,6 +58,12 @@ Visual emphasis:
 - Avoid making the figure look like "better retriever = solved".
 
 ## Figure 2: Mechanism Figure
+
+Current artifact:
+
+- `paper/figures/retrieval_portfolio_mechanism.pdf`
+- `paper/figures/retrieval_portfolio_mechanism.png`
+- Included in `paper/main.tex` as Figure~\ref{fig:retrieval-portfolio}.
 
 Purpose:
 
@@ -93,7 +111,6 @@ flowchart LR
 
 ## Figure Placement
 
-- Figure 1 should appear in Method, replacing or polishing the current
-  lightweight LaTeX pipeline diagram.
-- Figure 2 should appear in the Open-Retrieval Baseline Stress Test subsection
-  near the retrieval portfolio ablation table.
+- Figure 1 appears in Method and replaces the earlier text-box pipeline figure.
+- Figure 2 appears in the Open-Retrieval Baseline Stress Test subsection near
+  the retrieval portfolio ablation table.

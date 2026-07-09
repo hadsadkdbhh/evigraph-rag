@@ -130,6 +130,25 @@ Expected latest verified result:
 
 - 397 tests OK after the v50 senior-notes repair.
 
+### Paper Figures
+
+```powershell
+python .\scripts\render_paper_figures.py
+```
+
+Generated artifacts:
+
+- `paper/figures/evigraph_pipeline.pdf`
+- `paper/figures/evigraph_pipeline.png`
+- `paper/figures/retrieval_portfolio_mechanism.pdf`
+- `paper/figures/retrieval_portfolio_mechanism.png`
+
+Use these for:
+
+- Figure 1: the end-to-end EviGraph-RAG evidence-state control pipeline.
+- Figure 2: the retrieval-portfolio mechanism and FinQA-600 open-retrieval
+  ablation result.
+
 ### FinQA-300 Mechanism/Ablation Table
 
 ```powershell

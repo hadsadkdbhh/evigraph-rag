@@ -165,24 +165,8 @@ The verifier checks citation presence, source-number consistency, calculation-re
 
 \begin{figure}[t]
 \centering
-\fbox{\begin{minipage}{0.92\linewidth}
-\centering
-\small
-\begin{tabular}{c}
-\textbf{Query and Corpus} \\
-\(\downarrow\) lexical or oracle-document retrieval \\
-\textbf{Candidate Evidence Graph \(G=(V,E)\)} \\
-nodes: passages, tables, rows, calculations \\
-edges: support, derivation, temporal alignment, conflict \\
-\(\downarrow\) risk-adjusted submodular selection \\
-\textbf{Support Subgraph \(S\subseteq V\)} \\
-\(\downarrow\) local table-operation execution \\
-\textbf{Grounded Numeric Answer} \\
-\(\downarrow\) citation, arithmetic, row, and operation checks \\
-\textbf{Verified Answer Trace}
-\end{tabular}
-\end{minipage}}
-\caption{EviGraph-RAG pipeline. Retrieved candidates are represented as an evidence graph, pruned into a compact risk-adjusted support subgraph, executed with local table operations, and verified against cited evidence.}
+\includegraphics[width=\linewidth]{figures/evigraph_pipeline.pdf}
+\caption{EviGraph-RAG pipeline. Retrieved candidates are not treated as final evidence: the system builds a candidate evidence graph, selects a risk-adjusted evidence state, executes local numerical operations, and verifies the answer trace against cited support. Source-rerank is marked as an analysis-only diagnostic rather than a deployable open-retrieval setting.}
 \label{fig:method}
 \end{figure}
 
@@ -264,6 +248,13 @@ A no-gold retrieval-portfolio selector that switches from BM25 to neural hybrid 
 This points to a concrete next method step: selecting across retrieval portfolios with verifier and support-graph signals, rather than treating a single retriever's top-\(K\) prefix as the evidence state.
 These results prevent an overbroad claim: the current system's main empirical story is not that retrieval is solved, but that evidence-state control improves the use of retrieved evidence once candidates are available.
 Table~\ref{tab:retrieval-portfolio-ablation} makes the tradeoff explicit: the conservative v44 selector has no observed paired losses but leaves many hybrid-only wins unused, the v45 confidence selector crosses the 0.40 open-retrieval line with one paired loss, and the guarded v46 selector preserves the same rounded exact match while removing that loss through a complete-year-coverage guard.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/retrieval_portfolio_mechanism.pdf}
+\caption{Retrieval-portfolio mechanism and result. On FinQA-600 open retrieval, neural-hybrid retrieval improves some candidate evidence states but does not by itself improve exact match. A no-gold guarded confidence selector chooses between completed BM25 and neural-hybrid evidence states using fallback status, query/year coverage, executable calculations, and verifier/support flags, improving over BM25 with 18 paired wins and no paired losses.}
+\label{fig:retrieval-portfolio}
+\end{figure}
 
 \input{generated/retrieval_portfolio_ablation/finqa_retrieval_portfolio_ablation}
 
