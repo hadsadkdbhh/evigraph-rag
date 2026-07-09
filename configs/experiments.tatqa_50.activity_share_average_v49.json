@@ -1,0 +1,46 @@
+{
+  "title": "TAT-QA-50 Activity Share Average v49",
+  "config": "configs/default_local_planner.yaml",
+  "output_dir": "outputs/eval/tatqa_50_activity_share_average_v49",
+  "datasets": [
+    {
+      "name": "tatqa_50",
+      "questions": "data/raw/tatqa_50_subset.jsonl",
+      "corpus": "data/tatqa_50_corpus",
+      "build_index": true,
+      "index": "outputs/index/tatqa_50_activity_share_average_v49.json",
+      "chunk_size": 1200,
+      "chunk_overlap": 160,
+      "retrieval_mode": "oracle_doc",
+      "gate": {
+        "min_records": 50,
+        "min_source_doc_coverage": 1.0,
+        "fail_on_error": true
+      }
+    }
+  ],
+  "experiments": [
+    {
+      "name": "oracle_doc_full_v49",
+      "type": "batch",
+      "retrieval_mode": "oracle_doc",
+      "methods": [
+        "full_evigraph"
+      ],
+      "progress_every": 10
+    },
+    {
+      "name": "open_bm25_full_v49",
+      "type": "batch",
+      "retrieval_mode": "open",
+      "methods": [
+        "full_evigraph"
+      ],
+      "progress_every": 10
+    }
+  ],
+  "limitations": [
+    "This manifest isolates the v49 activity-share average repair on the TAT-QA-50 pilot.",
+    "It targets inspected row-label failures where an activity row such as Shares vested should use Number of Shares columns, not per-share value rows."
+  ]
+}

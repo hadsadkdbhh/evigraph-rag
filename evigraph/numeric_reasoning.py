@@ -246,6 +246,9 @@ class NumericReasoner:
                 return answer
 
         if "average" in query_lower:
+            answer = self._activity_share_average(query_lower, contexts)
+            if answer:
+                return answer
             answer = self._average_high_low_price(query_lower, contexts)
             if answer:
                 return answer
@@ -774,6 +777,88 @@ class NumericReasoner:
                 calculation=f"listed_year_average row={values.get('__row_label__', '')}: {operation.expression}",
                 cited_node_ids=[node_id],
             )
+        return None
+
+    def _activity_share_average(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:
+        if "average" not in query_lower or "shares" not in query_lower or "vested" not in query_lower:
+            return None
+        query_years: list[str] = []
+        for year in re.findall(r"\b(20\d{2})\b", query_lower):
+            if year not in query_years:
+                query_years.append(year)
+        if len(query_years) < 2:
+            return None
+
+        for node_id, text in contexts:
+            for headers, rows in self._markdown_tables(text):
+                if not rows:
+                    continue
+                subheader_index = next(
+                    (
+                        index
+                        for index, row in enumerate(rows[:3])
+                        if any("number" in cell.lower() and "share" in cell.lower() for cell in row)
+                    ),
+                    None,
+                )
+                subheaders = rows[subheader_index] if subheader_index is not None else headers
+                data_rows = rows[subheader_index + 1 :] if subheader_index is not None else rows
+                year_columns: list[int] = []
+                for year in query_years[:2]:
+                    column = next(
+                        (
+                            index
+                            for index, header in enumerate(headers)
+                            if year in header
+                            and index < len(subheaders)
+                            and "number" in subheaders[index].lower()
+                            and "share" in subheaders[index].lower()
+                        ),
+                        None,
+                    )
+                    if column is None:
+                        break
+                    year_columns.append(column)
+                if len(year_columns) != 2:
+                    continue
+                target_row = next(
+                    (
+                        row
+                        for row in data_rows
+                        if row
+                        and "shares" in row[0].lower()
+                        and "vested" in row[0].lower()
+                        and "non-vested" not in row[0].lower()
+                    ),
+                    None,
+                )
+                if target_row is None:
+                    continue
+                values: list[float] = []
+                for column in year_columns:
+                    if column >= len(target_row):
+                        values = []
+                        break
+                    value = self._first_number(target_row[column])
+                    if value is None:
+                        values = []
+                        break
+                    values.append(abs(value))
+                if len(values) != 2:
+                    continue
+                operation = self.executor.average(values)
+                if operation is None:
+                    continue
+                addends = " + ".join(f"{value:.0f}" if float(value).is_integer() else f"{value:g}" for value in values)
+                return NumericAnswer(
+                    text=self._format_number(operation.value),
+                    calculation=(
+                        f"activity_share_average row={target_row[0].strip().lower()} "
+                        f"years={','.join(query_years[:2])} column=number of shares: "
+                        f"({addends}) / {len(values)} = {self._format_number(operation.value)}"
+                    ),
+                    cited_node_ids=[node_id],
+                )
         return None
 
     def _row_average(self, query_lower: str, contexts: list[tuple[str, str]]) -> NumericAnswer | None:

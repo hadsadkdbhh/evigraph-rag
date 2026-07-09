@@ -222,6 +222,7 @@ Public TAT-QA pilot:
   - `configs/experiments.tatqa_50.local_planner.json`
   - `configs/experiments.tatqa_50.direction_repair_v47.json`
   - `configs/experiments.tatqa_50.non_vested_ratio_v48.json`
+  - `configs/experiments.tatqa_50.activity_share_average_v49.json`
 - Run output:
   - `outputs/eval/tatqa_20_local_planner/summary.md`
   - `outputs/eval/tatqa_20_local_planner/tatqa_20_open_bm25_full_retrieval_diagnostics.md`
@@ -231,6 +232,8 @@ Public TAT-QA pilot:
   - `outputs/eval/tatqa_50_direction_repair_v47/tatqa_50_open_bm25_full_v47_retrieval_diagnostics.md`
   - `outputs/eval/tatqa_50_non_vested_ratio_v48/summary.md`
   - `outputs/eval/tatqa_50_non_vested_ratio_v48/tatqa_50_open_bm25_full_v48_retrieval_diagnostics.md`
+  - `outputs/eval/tatqa_50_activity_share_average_v49/summary.md`
+  - `outputs/eval/tatqa_50_activity_share_average_v49/tatqa_50_open_bm25_full_v49_retrieval_diagnostics.md`
 - Results:
   - TAT-QA-20 Oracle-doc Full EviGraph: EM 0.500, support 0.800.
   - TAT-QA-20 Open BM25 Full EviGraph: EM 0.450, support 0.850.
@@ -244,15 +247,18 @@ Public TAT-QA pilot:
   - TAT-QA-50 v48 Open BM25 Full EviGraph: EM 0.420, support 0.900.
   - v48 non-vested share activity repair gives Oracle +2 paired wins / 0
     losses and Open BM25 +1 paired win / 0 losses over the v47 TAT-QA-50 run.
+  - TAT-QA-50 v49 Oracle-doc Full EviGraph: EM 0.520, support 0.740.
+  - TAT-QA-50 v49 Open BM25 Full EviGraph: EM 0.440, support 0.900.
+  - v49 activity-share average repair gives Open BM25 +1 paired win / 0
+    losses over v48 and leaves Oracle-doc unchanged.
   - TAT-QA-50 Open BM25 source_hit@8: 0.960, source_top1: 0.740.
-  - TAT-QA-50 v48 failure report: 29/50 failed examples; remaining failures
-    are still dominated by source-exposed evidence-state and operand-selection
-    errors, so the pilot supports the claim that source exposure alone is
-    insufficient.
+  - TAT-QA-50 v49 failure report: 28/50 failed examples; 26/50 are
+    wrong_with_source_hit, so remaining failures are still dominated by
+    source-exposed evidence-state and operand-selection errors.
   - Largest TAT-QA-50 open failure class:
-    wrong_numeric_operation_or_row = 21. Row/operation diagnostics split those
+    wrong_numeric_operation_or_row = 17. Row/operation diagnostics split 20
     wrong numeric rows into 15 ambiguous_supported_wrong_number, 2
-    wrong_year_or_period, 2 wrong_row_label, and 2 wrong_operation_type.
+    wrong_year_or_period, 1 wrong_row_label, and 2 wrong_operation_type.
 - Paper files:
   - `paper/generated/tatqa_20_cross_benchmark/tatqa_20_results.tex`
   - `paper/generated/tatqa_20_cross_benchmark/tatqa_20_results.md`
@@ -284,6 +290,24 @@ FinQA-600 v47 regression check:
   - The TAT-QA direction-semantics repair is regression-safe for the FinQA-600
     main stress subset.
   - Do not update FinQA headline numbers from v43; use v47 as a safety check.
+
+FinQA-600 v48 regression check:
+
+- Manifest:
+  - `configs/experiments.finqa_600.local_planner_non_vested_ratio_v48.json`
+- Output:
+  - `outputs/eval/finqa_600_local_planner_non_vested_ratio_v48/summary.md`
+- Headline results:
+  - Oracle-doc Full EviGraph: EM 0.503, support 0.820.
+  - Open BM25 Full EviGraph: EM 0.377, support 0.787.
+  - Source-rerank Full EviGraph: EM 0.502, support 0.822.
+- Paired comparison against v47:
+  - Oracle-doc: 0 wins, 0 losses, 0 prediction changes.
+  - Open BM25: 0 wins, 0 losses, 0 prediction changes.
+  - Source-rerank: 0 wins, 0 losses, 0 prediction changes.
+- Interpretation:
+  - The TAT-QA v48 non-vested share activity repair is regression-safe for the
+    FinQA-600 main stress subset.
 
 Figure planning:
 

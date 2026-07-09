@@ -2879,6 +2879,46 @@ class NumericReasoningTest(unittest.TestCase):
         self.assertIn("non_vested_share_activity_ratio", answer.calculations[0])
         self.assertIn("12632 / 1283281", answer.calculations[0])
 
+    def test_average_shares_vested_uses_number_of_shares_columns(self) -> None:
+        graph = EvidenceGraph()
+        graph.add_node(
+            EvidenceNode(
+                node_id="eps",
+                node_type="text",
+                content=(
+                    "|  | 2019 | 2018 |\n"
+                    "| --- | --- | --- |\n"
+                    "| net income per share in mi | 1 | 1 |\n"
+                ),
+                source_doc="distractor.md",
+            )
+        )
+        graph.add_node(
+            EvidenceNode(
+                node_id="rsu",
+                node_type="text",
+                content=(
+                    "|  | 2019 |  | 2018 |  |\n"
+                    "| --- | --- | --- | --- | --- |\n"
+                    "|  | Number of Shares | Weighted Average Grant Date Fair Value | Number of Shares | Weighted Average Grant Date Fair Value |\n"
+                    "| Non-vested at beginning of year | 315,292 | $2.26 | 438,712 | $2.28 |\n"
+                    "| Shares granted | 253,113 | 2.17 | 200,000 | 3.16 |\n"
+                    "| Shares vested | 82,270 | 2.28 | 323,420 | 2.84 |\n"
+                    "| Non-vested at end of year | 486,135 | $2.53 | 315,292 | $2.26 |\n"
+                ),
+                source_doc="report.md",
+            )
+        )
+
+        answer = SupportOnlyGenerator().generate(
+            "What is the average shares vested between 2018 and 2019?",
+            graph,
+        )
+
+        self.assertEqual(answer.text, "202845")
+        self.assertIn("activity_share_average", answer.calculations[0])
+        self.assertIn("323420 + 82270", answer.calculations[0])
+
     def test_row_average_from_entity_table(self) -> None:
         graph = EvidenceGraph()
         graph.add_node(
