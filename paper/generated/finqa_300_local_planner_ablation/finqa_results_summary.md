@@ -60,9 +60,9 @@ Generated from `outputs\eval\finqa_300_local_planner_ablation` after the latest 
 
 | setting | wrong numerator | wrong denominator | wrong year/period | wrong row label | wrong operation type | ambiguous |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Oracle-doc | 4 | 1 | 1 | 2 | 5 | 22 |
-| Open BM25 | 4 | 4 | 5 | 6 | 10 | 25 |
-| BM25 + source rerank | 3 | 1 | 2 | 1 | 4 | 23 |
+| Oracle-doc | 4 | 1 | 1 | 2 | 6 | 21 |
+| Open BM25 | 4 | 4 | 5 | 6 | 6 | 28 |
+| BM25 + source rerank | 3 | 1 | 2 | 1 | 5 | 22 |
 
 ## Process Trace Diagnostics
 

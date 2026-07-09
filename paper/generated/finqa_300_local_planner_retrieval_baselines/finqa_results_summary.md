@@ -45,9 +45,9 @@ Generated from `outputs\eval\finqa_300_local_planner_retrieval_baselines` after 
 
 | setting | wrong numerator | wrong denominator | wrong year/period | wrong row label | wrong operation type | ambiguous |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Open BM25 | 5 | 4 | 5 | 6 | 11 | 28 |
-| Open dense | 3 | 3 | 8 | 5 | 8 | 10 |
-| Open hybrid | 6 | 3 | 4 | 6 | 10 | 29 |
+| Open BM25 | 5 | 4 | 5 | 6 | 7 | 31 |
+| Open dense | 3 | 3 | 8 | 5 | 7 | 10 |
+| Open hybrid | 6 | 3 | 4 | 6 | 5 | 33 |
 
 ## Process Trace Diagnostics
 

@@ -258,6 +258,25 @@ Public TAT-QA pilot:
   - Use it to answer the reviewer concern that the pipeline is FinQA-only,
     while keeping headline claims on FinQA-300/600.
 
+FinQA-600 v47 regression check:
+
+- Manifest:
+  - `configs/experiments.finqa_600.local_planner_direction_repair_v47.json`
+- Output:
+  - `outputs/eval/finqa_600_local_planner_direction_repair_v47/summary.md`
+- Headline results:
+  - Oracle-doc Full EviGraph: EM 0.503, support 0.820.
+  - Open BM25 Full EviGraph: EM 0.377, support 0.787.
+  - Source-rerank Full EviGraph: EM 0.502, support 0.822.
+- Paired comparison against v43 guarded top-8 repair:
+  - Oracle-doc: 0 wins, 0 losses, 0 prediction changes.
+  - Open BM25: 0 wins, 0 losses, 0 prediction changes.
+  - Source-rerank: 0 wins, 0 losses, 0 prediction changes.
+- Interpretation:
+  - The TAT-QA direction-semantics repair is regression-safe for the FinQA-600
+    main stress subset.
+  - Do not update FinQA headline numbers from v43; use v47 as a safety check.
+
 Figure planning:
 
 - Planning document:

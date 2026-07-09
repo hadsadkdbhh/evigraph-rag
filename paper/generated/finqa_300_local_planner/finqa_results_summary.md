@@ -22,9 +22,9 @@ Generated from `outputs\eval\finqa_300_local_planner` after the latest manifest 
 
 | setting | wrong numerator | wrong denominator | wrong year/period | wrong row label | wrong operation type | ambiguous |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Oracle-doc | 5 | 1 | 3 | 3 | 8 | 26 |
-| Open BM25 | 5 | 4 | 5 | 6 | 11 | 28 |
-| BM25 + source rerank | 4 | 1 | 4 | 2 | 7 | 27 |
+| Oracle-doc | 5 | 1 | 3 | 3 | 8 | 25 |
+| Open BM25 | 5 | 4 | 5 | 6 | 7 | 31 |
+| BM25 + source rerank | 4 | 1 | 4 | 2 | 7 | 26 |
 
 ## Process Trace Diagnostics
 
