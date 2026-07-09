@@ -65,11 +65,26 @@ if ([string]::IsNullOrWhiteSpace($CondaEnv)) {
 }
 $useConda = $false
 $condaEnvAvailable = $false
+$condaPython = $null
 $condaCmd = Get-Command conda -ErrorAction SilentlyContinue
 if ($condaCmd) {
-    $envList = conda env list | Out-String
-    if ($envList -match "(^|\s)$([regex]::Escape($CondaEnv))(\s|$)") {
-        $condaEnvAvailable = $true
+    try {
+        $envJson = conda env list --json | ConvertFrom-Json
+        foreach ($envPath in $envJson.envs) {
+            if ((Split-Path $envPath -Leaf) -eq $CondaEnv) {
+                $candidatePython = Join-Path $envPath "python.exe"
+                if (Test-Path -LiteralPath $candidatePython) {
+                    $condaEnvAvailable = $true
+                    $condaPython = $candidatePython
+                }
+                break
+            }
+        }
+    } catch {
+        $envList = conda env list | Out-String
+        if ($envList -match "(^|\s)$([regex]::Escape($CondaEnv))(\s|$)") {
+            $condaEnvAvailable = $true
+        }
     }
 }
 if (Test-PlaceholderValue $Python) {
@@ -77,7 +92,9 @@ if (Test-PlaceholderValue $Python) {
     $Python = ""
 }
 if ([string]::IsNullOrWhiteSpace($Python)) {
-    if ($condaEnvAvailable) {
+    if ($condaEnvAvailable -and -not [string]::IsNullOrWhiteSpace($condaPython)) {
+        $Python = $condaPython
+    } elseif ($condaEnvAvailable) {
         $useConda = $true
     } else {
         $Python = "python"
@@ -86,7 +103,10 @@ if ([string]::IsNullOrWhiteSpace($Python)) {
     $pythonCommand = Get-Command $Python -ErrorAction SilentlyContinue
     $pythonPathExists = Test-Path -LiteralPath $Python
     if (-not $pythonCommand -and -not $pythonPathExists) {
-        if ($condaEnvAvailable) {
+        if ($condaEnvAvailable -and -not [string]::IsNullOrWhiteSpace($condaPython)) {
+            Write-Host "AF_PYTHON '$Python' is not executable; falling back to conda env python '$condaPython'."
+            $Python = $condaPython
+        } elseif ($condaEnvAvailable) {
             Write-Host "AF_PYTHON '$Python' is not executable; falling back to conda env '$CondaEnv'."
             $useConda = $true
         } else {
@@ -189,13 +209,36 @@ Push-Location $AutoFigureDir
 try {
     $env:PYTHONUTF8 = "1"
     $env:PYTHONIOENCODING = "utf-8"
+    $rawLogPath = Join-Path $outDir "autofigure_run.raw.log"
+    $logPath = Join-Path $outDir "autofigure_run.log"
+    Write-Host "AutoFigure-Edit log: $logPath"
     if ($useConda) {
-        & conda run -n $CondaEnv python @args
+        & conda run -n $CondaEnv python @args *> $rawLogPath
     } else {
-        & $Python @args
+        & $Python @args *> $rawLogPath
     }
-    if ($LASTEXITCODE -ne 0) {
-        throw "AutoFigure-Edit failed with exit code $LASTEXITCODE"
+    $exitCode = $LASTEXITCODE
+    $logText = ""
+    if (Test-Path -LiteralPath $rawLogPath) {
+        $logText = Get-Content -LiteralPath $rawLogPath -Raw -ErrorAction SilentlyContinue
+        if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
+            $logText = $logText -replace [regex]::Escape($ApiKey), "[AF_API_KEY]"
+        }
+        if (-not [string]::IsNullOrWhiteSpace($ImageApiKey)) {
+            $logText = $logText -replace [regex]::Escape($ImageApiKey), "[AF_IMAGE_API_KEY]"
+        }
+        if (-not [string]::IsNullOrWhiteSpace($SamApiKey)) {
+            $logText = $logText -replace [regex]::Escape($SamApiKey), "[AF_SAM_API_KEY]"
+        }
+        Set-Content -LiteralPath $logPath -Value $logText -Encoding utf8
+        Remove-Item -LiteralPath $rawLogPath -Force -ErrorAction SilentlyContinue
+    }
+    if (-not [string]::IsNullOrWhiteSpace($logText)) {
+        $tail = ($logText -split "`r?`n") | Select-Object -Last 30
+        $tail | ForEach-Object { Write-Host $_ }
+    }
+    if ($exitCode -ne 0) {
+        throw "AutoFigure-Edit failed with exit code $exitCode. See sanitized log: $logPath"
     }
 } finally {
     Pop-Location
