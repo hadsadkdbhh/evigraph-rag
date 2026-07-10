@@ -27,67 +27,56 @@ Anonymous Authors
 
 \begin{abstract}
 Retrieval-augmented generation systems often treat retrieved passages as usable evidence, even when the retrieved context is incomplete, noisy, or numerically under-specified.
-We formulate \emph{Evidence State Optimization} (ESO): given retrieved candidates, search over subsets of evidence units to find a compact, low-risk, executable, and verifiable support state.
-Our implementation, EviGraph-RAG, converts retrieved candidates into an explicit evidence graph, constructs an evidence state space, searches for a minimal reliable support subgraph, executes table-oriented numerical operations, and verifies generated claims against cited support.
-On deterministic 300- and 600-example FinQA validation subsets, we evaluate EviGraph-RAG against direct RAG, retrieve-then-program, full-context, utility-only, retrieval-baseline, external LLM Direct RAG, and component-ablation controls, with 50- and 100-example public TAT-QA pilots and a synthetic stress suite used as portability checks.
-The results support a mechanism claim: retrieval exposure alone does not reliably become answer accuracy, while verifier-guided evidence-state selection improves the use of heterogeneous retrieved candidates and exposes when high exact match lacks cited numerical support.
+We formulate \emph{Evidence State Optimization} (ESO): instead of consuming a retrieved top-\(K\) prefix, a RAG system searches over subsets of evidence units for a compact, executable, and verifiable support state.
+EviGraph-RAG instantiates ESO by building a query-local evidence graph, selecting a Minimal Reliable Support Subgraph, executing table-oriented numerical operations, and verifying generated claims against cited support.
+On deterministic FinQA-300 and FinQA-600 subsets, plus 50- and 100-example public TAT-QA portability pilots, EviGraph-RAG is evaluated against direct RAG, retrieve-then-program, utility-only, retrieval, external LLM, and component-ablation controls.
+The results show a consistent mechanism: retrieval exposure alone does not reliably become answer accuracy, while verifier-guided evidence-state selection improves the use of heterogeneous candidates and reveals when high exact match lacks cited numerical support.
 \end{abstract}
 
 \section{Introduction}
 
-Large language models can fluently answer questions over retrieved documents, but financial and chart/table QA often requires a stricter notion of evidence than lexical relevance.
-For example, a retrieved paragraph may mention the right company and year while omitting the denominator needed for a percentage calculation.
-This paper asks whether retrieval outputs should be treated as proposals in an \emph{evidence state space} rather than final context.
+Large language models can fluently answer questions over retrieved documents, but numerical QA often requires a stricter notion of evidence than lexical relevance.
+A passage may mention the right company and year while omitting the denominator needed for a percentage calculation; a table row may contain the right number but the wrong period or financial quantity.
+This paper asks whether retrieval outputs should be treated as proposals in an \emph{evidence state space}, rather than as final context.
 
-The central hypothesis is that numerical RAG should be posed as \emph{Evidence State Optimization} (ESO): find a selected state of evidence units that is sufficient, low-risk, and executable.
+We formulate \emph{Evidence State Optimization} (ESO): given retrieved candidates, find a selected state of evidence units that is sufficient, low-risk, executable, and verifiable.
 Each retrieved item becomes a node with utility, risk, cost, and provenance signals.
-The system then searches over states, expands source context when running oracle-document analysis, executes table operations, and verifies claims against citations.
+The system searches over evidence states, executes local table operations, and verifies answer traces against citations.
 
-We evaluate this formulation under deliberately separated retrieval settings.
-The FinQA experiments use a deterministic 300-example validation subset and a 600-example stress subset, and report oracle-document, open BM25, BM25 with source reranking, TF-IDF, deterministic hybrid retrieval, local hashed dense retrieval, and a sentence-transformer neural retrieval track.
-We also add a small public TAT-QA pilot to check whether the same manifest-driven pipeline runs on a second financial table/text QA dataset without relying on FinQA-specific serialization.
-Rather than claiming benchmark-level superiority, the paper asks a narrower question: what is gained when a RAG system turns retrieved text into a selected, executable, and verified evidence state?
+We make three contributions.
+First, we define ESO as a RAG problem in which the search object is an evidence state \(S\subseteq V_q\), not a document, chunk, path, or retrieved prefix.
+Second, we define a \emph{Minimal Reliable Support Subgraph} (MRSG) objective combining coverage, source/temporal/operation risk, connectivity, executability, and verifier support; a monotone submodular relaxation gives a standard greedy approximation guarantee under a cardinality budget.
+Third, we instantiate ESO as EviGraph-RAG, a reproducible numerical QA pipeline with table-operation execution, verifier diagnostics, failure-driven repair, and retrieval-portfolio selection.
 
-We make three focused contributions.
-First, we formulate \emph{Evidence State Optimization}: a problem in which a RAG system searches over evidence states rather than directly consuming a retrieved top-\(K\) prefix.
-Second, we define a \emph{Minimal Reliable Support Subgraph} objective that combines coverage, source/temporal/operation risk, connectivity, executability, and verifier support; a monotone submodular relaxation yields a standard greedy approximation guarantee under a cardinality budget.
-Third, we instantiate ESO as EviGraph-RAG, a reproducible numerical QA pipeline that separates exact match from answer support, operation grounding, row grounding, and retrieval exposure, enabling failure-driven repairs and guarded retrieval-portfolio selection.
-
-The resulting empirical story is mechanistic rather than leaderboard-oriented: the system's value is not merely retrieving more text, but deciding which retrieved evidence state is executable and supportable.
-On the FinQA-300 diagnostic subset, the latest v38 table-operation EviGraph configuration reaches 0.670 exact match under oracle-document retrieval, 0.523 under open BM25, and 0.670 under BM25 plus source reranking.
-The corresponding answer-support rates are 0.850, 0.853, and 0.850, and the process trace shows high row grounding and operation-semantics checking while isolating operand selection as the dominant remaining bottleneck.
-By contrast, a GPT-5.4 Direct RAG baseline reaches higher exact match under oracle-document retrieval (0.693), open BM25 (0.523), and source reranking (0.690), but its answer-support rates remain much lower: 0.343, 0.273, and 0.340 respectively.
-This sharpens the claim: EviGraph is not simply an accuracy booster over a frontier external reader; it is an auditable evidence-state mechanism that closes much of the accuracy gap while exposing whether answers are actually supported by cited evidence and executable operations.
-On the larger FinQA-600 stress subset, the latest guarded repair configuration reaches 0.503 under oracle-document retrieval, 0.377 under open BM25, and 0.502 under BM25 plus source reranking; adding verifier-guided retrieval-portfolio selection raises the open setting to 0.407 without paired losses against BM25.
-We therefore treat FinQA-300 as the mechanism table and FinQA-600 as a pressure test that exposes remaining generalization gaps.
+The experiments are designed to test mechanism rather than claim a leaderboard result.
+On FinQA-300, EviGraph reaches 0.670/0.523/0.670 exact match under oracle-document, open BM25, and source-rerank settings, with answer-support rates of 0.850/0.853/0.850.
+A GPT-5.4 Direct RAG baseline matches or exceeds exact match in some settings, but its answer-support rates are much lower (0.343/0.273/0.340), showing why exact match alone is insufficient for grounded numerical RAG.
+On the larger FinQA-600 stress subset, guarded retrieval-portfolio selection raises open-retrieval exact match from 0.377 to 0.407 with 18 paired wins and no paired losses against BM25.
+TAT-QA-50/100 pilots provide a conservative portability check on a second public financial table/text QA format.
 
 \section{Related Work}
 
 \paragraph{Retrieval-Augmented Generation.}
 Retrieval-augmented generation combines parametric generation with retrieved non-parametric memory, making retrieval quality and context selection central to answer faithfulness~\cite{lewis2020retrieval}.
 Dense Passage Retrieval further shows that learned retrievers can replace or complement sparse retrieval for open-domain QA~\cite{karpukhin2020dense}.
-EviGraph-RAG is complementary to this line: rather than proposing a new retriever, it treats retrieved candidates as an intermediate evidence state that must be selected, risk-scored, and verified before generation.
+EviGraph-RAG is complementary: it treats retrieved candidates as an intermediate evidence state that must be selected, risk-scored, and verified before generation.
 
 \paragraph{Graph-Structured and Multimodal RAG.}
 Recent graph-based RAG systems use structured relations to move beyond flat top-\(K\) retrieval.
-MG\({}^2\)-RAG, for example, constructs a multi-granularity multimodal graph and propagates relevance across textual and visual evidence for cross-modal retrieval and reasoning~\cite{dai2026mg2rag}.
-ReAG similarly targets knowledge-based visual question answering with a multimodal RAG pipeline that combines coarse- and fine-grained retrieval, critic-based passage filtering, and reinforcement learning for reasoning over retrieved evidence~\cite{compagnoni2026reag}.
-Graph-R1 formulates GraphRAG retrieval as a multi-turn agent-environment interaction and optimizes the process with reinforcement learning~\cite{luo2026graphr1}.
-EvoGraph-R1 further models agentic retrieval over multimodal knowledge hypergraphs as a Markov decision process, with actions for query understanding, graph retrieval, web search, graph editing, and answer generation~\cite{lin2026evographr1}.
-Our setting is narrower but complementary: EviGraph-RAG does not build a persistent self-evolving multimodal knowledge graph or learn an RL policy; instead, it builds a task-local evidence graph over retrieved financial text, tables, derived operations, and verifier judgments.
-This distinction lets us evaluate whether graph structure improves not only retrieval recall, but also executable numerical grounding and support diagnostics.
+MG\({}^2\)-RAG and ReAG build multimodal retrieval pipelines with graph or critic-based filtering~\cite{dai2026mg2rag,compagnoni2026reag}.
+Graph-R1 and EvoGraph-R1 cast graph retrieval as an agentic or MDP-style process over graph actions~\cite{luo2026graphr1,lin2026evographr1}.
+Our setting is narrower: EviGraph-RAG does not build a persistent self-evolving multimodal graph or learn an RL policy.
+It builds a query-local evidence graph over financial text, tables, derived operations, and verifier judgments, then asks whether that graph improves executable grounding and support diagnostics.
 
 \paragraph{Table and Financial QA.}
 Financial QA benchmarks such as FinQA and TAT-QA require numerical reasoning over tables and surrounding text~\cite{chen2021finqa,zhu2021tatqa}.
 These tasks expose a weakness of passage-only RAG: the relevant context may be split across row labels, year columns, prose definitions, and derived operations.
-We focus on FinQA because it lets us evaluate whether a system can preserve source-document provenance, select supporting table evidence, and produce auditable calculations.
+They therefore provide a natural setting for testing whether evidence-state selection improves source provenance, table grounding, and auditable calculation traces.
 
 \paragraph{Verifiable and Tool-Augmented QA.}
 Tool-augmented reasoning frameworks such as ReAct interleave reasoning traces with external actions~\cite{yao2023react}.
-Recent agentic multimodal RAG work similarly argues that complex retrieval should be evaluated at the process level, not only by final answers; MC-Search uses process reward modeling for agentic multimodal search and reports trajectory-level evidence quality for long-chain multimodal tasks~\cite{li2026mcsearch}.
-Distillation-guided policy optimization further studies how compact language models can preserve agentic RAG behaviors such as search coordination, reasoning, and response synthesis through teacher guidance and fine-grained capability metrics~\cite{kotoge2026dgpo}.
-EviGraph-RAG uses a narrower but more auditable version of this idea for numerical QA: table operations are executed locally, cited values are checked against the support graph, and verifier diagnostics are reported separately from exact-match accuracy.
-This separation is important for submission claims because a numerically correct answer and a well-supported answer are related but distinct properties.
+Recent process-level RAG work similarly evaluates trajectory quality, search coordination, or capability transfer rather than final answers alone~\cite{li2026mcsearch,kotoge2026dgpo}.
+EviGraph-RAG adopts this process view for numerical QA: table operations are executed locally, cited values are checked against the support graph, and verifier diagnostics are reported separately from exact-match accuracy.
 
 \section{Method}
 
@@ -116,7 +105,7 @@ The evidence state space is \(\Omega_q=(\mathcal{S}_q,\mathcal{T}_q)\), where \(
 \end{definition}
 
 These definitions separate \emph{retrieved context} from \emph{evidence}: a retrieved node can be relevant but still unusable if it lacks the denominator, names the wrong period, comes from a conflicting source, or cannot support the executed operation.
-The search object is therefore not a document, chunk, or path; it is a state \(S\in\mathcal{S}_q\).
+The search object is therefore a state \(S\in\mathcal{S}_q\), not a document, chunk, or path.
 
 \subsection{Evidence State Optimization}
 
@@ -134,17 +123,17 @@ S^\star =
 \operatorname{Exec}(S,q)=1,\;
 \operatorname{Ver}(S,q)=1.
 \]
-This makes MRSG an optimization target rather than a descriptive name: it is the smallest state that covers the needed evidence while satisfying graph, operation, and verification constraints.
-Because exact constrained search over \(\mathcal{S}_q\) is combinatorial, EviGraph-RAG uses a verifier-guided relaxation: it greedily constructs high-coverage, low-risk states under a node budget, executes candidate operations locally, and repairs only the diagnosed source, period, row, denominator, or operation failure when verification fails.
+Thus MRSG is the smallest evidence state that covers the needed information while satisfying graph, operation, and verification constraints.
+Exact constrained search over \(\mathcal{S}_q\) is combinatorial, so EviGraph-RAG uses a verifier-guided relaxation: greedily construct high-coverage, low-risk states under a node budget, execute candidate operations locally, and repair only diagnosed source, period, row, denominator, or operation failures.
 
 \subsection{Evidence-State Controller}
 
 The controller is a transparent sequence of operations rather than a hidden reader prompt.
-It repeatedly transforms candidate states through four modules:
-\textbf{Expansion} adds source-local context, table rows, operation candidates, and retrieval-portfolio alternatives.
-\textbf{Pruning} removes nodes that are source-inconsistent, period-incomplete, row-ungrounded, operation-incompatible, or contradicted by verifier signals.
-\textbf{Ranking} builds a compact state using the utility-risk objective below.
-\textbf{Repair} uses verifier failures to revisit operands, years, row labels, or retrieval exposure without accepting unsupported free-form numeric guesses.
+It transforms candidate states through four modules.
+\textbf{Expansion} adds source-local context, table rows, operation candidates, and portfolio alternatives.
+\textbf{Pruning} removes source-inconsistent, period-incomplete, row-ungrounded, or operation-incompatible nodes.
+\textbf{Ranking} builds a compact state using the utility-risk objective.
+\textbf{Repair} revisits operands, years, row labels, or retrieval exposure when verifier diagnostics identify a concrete failure.
 
 Formally, the controller maintains \(S_t\subseteq V_q\) and applies transitions
 \[
@@ -153,9 +142,8 @@ S_{t+1} = \pi_\theta(S_t, G_q, q, \mathcal{D}_t),
 where \(\mathcal{D}_t\) is the diagnostic state containing citation, arithmetic, row-grounding, operation-type, source-consistency, and period-coverage checks.
 In the reported implementation, \(\pi_\theta\) is deterministic and verifier-guided; the formulation leaves room for learned or policy-optimized controllers, but the present paper reports the reproducible deterministic variant.
 
-Operationally, the implemented search is a bounded evidence-state search:
-it initializes states from retrieval candidates, expands them with source-local table/prose evidence and operation candidates, ranks partial states by utility-risk coverage, prunes states that fail hard source/period/executability guards, and repairs failed states using verifier diagnostics.
-Thus the algorithm is stronger than a one-shot weighted sum over nodes, but still reproducible: all state transitions are recorded as graph actions, executed calculations, and verifier outputs rather than hidden chain-of-thought.
+Operationally, the implementation is a bounded search: initialize states from retrieval candidates, expand with source-local evidence and operation candidates, rank by utility-risk coverage, prune hard source/period/executability failures, and repair failed states using verifier diagnostics.
+All transitions are recorded as graph actions, executed calculations, and verifier outputs.
 
 \subsection{Subgraph Selection Objective}
 
@@ -224,9 +212,8 @@ In EviGraph-RAG, this justifies greedy node pruning as a budgeted approximation 
 
 For numerical QA, the system executes table operations including row/column selection, sum, difference, ratio, percent change, and average.
 Each executed operation returns both a numeric value and a human-readable expression used in the final answer trace.
-When deterministic rules fail, an optional LLM numeric planner can propose a structured operation plan; EviGraph-RAG then validates that planned numeric inputs occur in the cited context and executes the operation locally rather than accepting a free-form model answer.
-The local planner also recovers year-range averages from inline table rows when chunking truncates the Markdown table but preserves the serialized row text.
-This targets failures where a selected chunk contains the right row and years in prose form, but the parsed table fragment exposes only a distracting neighboring row.
+When deterministic rules fail, an optional LLM numeric planner can propose a structured operation plan; EviGraph-RAG validates that operands occur in cited context and executes locally rather than accepting free-form numeric text.
+The local planner also recovers operations from inline serialized table rows when chunking truncates the Markdown table.
 
 \subsection{Claim Verification}
 
@@ -248,12 +235,11 @@ The verifier checks citation presence, source-number consistency, calculation-re
 The corpus serializes source pre-text, tables, and post-text to Markdown and excludes gold answers and gold evidence annotations from retrieval.
 
 \textbf{TAT-QA pilot.} We construct 50- and 100-example arithmetic pilots from the public TAT-QA development set using a fixed seed.
-Each source document is serialized as Markdown containing the table and paragraphs, while gold derivations are excluded from the retrieval corpus.
-This pilot is used to test portability of the evidence-state pipeline on a second public financial table/text QA format, not to claim full TAT-QA benchmark performance.
+Gold derivations are excluded from the retrieval corpus.
+This pilot tests portability on a second public financial table/text QA format; it is not a full TAT-QA benchmark claim.
 
 \textbf{Stress Suite.} We also maintain a synthetic stress suite with official reports and distracting forecast/draft/press evidence.
-This suite is used for mechanism debugging, not public benchmark claims.
-It tests whether the evidence-state pipeline can transfer beyond FinQA serialization by rejecting distracting non-governing documents in a small controlled setting.
+This suite is used only for controlled mechanism debugging.
 
 \subsection{Retrieval Settings}
 
@@ -266,21 +252,16 @@ It tests whether the evidence-state pipeline can transfer beyond FinQA serializa
 
 We report a baseline ladder designed to answer the main reviewer question: whether EviGraph-RAG improves over simpler RAG and tool-use alternatives.
 \textbf{Direct RAG} uses retrieval-order evidence without the local operation planner.
-\textbf{LLM Direct RAG}, now included as an external baseline hook, sends the same retrieval-order evidence budget directly to a named chat-completions model and asks for an answer, citations, and optional calculation without EviGraph planning or support selection.
+\textbf{LLM Direct RAG} sends the same retrieval-order evidence to an external reader without EviGraph planning or support selection.
 \textbf{Retrieve-then-program} uses the same retrieval-order evidence with the local program planner but without evidence-graph selection.
 \textbf{Full context} passes all retrieved candidates to the same answer generator.
 \textbf{Utility-only} selects evidence using utility without risk-aware graph control.
-We also report EviGraph ablations that remove risk scoring, the operation planner, verifier-grounded rejection, verification, or support-subgraph extraction where applicable.
-The no-operation-planner ablation keeps the same retrieval, evidence graph, support extraction, executor, and verifier, but disables the local program-planning fallback.
-The no-verifier-rejection ablation keeps verifier diagnostics but does not replace row-ungrounded numeric answers with an insufficient-evidence response.
-This distinction matters: exact match can stay flat while answer-support diagnostics improve, so we report both.
+We also report ablations that remove planner, verifier-grounded rejection, or support-subgraph extraction where applicable.
 
 The v28 component-ablation run shows that the operation planner contributes 7.3 exact-match points under oracle-document retrieval, 6.0 points under open BM25, and 7.7 points under source reranking over the no-planner ablation.
 Risk-aware graph selection is most visible against the utility-only selector: full EviGraph improves exact match by 3.3 points under oracle-document retrieval, 11.7 points under open BM25, and 10.3 points under source reranking.
-The v28 full-system run is reported in Table~\ref{tab:baseline-ladder}; the later failure-driven improvement analysis explains why residual errors remain concentrated in operand ambiguity rather than arithmetic execution.
 The strongest external reader baseline, GPT-5.4 Direct RAG over the same retrieval-order context, reaches 0.693 exact match under oracle-document retrieval, 0.523 under open BM25, and 0.690 under source reranking, but only 0.343, 0.273, and 0.340 answer support.
-We therefore report it as a strong accuracy baseline and a grounding stress test: it shows that a stronger reader can answer more examples, while EviGraph produces substantially more verifier-supported, citation-grounded evidence states.
-These results motivate the paper's evaluation principle: exact match, answer support, operation semantics, row grounding, and failure categories must be read together.
+Thus Table~\ref{tab:baseline-ladder} should be read as both an accuracy table and a grounding table: higher exact match does not necessarily mean better cited numerical support.
 
 \begin{table}[t]
 \centering
@@ -306,17 +287,10 @@ Full EviGraph (v38) & 0.670 & 0.850 & 0.523 & 0.853 & 0.670 & 0.850 \\
 \subsection{Open-Retrieval Baseline Stress Test}
 
 We additionally compare open retrieval variants while keeping the local program planner and verifier fixed.
-Open BM25 remains the strongest non-API retrieval control for this subset.
-In the latest v21 retrieval-baseline run, open BM25 and deterministic numeric hybrid retrieval both reach 0.493 exact match, while TF-IDF reaches 0.467.
-TF-IDF is useful because it changes the lexical matching surface without using a learned retriever: it reduces wrong-row/operation counts from 53 to 36, but increases missing percent-answer failures from 31 to 49.
-The latest v38 failure-driven repair improves the full EviGraph open-BM25 result to 0.523 on FinQA-300, but the 600-example stress subset remains substantially harder: the guarded v43 repair reaches 0.377 under open BM25.
-The earlier dense baseline is intentionally labeled as local hashed dense; the neural retrieval track uses sentence-transformer dense and neural-hybrid retrieval and is evaluated as a separate open-retrieval stress experiment.
-On FinQA-600 with retrieval top-\(K=16\), BM25 reaches 0.362 exact match with source hit@16 of 0.905, neural dense reaches 0.253 with source hit@16 of 0.745, and neural hybrid reaches 0.363 with source hit@16 of 0.927.
-Thus neural hybrid increases gold-source exposure but does not yet translate that exposure into higher final accuracy.
-The paired analysis is nevertheless useful: BM25 top-8 and neural-hybrid top-16 have complementary correct sets, with an oracle portfolio union of 248/600 (0.413).
+Open BM25 remains the strongest non-API retrieval control on FinQA-300 after failure-driven repairs, reaching 0.523 exact match.
+The 600-example stress subset is harder: BM25 top-\(8\) reaches 0.377, while neural-hybrid top-\(16\) improves source hit@16 (0.927 versus 0.905 for BM25 top-\(16\)) without improving final exact match by itself.
+The paired sets are complementary, however, with an oracle portfolio union of 248/600 (0.413).
 A no-gold retrieval-portfolio selector that switches from BM25 to neural hybrid using fallback evidence coverage, executable numeric calculations, and verifier-supported calculation-refinement signals reaches 0.407 exact match, improving over the BM25 top-8 v43 result of 0.377 with 74 switches, 18 paired wins, and no paired losses after adding a two-year coverage guard for fallback percent-change questions.
-This points to a concrete next method step: selecting across retrieval portfolios with verifier and support-graph signals, rather than treating a single retriever's top-\(K\) prefix as the evidence state.
-These results prevent an overbroad claim: the empirical story is not that retrieval is solved, but that evidence-state control improves the use of retrieved evidence once candidates are available.
 Table~\ref{tab:retrieval-portfolio-ablation} makes the tradeoff explicit: the conservative v44 selector has no observed paired losses but leaves many hybrid-only wins unused, the v45 confidence selector crosses the 0.40 open-retrieval line with one paired loss, and the guarded v46 selector preserves the same rounded exact match while removing that loss through a complete-year-coverage guard.
 
 \begin{figure*}[t]
@@ -339,16 +313,15 @@ Table~\ref{tab:retrieval-portfolio-ablation} makes the tradeoff explicit: the co
 
 \paragraph{Retrieval coverage diagnostics.}
 The v28 manifest now emits retrieval diagnostics for every retrieval setting.
-On FinQA-300 Open BM25, the gold source document appears in the top-\(8\) retrieved set for 269/300 examples (0.897), and appears at rank 1 for 151/300 examples (0.503).
-Among the 145 Open BM25 errors, 115 still contain the gold source in the retrieved set, while only 30 lack it entirely.
-On FinQA-600 Open BM25, source hit@8 is lower at 515/600 (0.858), source top-1 is 192/600 (0.320), and the remaining errors split into 302 wrong answers with source evidence retrieved versus 82 wrong answers without source evidence.
-This diagnostic supports the bottleneck analysis: improving open retrieval matters, but many failures already occur after the right source has been retrieved, so operand grounding and verifier-guided repair remain central.
+On FinQA-300 Open BM25, the gold source appears in the retrieved top-\(8\) for 269/300 examples (0.897); among 145 errors, 115 still contain the gold source.
+On FinQA-600 Open BM25, source hit@8 is 515/600 (0.858), and errors split into 302 wrong answers with source evidence retrieved versus 82 wrong answers without source evidence.
+Thus many failures occur after source exposure, making operand grounding and verifier-guided repair central.
 
 \paragraph{FinQA-600 stress subset.}
 To avoid overfitting the narrative to the 300-example diagnostic subset, we also construct a deterministic 600-example FinQA validation subset using the same seed and a larger sampling pool.
 Full EviGraph v43 obtains 0.503 exact match under oracle-document retrieval, 0.377 under open BM25, and 0.502 under source reranking.
 Answer support remains substantially higher than exact match (0.820, 0.787, and 0.822), and operand-semantics checks remain high (0.970, 0.977, and 0.970), but supported wrong answers still expose unresolved operand ambiguity.
-The drop relative to FinQA-300 is useful rather than embarrassing: it shows that the present system has a real mechanism, while operand grounding remains the key generalization bottleneck.
+This pressure test shows that operand grounding, not arithmetic execution, is the main generalization bottleneck.
 
 \input{generated/finqa_300_local_planner_table_ops_v21/finqa_results_tables}
 
@@ -356,7 +329,6 @@ The drop relative to FinQA-300 is useful rather than embarrassing: it shows that
 As a small public cross-benchmark pilot, we run the same manifest pipeline on 50 arithmetic examples sampled from the TAT-QA development set.
 After narrow v47 direction-semantics, v48 non-vested share activity, v49 activity-share average, and v50 senior-notes issuance-sum repairs, Full EviGraph reaches 0.540 exact match under oracle-document retrieval and 0.460 under open BM25.
 The open setting retrieves the gold source document for 48/50 examples, but exact match remains below source exposure.
-This reinforces the paper's mechanism claim: retrieval exposure is necessary but does not by itself determine a supportable numeric evidence state.
 
 \input{generated/tatqa_50_cross_benchmark/tatqa_50_results}
 
@@ -367,43 +339,29 @@ Full EviGraph reaches 0.520 exact match under oracle-document retrieval and 0.41
 
 We also run a three-example synthetic stress suite over official reports with forecast/draft/press distractors.
 Full EviGraph answers all three examples correctly while top-\(K\) and utility-only selectors answer one of three.
-Because \(n=3\), this is not a public benchmark claim; its purpose is to verify that the evidence-state machinery is not hard-coded to FinQA serialization.
 
 \input{generated/cross_benchmark_stress/stress_suite_results}
 
 \section{Failure Analysis}
 
-The manifest runner emits a failure report that groups unresolved examples by error category.
-Current categories include missing numeric answer, wrong row/operation, additive lookup failures, ratio failures, and percent-operation failures.
-Table~\ref{tab:finqa-failure-categories} reports the full EviGraph failure profile for the 300-example FinQA diagnostic subset.
-Table~\ref{tab:finqa-row-operation-diagnostics} further decomposes wrong numeric answers into operand, year/period, row-label, operation-type, and ambiguous supported wrong-number signals.
-The v26 failure-driven repair pass targets only inspected operand clusters rather than broad rule expansion.
-It adds a paired label-value table reader for alternating subscriber-count rows, a guard against treating wide-table year headers as operands, a narrow three-year row-total executor, a reporting-unit token matcher for \texttt{u.s.}-style labels, quarterly high-sale-price percent change, minimum-over-years lookup, and verifier aliases for the new executed operations.
-Compared with v25, v26 moves FinQA-300 exact match from 0.650 to 0.657 under oracle-document retrieval, 0.507 to 0.513 under open BM25, and 0.650 to 0.657 under source reranking, with no 300-example regressions in the paired v25-v26 comparison.
-On FinQA-600, the same repair pass moves exact match from 0.475 to 0.482, 0.352 to 0.357, and 0.472 to 0.478, respectively; the only paired regression is one open-BM25 retrieval case where a wrong-source acquisition table is selected and locally verified.
-A subsequent v27 verifier pass adds a retrieval-aware source-consistency diagnostic.
-Strictly rejecting source-inconsistent answers reduced open-retrieval accuracy in pilot runs, so the final v27 setting keeps source consistency as a diagnostic signal rather than a hard support gate.
-This preserves v26 exact match while exposing wrong-source supported failures: 10 such cases on FinQA-300 open BM25 and 20 on FinQA-600 open BM25.
-The v28 percent-intent repair then closes two narrow but recurring percent failures: an OCR-style \texttt{percent f the} query normalization case and a same-column sensitivity-table ratio for one-percentage-point increase/decrease rows.
-It moves FinQA-300 from 0.657/0.513/0.657 to 0.660/0.517/0.660, and FinQA-600 from 0.482/0.357/0.478 to 0.487/0.360/0.483, again with no paired regressions.
-The v33 verifier-grounding pass then targets reconciliation-table endpoint rows, accepting beginning and ending balance rows for unrecognized-tax-benefit questions only when both the query and support context name that measure.
-It moves FinQA-300 to 0.667/0.520/0.667 and FinQA-600 to 0.492/0.363/0.488, with paired wins and no regressions against v30.
-Finally, the v34 tax-provision ratio pass adds a bounded prose component-ratio executor for sentences of the form ``income tax provision for year \(Y\) of \(D\), including an \(N\) benefit related to tax-audit settlement.''
-It fixes \texttt{IP/2007/page\_75.pdf-4} across oracle-document, open BM25, and source reranking, moving FinQA-600 to 0.493/0.365/0.490 without changing FinQA-300.
-The latest unresolved full-EviGraph failures are concentrated in wrong row/operation selection, source-inconsistent supported wrong answers under open BM25, missing numeric extraction, and missing percent answers.
-The row-operation diagnostic further shows that the main residual error is not generic arithmetic but operand selection under ambiguous support: the FinQA-300 and FinQA-600 open-BM25 v34 runs still have 51 and 130 wrong numeric operation/row cases, with 35 and 81 ambiguous supported wrong-number cases, respectively.
-The new failure-slice report makes this more actionable.
-On FinQA-300 Open BM25, 93 of 145 failed examples retrieve the gold source but do not expose the gold answer number in the top-\(8\) context, while only 30 failures miss the source entirely.
+The manifest runner emits failure reports and row/operation diagnostics for every fixed run.
+Table~\ref{tab:finqa-failure-categories} reports unresolved categories for FinQA-300, and Table~\ref{tab:finqa-row-operation-diagnostics} decomposes wrong numeric answers into numerator, denominator, year/period, row-label, operation-type, and ambiguous-supported-wrong signals.
+
+The main lesson is that residual errors are not dominated by arithmetic.
+Inspected repair rounds improved results by targeting small, named clusters: operand selection, percent-intent normalization, endpoint grounding, source-year compatibility, and narrow prose/table ratio cases.
+These edits are kept only after fixed-manifest paired checks; the appendix gives the full failure-to-fix provenance.
+
+The remaining bottleneck is evidence-state ambiguity.
+On FinQA-300 Open BM25, 93 of 145 failed examples retrieve the gold source but do not expose the gold answer number in the top-\(8\) context, while only 30 miss the source entirely.
 On FinQA-600 Open BM25, the corresponding split is 254 source-hit/gold-number-missing failures, 82 source-missing failures, and 48 source-hit/gold-number-present failures.
-The dominant question intents are percent-change and ratio-percent questions, which suggests that the next improvement should target source-local chunk expansion and operand grounding rather than more undirected arithmetic rules.
-The GPT-5.4 Direct RAG baseline changes the failure surface: it produces 0.693 exact match under oracle-document retrieval, 0.523 under open BM25, and 0.690 under source reranking, but its remaining failures are still dominated by wrong numeric operation or row (82, 95, and 78 cases respectively) and unsupported textual predictions (10, 48, and 15 cases respectively).
-The largest remaining actionable category is therefore retrieval-aware verifier-guided operand repair, not more undirected rule expansion; the next phase must add stronger learned retrieval baselines and confidence/significance analysis before claiming benchmark-level gains.
+The dominant intents are percent-change and ratio-percent questions, suggesting that future gains should come from source-local evidence expansion, retrieval-aware operand repair, and stronger portfolio selection rather than broader arithmetic rules.
 
 \section{Conclusion}
 
 EviGraph-RAG reframes RAG as evidence-state control for auditable numerical QA.
-The implementation provides a reproducible ESO scaffold with FinQA/TAT-QA adapters, retrieval-setting separation, a table operation executor, verifier diagnostics, and failure-analysis tooling.
-The remaining challenge is to strengthen operand grounding, learned retrieval baselines, and benchmark-scale validation before making broader performance claims.
+It shows that the useful unit between retrieval and generation is not the retrieved prefix, but a compact state whose operands, operation, citations, and support can be checked.
+The current implementation provides a reproducible ESO scaffold with FinQA/TAT-QA adapters, retrieval-setting separation, a table operation executor, verifier diagnostics, and failure-analysis tooling.
+Future work should strengthen learned retrieval, operand grounding, and larger-scale benchmark validation.
 
 \appendix
 \input{appendix}
