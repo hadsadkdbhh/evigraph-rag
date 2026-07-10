@@ -1,6 +1,6 @@
 # EviGraph-RAG Working Context
 
-Last updated: 2026-07-08
+Last updated: 2026-07-10
 
 This file is the durable context checkpoint for Codex. Read it before continuing
 project work after chat compaction or a new session. Keep it short, factual,
@@ -11,6 +11,55 @@ and tied to checked artifacts or documented runs.
 Build EviGraph-RAG into a credible AAAI submission candidate. The near-term
 engineering goal is to improve real FinQA numerical reasoning and open
 retrieval performance without inflating claims beyond the evidence.
+
+## Current Presentation Direction
+
+The submission story should be framed as Evidence State Optimization (ESO), not
+generic GraphRAG. EviGraph-RAG is the implementation of ESO. The core
+reviewer-facing thesis is: evidence is not retrieval.
+Keep the contribution list to three items:
+
+- Evidence State Optimization: formulate RAG as search over states
+  \(S_t \subseteq V_q\), not as consuming raw chunks or a top-\(K\) prefix.
+- Utility-Risk State Search: semantic/task utility discounted by source,
+  temporal, operation, row/column, verifier, and conflict risks.
+- Minimal Reliable Support Subgraph: define MRSG as a constrained optimization
+  target whose selected subgraph must satisfy coverage, risk, connectivity,
+  executability, and verifier-support constraints.
+
+The Method section should define Evidence Unit, Candidate Evidence Graph,
+Evidence State, Evidence State Space, ESO, and Reliable Support Subgraph before
+discussing the executor or experiments. The controller should be described as
+Expansion, Pruning, Ranking, and Repair, with verifier diagnostics as the state
+signal. This directly addresses the main presentation weakness: reviewers
+should not need to infer what "evidence", "risk", "utility", "state space", or
+"controller" means.
+
+Avoid overclaiming: the current implementation is deterministic verifier-guided
+state search, not RL or learned policy optimization. Future work can discuss
+learning a policy over the Evidence State Space, but current experiments should
+claim reproducible ESO with deterministic transitions.
+
+Relation to EvoGraph-R1 should be stated as complementary, not competitive.
+EvoGraph-R1 studies persistent self-evolving multimodal knowledge hypergraphs
+with agent actions such as graph retrieval, web search, graph editing, and
+answer generation. EviGraph-RAG should be framed as query-local ESO for
+auditable numerical QA: the graph is temporary, transitions are deterministic,
+and the output is an MRSG plus executable/verifiable calculation.
+
+Supplementary material now lives in `paper/appendix.tex`. It follows a
+RAG-failure/diagnostic appendix structure: prompt and output contracts,
+evidence-distraction diagnostics, row/operation taxonomy, dataset and manifest
+construction, baseline/ablation controls, retrieval portfolio details,
+computational cost and traceability, boundary conditions, and reproducibility
+commands. It should stay factual and should not claim RL, learned policies, or
+SOTA results.
+
+The current appendix decision is to keep the detailed ESO state-search
+procedure in the supplement and describe the controller compactly in the main
+Method section. If the official AAAI template leaves enough space, this can be
+compressed into a short main-text Algorithm 1 later. Do not add that algorithm
+before the final page-budget pass.
 
 ## Current Baseline
 

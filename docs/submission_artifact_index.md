@@ -1,6 +1,6 @@
 # Submission Artifact Index
 
-Last updated: 2026-07-09
+Last updated: 2026-07-10
 
 This file maps the current EviGraph-RAG submission story to reproducible
 artifacts, commands, and reporting boundaries. Use it as the first stop before
@@ -11,9 +11,12 @@ another runner.
 
 Main claim:
 
-- EviGraph-RAG is an evidence-state control framework for numerically grounded
-  RAG. It converts retrieved candidates into an evidence graph, selects a
-  risk-adjusted support subgraph, executes local table/text operations, and
+- The paper formulates numerically grounded RAG as Evidence State Optimization
+  (ESO): search over candidate evidence states rather than directly consuming a
+  retrieved top-\(K\) prefix.
+- EviGraph-RAG is the current ESO implementation. It converts retrieved
+  candidates into an evidence graph, searches the Evidence State Space, selects
+  a Minimal Reliable Support Subgraph, executes local table/text operations, and
   verifies answer support.
 
 Safe empirical claim:
@@ -21,6 +24,9 @@ Safe empirical claim:
 - On deterministic FinQA diagnostic subsets, evidence-state selection and
   verifier-guided retrieval portfolio selection improve auditable numerical RAG
   behavior while exposing a gap between retrieval exposure and answer accuracy.
+- The present system uses deterministic verifier-guided state search; do not
+  claim reinforcement learning, learned policy optimization, or SOTA benchmark
+  performance.
 - TAT-QA-50 and TAT-QA-100 are cross-format portability checks, not full TAT-QA
   benchmark claims.
 
@@ -152,6 +158,27 @@ Use these for:
   ablation result.
 - Figure 3: the multi-panel experimental story covering component gains,
   retrieval portfolio selection, TAT-QA portability, and EM/support gap.
+
+### Supplementary Material
+
+Artifact:
+
+- `paper/appendix.tex`
+- `docs/submission_gap_checklist.md`
+
+Use this for:
+
+- Prompt and output contracts.
+- Evidence-distraction diagnostics inspired by RAG-hurts failure analysis.
+- Row/operation error taxonomy.
+- Dataset and manifest construction details.
+- Baseline/ablation controls.
+- Retrieval portfolio selector details.
+- Computational cost and traceability summary.
+- Boundary conditions and reproducibility commands.
+- EvoGraph-R1-inspired gap tracking: algorithm block, action/interface table,
+  exact schemas, trace-style case studies, metrics definitions, implementation
+  details, and official-template compile notes.
 
 ### FinQA-300 Mechanism/Ablation Table
 

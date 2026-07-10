@@ -1,0 +1,499 @@
+\section{Supplementary Material}
+
+This appendix documents the reproducibility details behind the Evidence State
+Optimization (ESO) formulation and the EviGraph-RAG implementation.  It is
+organized around the same questions reviewers typically ask for RAG failure-mode
+papers: what prompts were used, how distracting evidence is diagnosed, how data
+subsets are constructed, which baselines are controlled, and where the method is
+expected to fail.
+
+\subsection{ESO State-Search Procedure}
+
+The reported system is deterministic, but the controller is still best
+understood as state search over \(\Omega_q\).  The executable procedure is:
+\begin{enumerate}
+    \item Build \(G_q=(V_q,E_q)\) from retrieved text, table fragments, source
+    metadata, parsed numeric values, operation candidates, and verifier nodes.
+    \item Initialize candidate states from retrieval-order evidence and
+    source-local expansions.
+    \item Score each state using utility-risk coverage, source consistency,
+    temporal coverage, and operation executability.
+    \item Prune states that violate hard source, period, row-grounding, or
+    executability checks.
+    \item Execute the highest-ranked table/text operation with locally grounded
+    operands.
+    \item Verify the answer trace for citation correctness, arithmetic support,
+    row grounding, period grounding, and operation semantics.
+    \item If verification fails with a diagnosable operand, period, row, or
+    operation error, repair the state and repeat within the fixed budget.
+    \item Return the Minimal Reliable Support Subgraph and answer trace, or
+    return insufficient evidence when no state passes verification.
+\end{enumerate}
+
+The action interface used in traces is summarized below.  This is the
+query-local analogue of an agentic tool specification: actions modify or inspect
+the current evidence state, but they do not edit a persistent knowledge graph.
+
+\begin{center}
+\small
+\begin{tabular}{p{0.23\linewidth}p{0.31\linewidth}p{0.34\linewidth}}
+\hline
+Action & Input signal & Output or diagnostic \\
+\hline
+\texttt{EXPAND\_SOURCE} & source id, table/prose neighborhood & additional
+candidate nodes with provenance \\
+\texttt{SELECT\_STATE} & utility-risk scores, budget & compact candidate
+support state \(S\) \\
+\texttt{DISCARD\_NOISY\_NODE} & contradiction, source, period, or row risk &
+removed node ids and rejection reason \\
+\texttt{EXECUTE\_OPERATION} & grounded operands and operation type & numeric
+calculation trace \\
+\texttt{VERIFY\_CLAIM} & answer, citations, calculation & support flags for
+citations, arithmetic, row, period, and operation semantics \\
+\texttt{REPAIR\_OPERAND} & verifier failure category & revised numerator,
+denominator, row, year, or operation candidate \\
+\texttt{STOP} & passing verifier state or exhausted budget & final MRSG-backed
+answer or insufficient-evidence response \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Prompt and Output Contracts}
+
+\paragraph{External LLM Direct RAG baseline.}
+The LLM Direct RAG baseline receives retrieval-order context and does not use
+EviGraph planning, utility-risk selection, support-subgraph extraction, or
+verifier-guided repair.  The system instruction constrains the model to answer
+only from the supplied retrieved context, attempt implicit arithmetic when the
+operands are present, use row labels, column labels, years, and operation words
+to choose operands, and return strict JSON.
+The expected response contract is:
+\begin{verbatim}
+{
+  "answer": "...",
+  "citations": ["retrieved_node_id"],
+  "calculation": "operand expression = result"
+}
+\end{verbatim}
+If the required operands are absent from the retrieved context, the model is
+instructed to return \texttt{Insufficient evidence to answer.} with no
+citations.  The verifier still scores these outputs after generation so exact
+match and answer-support diagnostics are comparable with EviGraph outputs.
+
+\paragraph{EviGraph answer contract.}
+The local EviGraph generator returns an answer text, a list of selected node
+citations, and a calculation trace.  The calculation trace is treated as an
+auditable artifact: the verifier checks whether the result appears in the
+answer, whether operands are supported by cited evidence, whether row labels
+match the question intent, whether period/year references are grounded, and
+whether the operation type matches the wording of the question.
+The stored answer artifact follows the compact schema:
+\begin{verbatim}
+{
+  "method": "full_evigraph",
+  "answer": {
+    "text": "...",
+    "citations": ["retrieved_node_id"],
+    "calculations": ["operation trace"]
+  },
+  "selected_ids": ["retrieved_node_id"],
+  "actions": [
+    {"action_type": "...", "target_node_ids": ["..."], "reason": "..."}
+  ],
+  "verification": {
+    "answer_supported": true,
+    "citation_correct": true,
+    "arithmetically_supported": true,
+    "row_grounded": true,
+    "operation_semantics_checked": true
+  }
+}
+\end{verbatim}
+
+\subsection{Evidence-Distraction Diagnostics}
+
+RAG can fail even when the retriever exposes relevant material.  We call this
+\emph{evidence distraction}: the retrieved set contains plausible but
+non-executable, misaligned, or higher-ranked distracting evidence, causing the
+system to form the wrong evidence state.  This differs from pure retrieval
+failure, where the needed source is absent.
+
+The manifest runner and analysis scripts separate the following cases:
+\begin{itemize}
+    \item \textbf{Source missing}: the gold source document is absent from the
+    retrieved top-\(K\) pool.
+    \item \textbf{Source hit, gold number missing}: the source is present, but
+    the answer-bearing number is not exposed in the selected context.
+    \item \textbf{Source hit, gold number present}: the needed source and
+    number are present, but state selection, operand grounding, or operation
+    interpretation fails.
+    \item \textbf{Supported wrong number}: the system produces a verifier-
+    supported calculation over cited evidence, but the selected operands,
+    period, row label, or operation differ from the gold derivation.
+\end{itemize}
+
+This diagnostic structure is the numerical-QA analogue of a ``RAG hurts''
+analysis: extra retrieved context is not always helpful, because the relevant
+retrieved pool can still distract the state search toward a wrong but plausible
+support subgraph.
+
+\subsection{Trace-Style Case Studies}
+
+The following compact examples come from the fixed FinQA-300 open-BM25
+diagnostic run.  The underlying ids are IPG/2015/page\_48.pdf-2,
+DRE/2009/page\_56.pdf-1, and MRO/2007/page\_134.pdf-3.  The purpose is not to
+cherry-pick headline accuracy, but to make the evidence-state mechanism
+inspectable: the same retrieved pool can support a correct MRSG, a wrong
+evidence state, or a locally supported wrong numeric answer.
+
+\begin{center}
+\small
+\begin{tabular}{p{0.18\linewidth}p{0.26\linewidth}p{0.18\linewidth}p{0.27\linewidth}}
+\hline
+Case & Question focus & Outcome & Diagnostic role \\
+\hline
+IPG interest & percentage change in interest income from 2014 to
+2015 & Full EviGraph returns \(-16.8\%\); Direct RAG returns \(5.1\%\). &
+Successful MRSG: retrieval hits the source, but state selection and executable
+calculation choose the supported year-to-year change. \\
+DRE net income & percent decline in net income attributable to common
+shareholders from 2007 to 2008 & Full EviGraph returns \(-76.2\%\); disabling
+the operation planner produces a textual table dump. & Operation-planner case:
+the answer requires turning table rows and years into an explicit percent-change
+operation. \\
+MRO options & average expected life of options for a three-year
+period & Full EviGraph returns \(4.6\) while gold is \(5.2\); the answer is
+locally supported. & Remaining failure: retrieval exposes the source and number
+pool, but the selected operands form a plausible wrong average. \\
+\hline
+\end{tabular}
+\end{center}
+
+We separately track external-reader support gaps.  For example,
+INTC/2013/page\_29.pdf-2 is counted exact-match correct for GPT-5.4 Direct RAG
+(\(15.1\%\) against \(15\%\)) but fails answer-support, row-grounding, and
+operation-semantics checks, illustrating why exact match and verifier support are
+reported separately.
+
+\subsection{Row and Operation Error Taxonomy}
+
+Wrong numeric predictions are decomposed into multi-label categories rather than
+treated as one error type.  The current diagnostic labels include:
+\begin{itemize}
+    \item \textbf{wrong numerator}: the selected numerator is a neighboring or
+    semantically related value rather than the queried one.
+    \item \textbf{wrong denominator}: the denominator is selected from prose,
+    another table row, or another source when the correct table value exists.
+    \item \textbf{wrong year or period}: the state uses a nearby fiscal year,
+    reporting period, or endpoint.
+    \item \textbf{wrong row label}: the operation is applied to a related row
+    such as value per share instead of number of shares.
+    \item \textbf{wrong operation type}: the evidence is plausible but the
+    query requires a different operation, such as percent change rather than
+    ratio-percent.
+    \item \textbf{ambiguous supported wrong number}: the answer is locally
+    supported by selected evidence but differs from the gold derivation.
+\end{itemize}
+These labels drive failure-driven repairs.  We avoid adding broad arithmetic
+rules unless a small inspected cluster shows the same operand or operation
+failure.
+
+\subsection{Failure-to-Fix Provenance}
+
+Table-style provenance is important because the reported system was improved by
+inspecting failure clusters, not by adding unconstrained arithmetic rules.  The
+representative repair rounds below show the pattern used throughout the project:
+diagnose a repeated failure mode, add the smallest state-search or executor
+change that addresses that cluster, rerun a fixed manifest, and keep the repair
+only if the paired/regression check does not reveal unacceptable losses.
+
+\begin{center}
+\small
+\begin{tabular}{p{0.18\linewidth}p{0.25\linewidth}p{0.25\linewidth}p{0.20\linewidth}}
+\hline
+Round & Diagnosed cluster & Minimal intervention & Validation role \\
+\hline
+v21 table ops & ratio, difference, percent-change, average, and additive table
+operations were mixed with prose fallback. & Local operation planner and table
+executor expose row/column selection plus executable operations. & FinQA-300
+and FinQA-600 mechanism baselines. \\
+v25-v28 operand diagnostics & supported wrong numbers were dominated by
+ambiguous numerator, denominator, year, row, and operation choices. & Add
+row/operation diagnostic labels and restrict repairs to inspected clusters. &
+FinQA-300 ablation v28 and failure tables. \\
+v34-v38 period/source repairs & tax-provision ratio, year-range sum, listed-year
+average, and source-year compatibility failures. & Narrow guards for same-source
+operands, complete year ranges, and compatible query units. & FinQA-300/600
+regression manifests. \\
+v42-v43 guarded repair & open BM25 sometimes exposed the right source in top-8
+but selected a higher-ranked distractor. & Allow verifier-guided top-8 repair
+only when the replacement is source-consistent and supported. & FinQA-600 open
+stress; kept as guarded setting. \\
+v44-v46 retrieval portfolio & neural-hybrid retrieval improved source exposure
+but not EM by itself. & No-gold confidence selector chooses between completed
+BM25 and neural-hybrid states using verifier and coverage signals. & FinQA-600
+Open: 0.377 BM25 to 0.407 portfolio, 18 paired wins and 0 losses. \\
+TAT-QA v47-v50 & cross-format failures centered on direction semantics,
+non-vested share ratios, activity-share averages, and prose issuance sums. &
+Small adapter/executor repairs were tested on TAT-QA-50 before scaling to
+TAT-QA-100. & TAT-QA-100 clears the portability gate: 0.520 oracle and 0.410
+open BM25. \\
+\hline
+\end{tabular}
+\end{center}
+
+\noindent This table is not a claim that every repair monotonically improves
+every setting.  It records the audit trail used to keep changes failure-driven:
+large failure clusters motivate edits, fixed manifests check regressions, and
+remaining failures are still reported.
+
+\subsection{Metric Definitions}
+
+\begin{center}
+\small
+\begin{tabular}{p{0.25\linewidth}p{0.64\linewidth}}
+\hline
+Metric & Definition \\
+\hline
+Exact match (EM) & Numeric answer equivalence after task-normalized comparison,
+including percentage/scale normalization used by the evaluator. \\
+Supported EM & Fraction of examples that are both exact-match correct and pass
+the verifier's answer-support check. \\
+Answer support & Whether the final answer text is supported by selected
+citations and the recorded calculation trace. \\
+Citation correctness & Whether cited node identifiers point to selected
+evidence that contains the claimed source information. \\
+Calculation support & Whether the reported result can be recomputed from cited
+operands. \\
+Arithmetic support & Whether the numeric operation is internally valid even
+before semantic row/period checks. \\
+Row grounding & Whether selected row labels match the query's intended
+financial quantity. \\
+Operation semantics & Whether the executed operation matches the question
+wording, such as sum, difference, ratio, percent change, or average. \\
+Source hit@\(K\) & Whether the known source document is present in the retrieved
+top-\(K\) pool; used only for analysis, not as an input to open retrieval. \\
+Wilson interval & Binomial 95\% confidence interval for EM on fixed subsets. \\
+McNemar test & Paired exact test over target-only and baseline-only wins for
+two methods evaluated on the same examples. \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Dataset and Manifest Construction}
+
+\paragraph{FinQA.}
+FinQA subsets are deterministic validation subsets sampled with fixed seeds.
+The 300-example subset is the main mechanism table; the 600-example subset is a
+larger stress setting.  The serialized corpus includes pre-text, tables, and
+post-text, while excluding gold answers and gold evidence annotations from
+retrieval.  Source-document metadata is preserved only for oracle-document and
+source-rerank analysis.
+
+\paragraph{TAT-QA.}
+TAT-QA-50 and TAT-QA-100 are arithmetic pilots from the public development set.
+They are used as portability checks for the adapter and evidence-state pipeline,
+not as full benchmark claims.
+The adapter boundary is deliberately narrow.  The unchanged components are the
+ESO controller, utility-risk selection, local operation executor, verifier
+fields, manifest runner, and reporting metrics.  The changed components are the
+dataset serializer, source-document metadata extraction, table/prose chunk
+format, and fixed-seed subset construction.  TAT-QA-50 is the inspected
+failure-driven pilot; TAT-QA-100 is the scaled portability check generated with
+the same seed and corpus adapter.  This separation prevents the portability
+claim from becoming a hidden dataset-specific rewrite.
+
+\begin{center}
+\small
+\begin{tabular}{p{0.27\linewidth}p{0.28\linewidth}p{0.33\linewidth}}
+\hline
+Boundary & FinQA & TAT-QA portability setting \\
+\hline
+Core ESO controller & Same deterministic state search & Same controller and
+verifier fields \\
+Evidence graph nodes & FinQA report pre-text, tables, post-text, source id &
+TAT-QA table/prose evidence serialized into the same node interface \\
+Gold use in retrieval & Gold answers and derivations excluded & Gold answers
+and derivations excluded \\
+Subset role & FinQA-300 mechanism; FinQA-600 stress & TAT-QA-50 pilot;
+TAT-QA-100 portability check \\
+Reported settings & Oracle-doc, Open BM25, source rerank, portfolio variants &
+Oracle-doc and Open BM25 only \\
+Claim boundary & Main numerical QA evidence-state result & Cross-format
+portability check, not a full leaderboard claim \\
+\hline
+\end{tabular}
+\end{center}
+
+\paragraph{Synthetic stress suite.}
+The synthetic suite contains official report evidence plus forecast, draft, and
+press-style distractors.  It is used only to verify that ESO-style state
+selection can reject non-governing documents in controlled settings.
+
+\subsection{Implementation Details}
+
+\begin{center}
+\small
+\begin{tabular}{p{0.28\linewidth}p{0.58\linewidth}}
+\hline
+Component & Reported setting \\
+\hline
+Primary subset & FinQA-300 fixed validation subset for mechanism and ablation
+tables. \\
+Stress subset & FinQA-600 fixed validation subset for open-retrieval stress and
+retrieval-portfolio analysis. \\
+Portability subset & TAT-QA-50 and TAT-QA-100 arithmetic development-set
+pilots, with TAT-QA-100 generated using seed 13. \\
+Retrieval settings & Oracle-doc, Open BM25, BM25 plus source rerank, neural
+dense/hybrid candidates, and guarded retrieval portfolio. \\
+Open-retrieval budget & BM25 top-\(8\) is the main open setting; neural-hybrid
+top-\(16\) is used as a candidate state for the retrieval portfolio. \\
+Controller & Deterministic verifier-guided ESO controller; no RL policy,
+learned graph editing, or persistent memory is used in reported results. \\
+Operation executor & Local table/text program executor supporting row/column
+selection, sum, difference, ratio, percent change, and average-style operations. \\
+External LLM baseline & API-backed LLM Direct RAG is run separately from the
+no-API local submission suite and uses the same retrieved context without
+EviGraph planning or verifier-guided repair. \\
+Generated artifacts & Manifests write CSVs, failure reports, row/operation
+diagnostics, retrieval diagnostics, process traces, and paper tables. \\
+Compile status & Local PDF checks use a sandbox-only AAAI style stub when the
+official style file is unavailable; final submission must be recompiled with the
+official AAAI kit. \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Computational Cost and Traceability}
+
+The manifest CSVs store per-example cost proxies alongside answer and verifier
+diagnostics.  These fields are not wall-clock measurements of a production
+serving system; they are deterministic accounting fields emitted by the local
+pipeline so that selection budget, verifier calls, and trace coverage can be
+audited across settings.  The table below reports averages for the main
+completed full-system runs.
+
+\begin{center}
+\small
+\begin{tabular}{p{0.28\linewidth}rrrrr}
+\hline
+Run & \(n\) & EM & Sup. & Tok. & Calls \\
+\hline
+FinQA-300 oracle v28 & 300 & 0.660 & 0.833 & 1178.9 & 2.41 \\
+FinQA-300 open v28 & 300 & 0.517 & 0.840 & 859.5 & 1.73 \\
+FinQA-300 source v28 & 300 & 0.660 & 0.833 & 985.5 & 2.01 \\
+FinQA-600 oracle v43 & 600 & 0.503 & 0.820 & 1179.6 & 2.47 \\
+FinQA-600 open v43 & 600 & 0.377 & 0.787 & 870.1 & 1.93 \\
+FinQA-600 portfolio v46 & 600 & 0.407 & 0.807 & 870.7 & 1.92 \\
+TAT-QA-100 oracle v50 & 100 & 0.520 & 0.750 & 572.8 & 1.39 \\
+TAT-QA-100 open v50 & 100 & 0.410 & 0.850 & 729.0 & 1.29 \\
+\hline
+\end{tabular}
+\end{center}
+
+\noindent\textbf{Traceability.}
+Each manifest row contains the dataset id, retrieval setting, method name,
+question, gold answer, prediction, calculation string, verifier flags,
+selected-token proxy, tool-call proxy, latency proxy, and run directory.
+The run directory stores answer artifacts and, when enabled, action traces with
+state-level events such as source expansion, noisy-node rejection, operation
+execution, repair, and verification.  The generated paper assets also include
+failure reports, row/operation diagnostics, retrieval diagnostics, process-trace
+summaries, confidence intervals, and paired comparison reports.  These artifacts
+are the audit trail used to decide whether a repair is kept: a change must be
+associated with a named failure cluster, evaluated on fixed manifests, and
+checked for paired regressions before it is reported.
+
+\subsection{Baseline and Ablation Controls}
+
+The baseline ladder is designed to isolate which part of ESO matters:
+\begin{itemize}
+    \item \textbf{Direct RAG}: retrieval-order evidence without local operation
+    planning.
+    \item \textbf{LLM Direct RAG}: an external reader over the same retrieved
+    context, without EviGraph planning or support selection.
+    \item \textbf{Retrieve-then-program}: retrieval-order evidence with the
+    local program planner but without graph-based evidence-state selection.
+    \item \textbf{Utility-only}: state selection using utility without
+    risk-aware control.
+    \item \textbf{No planner}: full retrieval and graph selection with the
+    program-planner fallback disabled.
+    \item \textbf{No verifier rejection}: verifier diagnostics are recorded but
+    unsupported row-grounded numeric answers are not replaced by
+    insufficient-evidence responses.
+\end{itemize}
+This design distinguishes answer accuracy from support quality.  In particular,
+an external LLM reader can achieve higher exact match while producing much lower
+answer-support rates, which motivates reporting both exact match and verifier
+diagnostics.
+
+\subsection{Retrieval Portfolio Details}
+
+The guarded retrieval-portfolio selector is no-gold: it never inspects gold
+answers, accuracy labels, or answer strings during selection.  It chooses
+between completed BM25 and neural-hybrid evidence states using fallback status,
+query/year coverage, executable calculations, and verifier/support flags.  This
+is included to test the ESO claim that better retrieval exposure becomes useful
+only when a state selector can identify the more executable candidate state.
+
+\subsection{Boundary Conditions}
+
+The reported system should not be interpreted as a learned ESO policy.  The
+current controller is deterministic and verifier-guided.  It is expected to
+struggle when:
+\begin{itemize}
+    \item the retrieved pool misses both the source document and answer-bearing
+    numbers;
+    \item the correct derivation requires unstated domain conventions absent
+    from the serialized report;
+    \item several locally supported operand choices remain indistinguishable
+    without gold derivation supervision;
+    \item table serialization truncates or separates row labels from values in a
+    way that prevents reconstruction;
+    \item the question requires open-ended textual reasoning rather than
+    executable numerical grounding.
+\end{itemize}
+These limitations motivate future learned policies over the Evidence State
+Space, but the present paper reports the reproducible deterministic variant.
+
+\paragraph{Relation to self-evolving hypergraph RAG.}
+Recent agentic GraphRAG work such as EvoGraph-R1 studies persistent multimodal
+knowledge hypergraphs that can be changed by graph-retrieval, web-search,
+graph-edit, and answer-generation actions.  ESO uses a different operating
+point.  The evidence graph in this paper is query-local and is discarded after
+the answer is produced; its state transitions are deterministic verifier-guided
+edits over candidate evidence, not learned updates to a long-lived knowledge
+store.
+
+\begin{center}
+\centering
+\small
+\begin{tabular}{p{0.21\linewidth}p{0.34\linewidth}p{0.34\linewidth}}
+\hline
+Aspect & Self-evolving hypergraph RAG & EviGraph-RAG / ESO \\
+\hline
+Graph object & Persistent multimodal knowledge hypergraph & Query-local evidence graph \(G_q=(V_q,E_q)\) \\
+State & Agent/environment state over graph and retrieved context & Evidence state \(S \subseteq V_q\) with executable support \\
+Actions & Query understanding, graph retrieval, web search, graph edit, answer generation & Expand, prune, rank, repair, execute, and verify evidence states \\
+Policy & Learned or agentic policy over graph actions & Deterministic verifier-guided controller in the reported system \\
+Primary claim & Agentic retrieval and reasoning over multimodal knowledge & Auditable numerical grounding through MRSG selection \\
+\hline
+\end{tabular}
+
+\vspace{0.25em}
+\noindent\textbf{Boundary comparison.} Persistent self-evolving hypergraph RAG
+optimizes agentic retrieval over a long-lived graph; ESO optimizes a temporary
+evidence state for one auditable numerical answer.
+\end{center}
+
+\subsection{Reproducibility Commands}
+
+The paper artifact index gives the authoritative command map.  The key local
+checks are:
+\begin{verbatim}
+python -m unittest discover -s tests
+python scripts/run_pipeline.py --suite submission --skip-llm-direct-rag
+python scripts/render_paper_figures.py
+\end{verbatim}
+API-backed LLM Direct RAG baselines require provider-specific environment
+variables and should be run separately from the no-API local submission suite.

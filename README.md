@@ -1,11 +1,103 @@
-# EviGraph-RAG
+# Evidence State Optimization with EviGraph-RAG
 
-Utility-Risk Evidence State Control for Multimodal RAG.
+Evidence State Optimization (ESO) for numerically grounded RAG.
 
-Core claim: retrieved information is not evidence. This project treats retrieval
-outputs as candidate evidence states, scores their utility and risks, selects a
-minimal reliable support subgraph, and generates grounded answers from that
-subgraph only.
+Core claim: retrieved information is not evidence. This project formulates RAG
+as a search problem over an Evidence State Space (ESS). EviGraph-RAG is the
+current implementation: it turns retrieval outputs into candidate evidence
+states, scores their utility and risks, searches for a Minimal Reliable Support
+Subgraph (MRSG), and generates grounded answers from that subgraph only.
+
+## Reviewer-Facing Thesis
+
+EviGraph-RAG is not primarily another GraphRAG retriever. Its central thesis is:
+
+> Evidence is not the same object as retrieval.
+
+Most RAG pipelines expose a top-\(K\) list of chunks to a reader. EviGraph-RAG
+instead treats retrieval as a proposal step and asks a second question: which
+candidate state is executable, low-risk, and sufficient to support the answer?
+
+The paper story is intentionally focused on three contributions:
+
+1. **Evidence State Optimization.** We define the problem as searching over
+   states \(S \subseteq V\), not feeding a raw top-\(K\) prefix to a reader.
+2. **Utility-Risk State Search.** We search states by trading off semantic/task
+   utility against structural, temporal, source, operation, and verifier risks.
+3. **Minimal Reliable Support Subgraph.** We generate answers only from the
+   smallest compact support subgraph whose citations, operands, operations, and
+   verifier checks are sufficient.
+
+This is the boundary with generic GraphRAG/KG-RAG systems: those systems usually
+retrieve or traverse nodes; ESO searches an evidence state space and verifies
+whether the selected state is usable for numerical reasoning.
+
+## Method Contract
+
+For a query \(q\), retrieval produces a candidate evidence graph
+\(G_q=(V_q,E_q)\).
+
+**Evidence unit.** A node \(v \in V_q\) is a text span, table row/fragment,
+source cue, parsed value, operation candidate, or verifier judgment that may
+contribute to answering \(q\).
+
+**Evidence state.** A state is a subset \(S_t \subseteq V_q\) at controller step
+\(t\). It is not assumed to be correct evidence; it is a candidate support
+configuration.
+
+**Evidence state space.** The state space is
+\(\Omega_q=(\mathcal{S}_q,\mathcal{T}_q)\), where \(\mathcal{S}_q\subseteq
+2^{V_q}\) is the set of candidate states and \(\mathcal{T}_q\) contains
+expansion, merge, prune, ranking, and repair transitions.
+
+**Reliable support subgraph.** A state is reportable only when the induced
+subgraph \(G_q[S]\) contains cited source values, executable operations, and
+verifier checks sufficient for the final answer trace.
+
+The controller is explicit rather than a black box:
+
+1. **Expansion** gathers candidate passages, table fragments, source-local
+   context, and retrieval-portfolio alternatives.
+2. **Pruning** removes unsupported or high-risk nodes using source, period,
+   operation, and verifier diagnostics.
+3. **Ranking/selection** greedily builds a compact state under a budget.
+4. **Repair** uses verifier failures to revisit operands, periods, or source
+   exposure without accepting free-form numeric guesses.
+
+A simplified risk-adjusted coverage objective is:
+
+\[
+f(S)=\sum_{a\in\mathcal{A}_q} w_a
+\left(1-\prod_{v\in S}(1-\rho_v u_{v,a})\right),
+\qquad
+\rho_v=\exp(-\lambda_s r_v^{src}-\lambda_t r_v^{time}
+-\lambda_o r_v^{op}-\lambda_c r_v^{conflict}).
+\]
+
+Here \(\mathcal{A}_q\) contains required aspects such as entity, year/period,
+row label, denominator, and operation cue coverage. The discount \(\rho_v\)
+reduces the value of nodes with source, temporal, operation, or conflict risk.
+This coverage form is monotone submodular, so greedy evidence-state pruning has
+the standard \((1-1/e)\) approximation guarantee under a cardinality budget.
+
+The ideal MRSG target is the constrained problem:
+
+\[
+S^\star =
+\arg\min_{S\in\mathcal{S}_q}|S|
+\quad
+\text{s.t.}\quad
+\operatorname{Cov}(S,q)\ge\tau,\;
+\operatorname{Risk}(S,q)\le\delta,\;
+\operatorname{Conn}(G_q[S])=1,\;
+\operatorname{Exec}(S,q)=1,\;
+\operatorname{Ver}(S,q)=1.
+\]
+
+The current implementation uses deterministic verifier-guided state search:
+initialize from retrieval candidates, expand source/table/operation evidence,
+rank by utility-risk coverage, prune unsafe states, and repair only diagnosed
+operand/source/period/operation failures.
 
 ## Submission Artifact Index
 
