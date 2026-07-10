@@ -1,6 +1,10 @@
 param(
     [string]$LatexPluginRoot = "$env:USERPROFILE\.codex\plugins\cache\openai-bundled\latex\0.2.2",
     [string]$OutputRoot = "",
+    [ValidateSet("main", "supplement")]
+    [string]$Target = "main",
+    [ValidateSet("auto", "tectonic", "texlive")]
+    [string]$Compiler = "texlive",
     [switch]$KeepSandbox
 )
 
@@ -31,27 +35,41 @@ New-Item -ItemType Directory -Force -Path $sandboxPaper | Out-Null
 New-Item -ItemType Directory -Force -Path $buildDir | Out-Null
 
 Copy-Item -LiteralPath (Join-Path $paperRoot "main.tex") -Destination $sandboxPaper -Force
+Copy-Item -LiteralPath (Join-Path $paperRoot "supplement.tex") -Destination $sandboxPaper -Force
 Copy-Item -LiteralPath (Join-Path $paperRoot "appendix.tex") -Destination $sandboxPaper -Force
 Copy-Item -LiteralPath (Join-Path $paperRoot "references.bib") -Destination $sandboxPaper -Force
 Copy-Item -LiteralPath (Join-Path $paperRoot "generated") -Destination $sandboxPaper -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $paperRoot "figures") -Destination $sandboxPaper -Recurse -Force
 
-$officialStyle = Join-Path $paperRoot "aaai27.sty"
+$officialStyle = Join-Path $paperRoot "aaai2027.sty"
+$officialBibStyle = Join-Path $paperRoot "aaai2027.bst"
 if (Test-Path -LiteralPath $officialStyle) {
     Copy-Item -LiteralPath $officialStyle -Destination $sandboxPaper -Force
+    if (Test-Path -LiteralPath $officialBibStyle) {
+        Copy-Item -LiteralPath $officialBibStyle -Destination $sandboxPaper -Force
+    }
 } else {
     @'
 \NeedsTeXFormat{LaTeX2e}
-\ProvidesPackage{aaai27}[2026/07/10 compile-only stub]
+\ProvidesPackage{aaai2027}[2026/07/10 compile-only stub]
+\DeclareOption{submission}{}
+\ProcessOptions\relax
 \RequirePackage[margin=0.75in]{geometry}
 \RequirePackage{caption}
 \RequirePackage{booktabs}
 \RequirePackage{graphicx}
-\RequirePackage{times}
-\RequirePackage{helvet}
-\RequirePackage{courier}
-'@ | Set-Content -LiteralPath (Join-Path $sandboxPaper "aaai27.sty") -Encoding ascii
-    Write-Host "Official aaai27.sty was not found; using sandbox-only compile stub."
+'@ | Set-Content -LiteralPath (Join-Path $sandboxPaper "aaai2027.sty") -Encoding ascii
+    Write-Host "Official aaai2027.sty was not found; using sandbox-only compile stub."
+    if (-not (Test-Path -LiteralPath $officialBibStyle)) {
+        Write-Host "Official aaai2027.bst was not found; bibliography compile may fail until the official kit is added."
+    }
 }
 
-python $compileScript (Join-Path $sandboxPaper "main.tex") --compiler tectonic --output-directory $buildDir --json
+$rootFile = Join-Path $sandboxPaper "$Target.tex"
+if ($Compiler -eq "texlive") {
+    python $compileScript $rootFile --compiler texlive --engine pdflatex --output-directory $buildDir --json
+} elseif ($Compiler -eq "tectonic") {
+    python $compileScript $rootFile --compiler tectonic --output-directory $buildDir --json
+} else {
+    python $compileScript $rootFile --output-directory $buildDir --json
+}

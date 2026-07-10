@@ -298,13 +298,17 @@ Before declaring the paper submission-ready:
 - [x] Retrieval portfolio has paired wins/losses and confidence intervals.
 - [x] TAT-QA-50 and TAT-QA-100 portability checks are recorded.
 - [x] Unit tests pass after the latest v50 repair.
-- [ ] Download the official AAAI-27 Author Kit and place the required style and
-  bibliography files in `paper/` or the TeX search path. `paper/main.tex`
-  currently imports `aaai27`; if the official kit uses a different package
-  name, update `main.tex` to match the official file rather than creating a
-  local fake style.
+- [x] Download the official AAAI-27 Author Kit and place the required style and
+  bibliography files in `paper/`. The official kit uses `aaai2027.sty` and
+  `aaai2027.bst`; `paper/main.tex` now imports the official package name
+  directly.
+- [x] Split supplementary material out of the main submission PDF:
+  `paper/main.tex` now contains only main paper plus references, while
+  `paper/supplement.tex` compiles `paper/appendix.tex` separately.
 - [ ] Re-run the final local submission suite from a clean checkout.
-- [ ] Compile `paper/main.tex` and inspect page count/table overflow.
+- [ ] Install or provide a pdfLaTeX-capable TeX Live/MiKTeX runtime, then run
+  `scripts/check_aaai_page_budget.ps1` to inspect official page count and table
+  overflow.
 - [ ] Add final code/data release note for supplementary material.
 - [ ] Tighten related work and method-figure captions for the 7-page limit.
 - [ ] Freeze final reported numbers and stop changing tables after paper draft lock.
@@ -314,14 +318,15 @@ Before declaring the paper submission-ready:
 Latest local compile check:
 
 ```powershell
-python <path-to-codex-latex-plugin>\scripts\compile_latex.py .\paper\main.tex --compiler tectonic --output-directory .\paper\build --json
+powershell -ExecutionPolicy Bypass -File .\scripts\check_aaai_page_budget.ps1
 ```
 
 Result:
 
-- PDF was not produced because `paper/main.tex` imports `aaai27`, but the
-  corresponding style file is not present in the repository or TeX search path.
-- TeX Live is also not installed on this machine, so the bundled Tectonic binary
-  is the only currently detected compiler.
-- Next action: add the official AAAI-27 Author Kit files, then compile again
-  before any page-count or camera-ready formatting judgement.
+- The official AAAI-27 style and bibliography files are present in `paper/`.
+- The official `aaai2027.sty` requires pdfTeX; bundled Tectonic invokes XeTeX
+  and is rejected by the style file.
+- TeX Live/MiKTeX is not installed on this machine. The page-budget script now
+  correctly fails instead of reading a stale PDF.
+- Next action: install a pdfLaTeX-capable TeX runtime, then rerun
+  `scripts/check_aaai_page_budget.ps1 -AlsoCompileSupplement`.

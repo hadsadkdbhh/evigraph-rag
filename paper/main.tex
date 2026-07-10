@@ -1,15 +1,23 @@
 \documentclass[letterpaper]{article}
 
-\usepackage{aaai27}
-\usepackage{times}
-\usepackage{helvet}
-\usepackage{courier}
+\usepackage[submission]{aaai2027}
 \usepackage[hyphens]{url}
 \usepackage{graphicx}
+\urlstyle{rm}
+\def\UrlFont{\rm}
+\usepackage{natbib}
+\usepackage{caption}
+\frenchspacing
 \usepackage{booktabs}
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{amsthm}
+
+\pdfinfo{
+/TemplateVersion (2027.1)
+}
+
+\setcounter{secnumdepth}{0}
 
 \newtheorem{definition}{Definition}
 \newtheorem{lemma}{Lemma}
@@ -349,7 +357,7 @@ Table~\ref{tab:finqa-failure-categories} reports unresolved categories for FinQA
 
 The main lesson is that residual errors are not dominated by arithmetic.
 Inspected repair rounds improved results by targeting small, named clusters: operand selection, percent-intent normalization, endpoint grounding, source-year compatibility, and narrow prose/table ratio cases.
-These edits are kept only after fixed-manifest paired checks; the appendix gives the full failure-to-fix provenance.
+These edits are kept only after fixed-manifest paired checks; the supplement gives the full failure-to-fix provenance.
 
 The remaining bottleneck is evidence-state ambiguity.
 On FinQA-300 Open BM25, 93 of 145 failed examples retrieve the gold source but do not expose the gold answer number in the top-\(8\) context, while only 30 miss the source entirely.
@@ -363,10 +371,7 @@ It shows that the useful unit between retrieval and generation is not the retrie
 The current implementation provides a reproducible ESO scaffold with FinQA/TAT-QA adapters, retrieval-setting separation, a table operation executor, verifier diagnostics, and failure-analysis tooling.
 Future work should strengthen learned retrieval, operand grounding, and larger-scale benchmark validation.
 
-\appendix
-\input{appendix}
-
-\bibliographystyle{plain}
+\bibliographystyle{aaai2027}
 \bibliography{references}
 
 \end{document}

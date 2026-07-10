@@ -54,9 +54,14 @@ Current blockers:
   confidence intervals, and reproduction commands in
   `docs/submission_artifact_index.md`; the remaining reproducibility work is a
   final clean-checkout run plus a concise code/data release note.
-- Local LaTeX compilation is currently blocked because `paper/main.tex` uses
-  `aaai27`, but the official `aaai27.sty` file from the AAAI-27 Author Kit is
-  not checked into `paper/` or available in the TeX search path.
+- Official AAAI-27 LaTeX files are now checked into `paper/`:
+  `aaai2027.sty` and `aaai2027.bst`.
+- `paper/main.tex` now uses the official `aaai2027` package and excludes
+  supplementary material from the main submission PDF; `paper/supplement.tex`
+  compiles `paper/appendix.tex` separately.
+- Local official-template compilation is currently blocked because the machine
+  does not have a pdfLaTeX-capable TeX Live/MiKTeX runtime. The official
+  `aaai2027.sty` rejects XeTeX/Tectonic.
 - The exact-match results are diagnostic, not strong enough to sell as benchmark superiority.
 - The current FinQA-600 open-retrieval target has crossed 0.40 with guarded
   portfolio selection, but this should be framed as evidence-state selection

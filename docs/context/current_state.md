@@ -61,6 +61,16 @@ Method section. If the official AAAI template leaves enough space, this can be
 compressed into a short main-text Algorithm 1 later. Do not add that algorithm
 before the final page-budget pass.
 
+Official AAAI-27 template status: the Author Kit has been downloaded and the
+required `aaai2027.sty` and `aaai2027.bst` files are checked into `paper/`.
+`paper/main.tex` now uses `\usepackage[submission]{aaai2027}` and no longer
+inputs `paper/appendix.tex`; supplementary material is compiled separately via
+`paper/supplement.tex`. The remaining page-budget blocker is runtime, not
+source structure: the official style requires pdfTeX, while the bundled
+Tectonic path uses XeTeX. Install/provide TeX Live or MiKTeX with `pdflatex`,
+`bibtex`, and `latexmk`, then run
+`powershell -ExecutionPolicy Bypass -File .\scripts\check_aaai_page_budget.ps1 -AlsoCompileSupplement`.
+
 ## Current Baseline
 
 Latest guarded open-retrieval repair:

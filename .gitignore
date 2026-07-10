@@ -9,3 +9,4 @@ outputs/logs/
 outputs/pipeline/
 outputs/tmp_*.json
 .env
+external/
