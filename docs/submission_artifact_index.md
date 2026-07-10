@@ -318,19 +318,20 @@ Before declaring the paper submission-ready:
   paper draft lock, do not change tables without a new named manifest and
   paired failure report.
 
-Environment requirement before final PDF upload:
+Final PDF upload check:
 
-- Install or provide a pdfLaTeX-capable TeX Live/MiKTeX runtime, then run
-  `scripts/check_aaai_page_budget.ps1 -AlsoCompileSupplement` to inspect
-  official page count and table overflow. This is a local runtime dependency,
-  not a missing repository artifact.
+- Windows MiKTeX 25.12 plus Strawberry Perl was installed on 2026-07-10 after
+  the Codex-managed TeX Live installer reported Windows is unsupported.
+- `scripts/check_aaai_page_budget.ps1 -AlsoCompileSupplement` passed with the
+  official `aaai2027.sty`: main PDF is 8 pages total, References starts on
+  page 8, estimated main content is 7/7 pages, and supplement is 6 pages.
 
 ## Current Compile Status
 
 Latest local compile check:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\check_aaai_page_budget.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\check_aaai_page_budget.ps1 -AlsoCompileSupplement
 ```
 
 Result:
@@ -338,8 +339,9 @@ Result:
 - The official AAAI-27 style and bibliography files are present in `paper/`.
 - The official `aaai2027.sty` requires pdfTeX; bundled Tectonic invokes XeTeX
   and is rejected by the style file.
-- TeX Live/MiKTeX is not installed on this machine. On 2026-07-10 the
-  page-budget script failed immediately with a clear missing-`pdflatex`
-  diagnostic instead of reading a stale PDF.
-- Next action: install a pdfLaTeX-capable TeX runtime, then rerun
-  `scripts/check_aaai_page_budget.ps1 -AlsoCompileSupplement`.
+- Windows MiKTeX 25.12 provides `pdflatex`, `bibtex`, `latexmk`, `pdfinfo`, and
+  `pdftotext`; Strawberry Perl provides the script engine required by
+  MiKTeX's `latexmk`.
+- Main PDF: 8 total pages, References start page 8, estimated main-content
+  pages 7/7.
+- Supplement PDF: 6 pages.

@@ -45,12 +45,13 @@ python .\scripts\build_paper_assets.py --eval-dir .\outputs\eval\finqa_300_neura
 
 The draft is intentionally conservative: current FinQA results are oracle-document reasoning baselines, not final open-retrieval benchmark claims.
 
-Run the official page-budget check after installing a pdfLaTeX-capable
-TeX Live or MiKTeX runtime:
+Run the official page-budget check with a pdfLaTeX-capable TeX Live or MiKTeX
+runtime:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File ..\scripts\check_aaai_page_budget.ps1 -AlsoCompileSupplement
 ```
 
 The official AAAI style rejects XeTeX/Tectonic, so bundled Tectonic is not a
-valid final page-count substitute.
+valid final page-count substitute. On the current Windows setup, MiKTeX plus
+Strawberry Perl compiles the official template successfully.

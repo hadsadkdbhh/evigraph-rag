@@ -65,11 +65,11 @@ Official AAAI-27 template status: the Author Kit has been downloaded and the
 required `aaai2027.sty` and `aaai2027.bst` files are checked into `paper/`.
 `paper/main.tex` now uses `\usepackage[submission]{aaai2027}` and no longer
 inputs `paper/appendix.tex`; supplementary material is compiled separately via
-`paper/supplement.tex`. The remaining page-budget blocker is runtime, not
-source structure: the official style requires pdfTeX, while the bundled
-Tectonic path uses XeTeX. Install/provide TeX Live or MiKTeX with `pdflatex`,
-`bibtex`, and `latexmk`, then run
-`powershell -ExecutionPolicy Bypass -File .\scripts\check_aaai_page_budget.ps1 -AlsoCompileSupplement`.
+`paper/supplement.tex`. On Windows, the Codex-managed TeX Live installer is not
+supported, so MiKTeX 25.12 plus Strawberry Perl was installed instead. The
+official page-budget check now passes with `pdflatex`: main PDF is 8 pages
+total, References starts on page 8, estimated main content is 7/7 pages, and
+supplement is 6 pages.
 
 ## Current Baseline
 
@@ -1413,9 +1413,9 @@ Keep the claim boundary strict:
 - Do not merge oracle-doc, open BM25, source-rerank, neural/hybrid, and
   retrieval-portfolio results into one headline.
 - Do not present source-rerank as a deployable open-retrieval setting.
-- Treat the remaining official page-budget check as an environment dependency:
-  it requires a local pdfLaTeX-capable TeX Live or MiKTeX runtime because
-  `aaai2027.sty` rejects XeTeX/Tectonic.
+- Treat the official page-budget check as currently passing locally under
+  MiKTeX 25.12 plus Strawberry Perl: main PDF 8 pages total, References page 8,
+  estimated main content 7/7 pages, supplement 6 pages.
 
 ## Git Note
 

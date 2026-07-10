@@ -53,12 +53,15 @@ query-local Evidence State Optimization for auditable numerical QA.
 3. Official-template compile note.
     - Official `aaai2027.sty` and `aaai2027.bst` are now checked into
       `paper/`.
-    - `paper/main.tex` now uses `\usepackage[submission]{aaai2027}` and
-      `\bibliographystyle{aaai2027}`.
+    - `paper/main.tex` now uses `\usepackage[submission]{aaai2027}`. Do not add
+      `\bibliographystyle{aaai2027}` manually; the official style inserts it.
     - `paper/supplement.tex` compiles `paper/appendix.tex` separately, so the
       supplement is no longer counted as main-paper pages.
-    - Remaining blocker: install or provide a pdfLaTeX-capable TeX Live/MiKTeX
-      runtime. Official `aaai2027.sty` rejects XeTeX/Tectonic.
+    - Windows MiKTeX 25.12 plus Strawberry Perl now provides the pdfLaTeX
+      runtime. Official `aaai2027.sty` still rejects XeTeX/Tectonic, but
+      `scripts/check_aaai_page_budget.ps1 -AlsoCompileSupplement` passes:
+      main PDF 8 pages total, References page 8, estimated main content 7/7
+      pages, supplement 6 pages.
 
 ## What Not To Borrow
 
@@ -74,8 +77,7 @@ query-local Evidence State Optimization for auditable numerical QA.
 
 Recommended next edit order:
 
-1. Install/provide TeX Live or MiKTeX with `pdflatex`, `bibtex`, and `latexmk`.
-2. Run `powershell -ExecutionPolicy Bypass -File .\scripts\check_aaai_page_budget.ps1 -AlsoCompileSupplement`.
-3. If the main paper exceeds 7 pages before references or 9 pages total, first
+1. Re-run `powershell -ExecutionPolicy Bypass -File .\scripts\check_aaai_page_budget.ps1 -AlsoCompileSupplement` after any major text/table/figure edit.
+2. If the main paper exceeds 7 pages before references or 9 pages total, first
    compress figures/tables and references, not method definitions.
-4. Only then decide whether a compact Algorithm 1 fits in the main paper.
+3. Only then decide whether a compact Algorithm 1 fits in the main paper.

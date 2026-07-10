@@ -15,6 +15,18 @@ $mainPdf = Join-Path $OutputRoot "build\main.pdf"
 $suppPdf = Join-Path $OutputRoot "build\supplement.pdf"
 $officialStyle = Join-Path $repoRoot "paper\aaai2027.sty"
 
+function Add-ToolPathIfPresent {
+    param([string]$Path)
+    if ((Test-Path -LiteralPath $Path) -and (($env:PATH -split ';') -notcontains $Path)) {
+        $env:PATH = "$Path;$env:PATH"
+    }
+}
+
+Add-ToolPathIfPresent "$env:LOCALAPPDATA\Programs\MiKTeX\miktex\bin\x64"
+Add-ToolPathIfPresent "C:\Program Files\MiKTeX\miktex\bin\x64"
+Add-ToolPathIfPresent "C:\Strawberry\perl\bin"
+Add-ToolPathIfPresent "C:\Strawberry\c\bin"
+
 function Assert-CommandAvailable {
     param([string]$Name)
     if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {

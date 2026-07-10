@@ -65,9 +65,11 @@ Current non-figure status:
 - `paper/main.tex` now uses the official `aaai2027` package and excludes
   supplementary material from the main submission PDF; `paper/supplement.tex`
   compiles `paper/appendix.tex` separately.
-- Local official-template compilation is currently blocked because the machine
-  does not have a pdfLaTeX-capable TeX Live/MiKTeX runtime. The official
-  `aaai2027.sty` rejects XeTeX/Tectonic.
+- Local official-template compilation now runs through Windows MiKTeX 25.12
+  plus Strawberry Perl. The official `aaai2027.sty` rejects XeTeX/Tectonic, so
+  the final check uses `pdflatex`, `bibtex`, `latexmk`, `pdfinfo`, and
+  `pdftotext`. The 2026-07-10 check reports main PDF 8 pages total, References
+  on page 8, estimated main content 7/7 pages, and supplement 6 pages.
 - The exact-match results are diagnostic and should not be sold as benchmark
   superiority.
 - The current FinQA-600 open-retrieval target has crossed 0.40 with guarded

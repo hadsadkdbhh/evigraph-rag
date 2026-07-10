@@ -20,6 +20,18 @@ $sandboxPaper = Join-Path $OutputRoot "paper"
 $buildDir = Join-Path $OutputRoot "build"
 $compileScript = Join-Path $LatexPluginRoot "scripts\compile_latex.py"
 
+function Add-ToolPathIfPresent {
+    param([string]$Path)
+    if ((Test-Path -LiteralPath $Path) -and (($env:PATH -split ';') -notcontains $Path)) {
+        $env:PATH = "$Path;$env:PATH"
+    }
+}
+
+Add-ToolPathIfPresent "$env:LOCALAPPDATA\Programs\MiKTeX\miktex\bin\x64"
+Add-ToolPathIfPresent "C:\Program Files\MiKTeX\miktex\bin\x64"
+Add-ToolPathIfPresent "C:\Strawberry\perl\bin"
+Add-ToolPathIfPresent "C:\Strawberry\c\bin"
+
 if (-not (Test-Path -LiteralPath $compileScript)) {
     throw "Codex LaTeX compile helper not found: $compileScript"
 }
@@ -69,7 +81,27 @@ if (Test-Path -LiteralPath $officialStyle) {
 
 $rootFile = Join-Path $sandboxPaper "$Target.tex"
 if ($Compiler -eq "texlive") {
-    python $compileScript $rootFile --compiler texlive --engine pdflatex --output-directory $buildDir --json
+    $latexmk = Get-Command latexmk -ErrorAction SilentlyContinue
+    if ($latexmk) {
+        Push-Location $sandboxPaper
+        try {
+            & $latexmk.Source `
+                -norc `
+                -pdf `
+                -interaction=nonstopmode `
+                -halt-on-error `
+                -synctex=1 `
+                "-outdir=$buildDir" `
+                "$Target.tex"
+            if ($LASTEXITCODE -ne 0) {
+                throw "latexmk failed with exit code $LASTEXITCODE"
+            }
+        } finally {
+            Pop-Location
+        }
+    } else {
+        python $compileScript $rootFile --compiler texlive --engine pdflatex --output-directory $buildDir --json
+    }
 } elseif ($Compiler -eq "tectonic") {
     python $compileScript $rootFile --compiler tectonic --output-directory $buildDir --json
 } else {

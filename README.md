@@ -545,8 +545,8 @@ Refresh all no-API submission-suite outputs from a clean checkout:
 python scripts/run_pipeline.py --suite submission --refresh-results --skip-llm-direct-rag
 ```
 
-Check official AAAI page budget after installing a pdfLaTeX-capable TeX Live or
-MiKTeX runtime:
+Check official AAAI page budget with a pdfLaTeX-capable TeX Live or MiKTeX
+runtime:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\check_aaai_page_budget.ps1 -AlsoCompileSupplement
@@ -554,6 +554,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\check_aaai_page_budget.ps1 -A
 
 The official `aaai2027.sty` rejects XeTeX/Tectonic, so this page-budget check
 requires `pdflatex`, `bibtex`, `pdfinfo`, and `pdftotext` on the local machine.
+On Windows, the current checked setup uses MiKTeX plus Strawberry Perl.
 
 ## Local Retrieval MVP-1
 

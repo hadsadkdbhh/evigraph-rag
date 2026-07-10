@@ -67,9 +67,12 @@ The non-figure submission package now contains:
 - Code/data release note: `docs/code_data_release_note.md`.
 - Current-state handoff: `docs/context/current_state.md`.
 
-The remaining non-content blocker is environment-level: final official page
-count requires a pdfLaTeX-capable TeX Live or MiKTeX installation. The bundled
-Tectonic path uses XeTeX and is rejected by `aaai2027.sty`.
+The final official page-count environment is now available locally via Windows
+MiKTeX 25.12 plus Strawberry Perl. The bundled Tectonic path still cannot be
+used for the final check because `aaai2027.sty` rejects XeTeX, but
+`scripts/check_aaai_page_budget.ps1 -AlsoCompileSupplement` now passes with
+pdfLaTeX: main PDF 8 pages total, References on page 8, estimated main content
+7/7 pages, and supplement 6 pages.
 
 ## Validation Commands
 
@@ -85,7 +88,7 @@ Run the local no-API submission-suite gate:
 python scripts/run_pipeline.py --suite submission --skip-llm-direct-rag
 ```
 
-Run the official page-budget check after installing TeX Live or MiKTeX:
+Run the official page-budget check:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\check_aaai_page_budget.ps1 -AlsoCompileSupplement

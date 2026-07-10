@@ -57,8 +57,7 @@ Rebuild paper tables from completed evaluations:
 python scripts/build_paper_assets.py --eval-dir outputs/eval/finqa --output-dir paper/generated
 ```
 
-Run the official AAAI page-budget check after installing a pdfLaTeX-capable
-TeX Live or MiKTeX runtime:
+Run the official AAAI page-budget check with the local pdfLaTeX runtime:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\check_aaai_page_budget.ps1 -AlsoCompileSupplement
@@ -96,4 +95,6 @@ match/support gaps, and failure-driven diagnostics.
 The official AAAI-27 style file requires pdfTeX. The bundled Tectonic path uses
 XeTeX and is rejected by `aaai2027.sty`, so the final page-budget check requires
 a local TeX Live or MiKTeX installation that provides `pdflatex`, `bibtex`, and
-PDF inspection tools such as `pdfinfo` and `pdftotext`.
+PDF inspection tools such as `pdfinfo` and `pdftotext`. On this Windows
+machine, MiKTeX 25.12 plus Strawberry Perl satisfies that requirement; the
+2026-07-10 check passes with main content 7/7 pages and supplement 6 pages.
