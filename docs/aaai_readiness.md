@@ -1,68 +1,92 @@
 # AAAI Readiness Notes
 
-This file tracks what the current repository can and cannot support as paper evidence.
+Last updated: 2026-07-10
+
+This file tracks what the current repository can and cannot support as paper
+evidence. It is intentionally conservative: the project should be pitched as
+Evidence State Optimization (ESO) for auditable numerical RAG, not as a
+leaderboard or SOTA benchmark paper.
 
 ## Supported Claims Now
 
-- The codebase runs an end-to-end EviGraph-style pipeline on a controlled mock evidence task.
-- The pipeline creates candidate evidence, scores utility and risk, selects a support subgraph, executes explicit evidence actions, verifies claims, and logs artifacts.
-- The manifest runner can build a local index, convert raw question files, run ablations, run a budget sweep, summarize results, and write an experiment card.
-- The current smoke tests verify misleading-evidence rejection, table parsing, calculation triggering, and claim verification on the mock setup.
-- The synthetic stress suite shows that risk-aware evidence selection can reject hand-authored forecast, draft, and press distractors while simple top-k and utility-only baselines accept noisy evidence.
-- A 100-example real FinQA validation subset is checked in with deterministic sampling metadata and a retrieval corpus built from source pre-text, tables, and post-text.
-- On the checked-in 100-example FinQA smoke subset, the current oracle-document setting reaches 63/100 numeric exact-match accuracy with transparent calculations for ratio, percent-of-total, percent-change, row-average, row/column lookup, year-range-average, ROI, prose average, cross-chunk ratio, cross-chunk continuation-table stitching, relative row difference, percentage-point row difference, fiscal schedule percent-change, grouped table/prose ratio, horizontal and vertical maturity-schedule ratios, and difference cases.
-- Open BM25 reaches 55/100, deterministic open hybrid reaches 54/100, and source-rerank reaches 64/100 for full EviGraph on the same subset; these are diagnostic baselines, not final claims.
-- A 300-example FinQA validation-scale diagnostic subset is checked in with seed
-  13 and source-document metadata. The run is documented in
-  `docs/finqa_300_status.md` and should be used as the current reality check:
-  oracle-doc full EviGraph is 89/300, open BM25 is 61/300, open hybrid is
-  63/300, and source-rerank is 82/300.
-- The experiment CSVs now separate exact match from verifier diagnostics: arithmetic support, calculation-result support, operation-semantics checking, row-operation grounding, semantic grounding, and final answer support.
-- The manifest runner writes a failure report for batch experiments, grouping unresolved examples by error category for paper-oriented failure analysis.
-- The row/operation diagnostic splits wrong numeric answers into wrong numerator, wrong denominator, wrong year or period, wrong row label, wrong operation type, and ambiguous supported wrong-number cases.
-- The latest calculation-aware verifier raises support auditing fidelity by accepting reproducible calculation results while keeping exact-match claims separate from support diagnostics; row/operation grounding remains a paper-critical risk before making strong benchmark claims.
-- The optional LLM numeric planner fallback now supports program-style table-cell
-  selection: plans can specify row labels and year/column selectors, then the
-  local executor resolves the cited cell, performs arithmetic, and logs the
-  resolved row/column references. The supported operation set now includes
-  product-style multiplication and percent-of-increase programs in addition to
-  ratio, difference, percent change, sum, and average.
+- The codebase runs a manifest-driven EviGraph-RAG pipeline with candidate
+  evidence construction, utility/risk scoring, support-subgraph selection,
+  local table/text operation execution, verifier diagnostics, and artifact
+  logging.
+- The main paper defines Evidence Unit, Candidate Evidence Graph, Evidence
+  State, Evidence State Space, ESO, and Minimal Reliable Support Subgraph
+  (MRSG), and includes a monotone submodular relaxation for greedy selection.
+- FinQA-300 is the main diagnostic mechanism setting. The current paper table
+  reports Full EviGraph v38 at 0.670 oracle-doc EM, 0.523 open BM25 EM, and
+  0.670 source-rerank EM, with verifier-checked support rates of 0.850, 0.853,
+  and 0.850.
+- Stronger baselines are present: Direct RAG, GPT-5.4 Direct RAG,
+  retrieve-then-program, full-context, utility-only selection, no-planner,
+  no-verifier-grounded rejection, no-risk, no-support-graph, dense retrieval,
+  neural hybrid retrieval, and retrieval-portfolio controls.
+- The GPT-5.4 Direct RAG baseline is useful as a storytelling contrast: it can
+  reach high exact match on FinQA-300 but has much lower verifier-checked answer
+  support, motivating the EM/support gap.
+- FinQA-600 is wired as a larger stress subset. Guarded retrieval-portfolio
+  selection improves open retrieval from BM25 0.377 EM to 0.407 EM with 18
+  paired wins, 0 losses, and exact McNemar p < 0.001.
+- TAT-QA-50 and TAT-QA-100 portability checks are present. The TAT-QA-100 run
+  reaches 0.520 oracle-doc EM and 0.410 open BM25 EM, clearing the planned
+  small second-dataset portability gate.
+- The row/operation diagnostic splits wrong numeric answers into numerator,
+  denominator, year/period, row-label, operation-type, and ambiguous
+  supported-wrong-number categories.
+- The supplement contains prompt/output contracts, evidence-distraction
+  diagnostics, trace-style case studies, failure-to-fix provenance,
+  dataset/manifest construction, metrics definitions, implementation details,
+  retrieval-portfolio details, computational cost, and boundary conditions.
+- Official AAAI-27 style files are checked into `paper/`, and
+  `paper/main.tex` no longer includes the supplement.
 
-## Claims Not Yet Supported
+## Claims Not Supported
 
-- Do not claim benchmark-level performance beyond the checked-in FinQA smoke subset.
-- Do not claim robustness on real multimodal documents.
-- Do not claim superiority over strong dense-retrieval or agentic RAG baselines.
-- Do not claim statistical significance.
-- Do not claim generality beyond the current controlled mock, synthetic stress, and small FinQA smoke tasks.
-- Do not present the synthetic stress suite as a public benchmark.
-- Do not conflate oracle-document or source-rerank results with deployable open-retrieval performance; report open BM25 and open hybrid separately.
+- Do not claim state-of-the-art FinQA or TAT-QA performance.
+- Do not claim reinforcement learning, learned policy optimization, persistent
+  graph memory, self-evolving hypergraphs, or multimodal document reasoning.
+- Do not merge oracle-doc, open BM25, source-rerank, dense/hybrid retrieval, and
+  portfolio results into a single headline number.
+- Do not present source-rerank as a deployable open-retrieval result.
+- Do not describe synthetic stress examples as public benchmark evidence.
+- Do not claim that the current system solves open retrieval; frame Open BM25
+  and FinQA-600 as stress settings that reveal retrieval-exposure failures.
 
-## Evidence Needed Before Submission
+## Submission-Ready Non-Figure Package
 
-- Reach the next FinQA-300 target gates: 0.50+ oracle-doc, 0.45+
-  source-rerank, and 0.35+ open BM25, as defined in
-  `docs/next_phase_goals.md`.
-- Continue scaling beyond the 300-example FinQA diagnostic subset once the
-  operation planner and open retrieval improve.
-- Add stronger baselines, including dense retrieval and retrieve-then-read RAG; the current deterministic open hybrid baseline is a first reproducible lexical/numeric reranker, not a substitute for dense retrieval.
-- Add required ablations so the paper can attribute gains to evidence graph
-  control, risk scoring, operation planning, and verifier-grounded rejection.
-- Extend the new task-appropriate metrics beyond FinQA-300: supported exact
-  match, unsupported-correct predictions, supported-wrong predictions, and
-  EM-support gap are now implemented for manifests and paper tables, but still
-  need confidence intervals and larger-subset reporting.
-- Add failure analysis and qualitative case studies from real examples.
-- Keep the MVP0 acceptance gate green from a clean checkout.
-- Replace hand-authored stress distractors with real retrieval confounders from benchmark corpora.
-- Improve real-table numerical reasoning; current diagnostics point first to numerator/denominator selection for ratio and percent-change calculations, period intent disambiguation, and then ambiguous supported wrong-number cases.
-- Separate oracle-document reasoning from open-document retrieval in future benchmark tables.
-- Improve table operation coverage before using FinQA results as a positive performance claim; current top-k remains a close smoke baseline rather than a solved comparator.
+The non-figure submission package now contains:
 
-## Next Engineering Step
+- Official-template main paper: `paper/main.tex`.
+- Separate supplement: `paper/supplement.tex` and `paper/appendix.tex`.
+- Generated paper tables: `paper/generated/`.
+- Artifact/claim map: `docs/submission_artifact_index.md`.
+- Gap checklist: `docs/submission_gap_checklist.md`.
+- Code/data release note: `docs/code_data_release_note.md`.
+- Current-state handoff: `docs/context/current_state.md`.
 
-Improve the table numerical reasoning path on the FinQA subset before reporting
-benchmark claims. The next concrete target is to make the program-style numeric
-planner handle period-disambiguated row selection and then rerun the 300-example
-planner manifest to measure whether the new operations reduce the largest
-failure classes.
+The remaining non-content blocker is environment-level: final official page
+count requires a pdfLaTeX-capable TeX Live or MiKTeX installation. The bundled
+Tectonic path uses XeTeX and is rejected by `aaai2027.sty`.
+
+## Validation Commands
+
+Run tests:
+
+```powershell
+python -m unittest discover -s tests
+```
+
+Run the local no-API submission-suite gate:
+
+```powershell
+python scripts/run_pipeline.py --suite submission --skip-llm-direct-rag
+```
+
+Run the official page-budget check after installing TeX Live or MiKTeX:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\check_aaai_page_budget.ps1 -AlsoCompileSupplement
+```

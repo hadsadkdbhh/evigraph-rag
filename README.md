@@ -494,10 +494,14 @@ and `data/chartqa_corpus` before running it.
 
 ## Paper and Submission Assets
 
-The AAAI working draft lives in `paper/main.tex`. The current submission plan
-and claim boundaries are tracked in:
+The AAAI working draft lives in `paper/main.tex`. The supplementary entrypoint
+is `paper/supplement.tex`, which compiles `paper/appendix.tex` separately from
+the main submission PDF. The current submission plan, release notes, and claim
+boundaries are tracked in:
 
 - `docs/submission_readiness_aaai27.md`
+- `docs/submission_artifact_index.md`
+- `docs/code_data_release_note.md`
 - `docs/aaai_readiness.md`
 - `docs/project_status.md`
 
@@ -524,8 +528,32 @@ tracked by Git:
 python scripts/run_pipeline.py --refresh-results
 ```
 
-The pipeline writes a reproducibility report to `outputs/pipeline/` and FinQA-300
-paper snippets to `paper/generated/finqa_300_local_planner/`.
+The pipeline writes a reproducibility report to `outputs/pipeline/` and
+paper-ready snippets to `paper/generated/`. Runtime outputs are ignored by Git;
+promote only stable tables, reports, or release notes into tracked paper/docs
+paths.
+
+Run the no-API submission-suite gate from existing outputs:
+
+```powershell
+python scripts/run_pipeline.py --suite submission --skip-llm-direct-rag
+```
+
+Refresh all no-API submission-suite outputs from a clean checkout:
+
+```powershell
+python scripts/run_pipeline.py --suite submission --refresh-results --skip-llm-direct-rag
+```
+
+Check official AAAI page budget after installing a pdfLaTeX-capable TeX Live or
+MiKTeX runtime:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\check_aaai_page_budget.ps1 -AlsoCompileSupplement
+```
+
+The official `aaai2027.sty` rejects XeTeX/Tectonic, so this page-budget check
+requires `pdflatex`, `bibtex`, `pdfinfo`, and `pdftotext` on the local machine.
 
 ## Local Retrieval MVP-1
 

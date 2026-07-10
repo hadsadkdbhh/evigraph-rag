@@ -1398,15 +1398,24 @@ Get-Content .\outputs\eval\finqa_300_local_planner\finqa_300_subset_source_reran
 
 ## Paper Claim Boundary
 
-Current results support an engineering-progress and diagnostic story, not a
-strong benchmark superiority claim. Before AAAI submission, still needed:
+Current results support a conservative methodology submission around Evidence
+State Optimization, verifier support, retrieval-exposure failure, and
+failure-driven diagnostics. The non-figure submission package now has the main
+paper, supplement, generated tables, artifact index, code/data release note,
+baseline ladder, ablation structure, confidence intervals, FinQA-600 stress
+result, and TAT-QA-50/100 portability checks.
 
-- Stronger baselines, especially dense retrieval and retrieve-then-read RAG.
-- Larger benchmark runs beyond the 300-example diagnostic subset.
-- Cleaner failure analysis and qualitative case studies.
-- Better open-retrieval performance.
-- Careful separation of oracle-doc, open BM25, open hybrid, and source-rerank
-  results in tables and prose.
+Keep the claim boundary strict:
+
+- Do not claim state-of-the-art FinQA or TAT-QA performance.
+- Do not claim reinforcement learning, learned policy optimization, persistent
+  graph memory, or multimodal document reasoning.
+- Do not merge oracle-doc, open BM25, source-rerank, neural/hybrid, and
+  retrieval-portfolio results into one headline.
+- Do not present source-rerank as a deployable open-retrieval setting.
+- Treat the remaining official page-budget check as an environment dependency:
+  it requires a local pdfLaTeX-capable TeX Live or MiKTeX runtime because
+  `aaai2027.sty` rejects XeTeX/Tectonic.
 
 ## Git Note
 

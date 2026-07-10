@@ -15,6 +15,13 @@ $mainPdf = Join-Path $OutputRoot "build\main.pdf"
 $suppPdf = Join-Path $OutputRoot "build\supplement.pdf"
 $officialStyle = Join-Path $repoRoot "paper\aaai2027.sty"
 
+function Assert-CommandAvailable {
+    param([string]$Name)
+    if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
+        throw "Required command '$Name' was not found. Install TeX Live/MiKTeX plus Poppler tools before running the official AAAI page-budget check."
+    }
+}
+
 function Get-PdfPageCount {
     param([string]$PdfPath)
     $info = & pdfinfo $PdfPath
@@ -38,6 +45,11 @@ function Find-ReferencesPage {
     }
     return $null
 }
+
+Assert-CommandAvailable "pdflatex"
+Assert-CommandAvailable "bibtex"
+Assert-CommandAvailable "pdfinfo"
+Assert-CommandAvailable "pdftotext"
 
 Write-Host "Compiling main paper..."
 if (Test-Path -LiteralPath $mainPdf) {

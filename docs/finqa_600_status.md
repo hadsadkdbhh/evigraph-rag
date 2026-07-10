@@ -42,7 +42,9 @@ python .\scripts\run_manifest.py --manifest .\configs\experiments.finqa_600.llm_
 
 The dataset, manifests, local-planner run, failure reports, row/operation
 diagnostics, experiment card, and paper-table artifacts are wired.
-The LLM Direct RAG baseline still needs a configured API model.
+API-backed Direct RAG baselines require configured model credentials and are
+run separately from the default no-API submission suite. Paper-facing direct
+reader comparisons are summarized in `docs/submission_artifact_index.md`.
 
 ## Local Planner Results
 

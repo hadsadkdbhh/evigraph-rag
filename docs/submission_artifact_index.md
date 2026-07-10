@@ -164,7 +164,9 @@ Use these for:
 Artifact:
 
 - `paper/appendix.tex`
+- `paper/supplement.tex`
 - `docs/submission_gap_checklist.md`
+- `docs/code_data_release_note.md`
 
 Use this for:
 
@@ -176,6 +178,7 @@ Use this for:
 - Retrieval portfolio selector details.
 - Computational cost and traceability summary.
 - Boundary conditions and reproducibility commands.
+- Code/data packaging scope, privacy exclusions, and release commands.
 - EvoGraph-R1-inspired gap tracking: algorithm block, action/interface table,
   exact schemas, trace-style case studies, metrics definitions, implementation
   details, and official-template compile notes.
@@ -305,13 +308,22 @@ Before declaring the paper submission-ready:
 - [x] Split supplementary material out of the main submission PDF:
   `paper/main.tex` now contains only main paper plus references, while
   `paper/supplement.tex` compiles `paper/appendix.tex` separately.
-- [ ] Re-run the final local submission suite from a clean checkout.
-- [ ] Install or provide a pdfLaTeX-capable TeX Live/MiKTeX runtime, then run
-  `scripts/check_aaai_page_budget.ps1` to inspect official page count and table
-  overflow.
-- [ ] Add final code/data release note for supplementary material.
-- [ ] Tighten related work and method-figure captions for the 7-page limit.
-- [ ] Freeze final reported numbers and stop changing tables after paper draft lock.
+- [x] Add final code/data release note for supplementary material:
+  `docs/code_data_release_note.md`.
+- [x] Re-run the local no-API submission-suite gate from the current checkout:
+  `python scripts/run_pipeline.py --suite submission --skip-llm-direct-rag`
+  passed on 2026-07-10. For a fresh external clone, run the same command after
+  restoring or regenerating ignored `outputs/` artifacts.
+- [x] Freeze the current checkpoint's reported numbers in the paper/docs. After
+  paper draft lock, do not change tables without a new named manifest and
+  paired failure report.
+
+Environment requirement before final PDF upload:
+
+- Install or provide a pdfLaTeX-capable TeX Live/MiKTeX runtime, then run
+  `scripts/check_aaai_page_budget.ps1 -AlsoCompileSupplement` to inspect
+  official page count and table overflow. This is a local runtime dependency,
+  not a missing repository artifact.
 
 ## Current Compile Status
 
@@ -326,7 +338,8 @@ Result:
 - The official AAAI-27 style and bibliography files are present in `paper/`.
 - The official `aaai2027.sty` requires pdfTeX; bundled Tectonic invokes XeTeX
   and is rejected by the style file.
-- TeX Live/MiKTeX is not installed on this machine. The page-budget script now
-  correctly fails instead of reading a stale PDF.
+- TeX Live/MiKTeX is not installed on this machine. On 2026-07-10 the
+  page-budget script failed immediately with a clear missing-`pdflatex`
+  diagnostic instead of reading a stale PDF.
 - Next action: install a pdfLaTeX-capable TeX runtime, then rerun
   `scripts/check_aaai_page_budget.ps1 -AlsoCompileSupplement`.

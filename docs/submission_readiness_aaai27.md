@@ -37,10 +37,17 @@ Current strengths:
 - Formal subgraph-selection objective with monotone submodular structure.
 - Failure reports that identify the next engineering target instead of relying on anecdotal inspection.
 
-Current blockers:
+Current non-figure status:
 
-- The paper now has a first-pass related-work section, but it still needs final tightening and citation polish.
-- The method figure is now present as a lightweight LaTeX diagram, but it should be polished if space allows.
+- The main paper now has title, abstract, introduction, related work, method,
+  experiment tables, failure analysis, and conclusion in the official AAAI
+  package.
+- Supplementary material is split into `paper/supplement.tex` and
+  `paper/appendix.tex`; it contains procedure, schemas, diagnostics, metrics,
+  manifest construction, implementation notes, cost/traceability, and
+  reproducibility commands.
+- `docs/code_data_release_note.md` now defines the code/data release scope,
+  privacy exclusions, and reproduction commands for supplementary packaging.
 - Open retrieval now includes lexical BM25, sentence-transformer dense retrieval, neural hybrid retrieval, and a no-gold guarded retrieval-portfolio selector.
 - FinQA-600 is now available as a larger pressure test.
 - A small public TAT-QA-50 arithmetic pilot now runs through the same manifest
@@ -51,9 +58,8 @@ Current blockers:
   gate with 0.520 oracle-doc and 0.410 open BM25 exact match. Use this as
   cross-format evidence, not as a full TAT-QA leaderboard claim.
 - A submission artifact index now maps the main tables, portability checks,
-  confidence intervals, and reproduction commands in
-  `docs/submission_artifact_index.md`; the remaining reproducibility work is a
-  final clean-checkout run plus a concise code/data release note.
+  confidence intervals, release note, and reproduction commands in
+  `docs/submission_artifact_index.md`.
 - Official AAAI-27 LaTeX files are now checked into `paper/`:
   `aaai2027.sty` and `aaai2027.bst`.
 - `paper/main.tex` now uses the official `aaai2027` package and excludes
@@ -62,7 +68,8 @@ Current blockers:
 - Local official-template compilation is currently blocked because the machine
   does not have a pdfLaTeX-capable TeX Live/MiKTeX runtime. The official
   `aaai2027.sty` rejects XeTeX/Tectonic.
-- The exact-match results are diagnostic, not strong enough to sell as benchmark superiority.
+- The exact-match results are diagnostic and should not be sold as benchmark
+  superiority.
 - The current FinQA-600 open-retrieval target has crossed 0.40 with guarded
   portfolio selection, but this should be framed as evidence-state selection
   over heterogeneous retrieval states rather than a solved retrieval benchmark.

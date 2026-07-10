@@ -19,13 +19,15 @@ if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
 $sandboxPaper = Join-Path $OutputRoot "paper"
 $buildDir = Join-Path $OutputRoot "build"
 $compileScript = Join-Path $LatexPluginRoot "scripts\compile_latex.py"
-$tectonicExe = Join-Path $LatexPluginRoot "bin\tectonic.exe"
 
 if (-not (Test-Path -LiteralPath $compileScript)) {
     throw "Codex LaTeX compile helper not found: $compileScript"
 }
-if (-not (Test-Path -LiteralPath $tectonicExe)) {
-    throw "Bundled Tectonic not found: $tectonicExe"
+if ($Compiler -in @("auto", "tectonic")) {
+    $tectonicExe = Join-Path $LatexPluginRoot "bin\tectonic.exe"
+    if (-not (Test-Path -LiteralPath $tectonicExe)) {
+        throw "Bundled Tectonic not found: $tectonicExe"
+    }
 }
 
 if ((Test-Path -LiteralPath $sandboxPaper) -and -not $KeepSandbox) {

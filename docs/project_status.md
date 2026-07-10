@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-07-05
+Last updated: 2026-07-10
 
 ## Current Stage
 
@@ -24,7 +24,10 @@ Last updated: 2026-07-05
   should run `python scripts/run_pipeline.py --refresh-results` first because
   `outputs/` is ignored by Git, while `python scripts/run_pipeline.py` is the
   quick path after generated CSVs exist.
-- AAAI readiness: early research prototype; the system is not yet at submission-quality benchmark performance.
+- AAAI readiness: the non-figure submission package is organized for a
+  conservative methodology submission. The paper should emphasize Evidence
+  State Optimization, verifier support, retrieval-exposure failures, and
+  failure-driven diagnostics rather than SOTA benchmark superiority.
 - Next phase goals are fixed in `docs/next_phase_goals.md`: Oracle-doc has
   reached the `0.65` diagnostic target at `0.650`, source-rerank has reached
   `0.650`, and open BM25 is now `0.493` on the FinQA-300 subset.
@@ -33,35 +36,25 @@ Last updated: 2026-07-05
   rejection. Open retrieval baselines have also been run for BM25, local hashed
   dense, and numeric hybrid retrieval. The external LLM Direct RAG baseline is
   now implemented as `llm_direct_rag` with a dedicated manifest at
-  `configs/experiments.finqa_300.llm_direct_rag.json`; it still needs to be run
-  with a named API model and reported separately. The remaining paper work is
-  ideally a true neural dense retriever.
-  The paper narrative now centers on operation planner, verifier, and evidence
-  graph rather than rule patches.
-- A stronger FinQA-600 validation-scale subset is now checked in and wired with
-  local-planner and LLM Direct RAG manifests. The local-planner run completed:
-  Oracle-doc `0.403`, Open BM25 `0.295`, and BM25 plus source-rerank `0.400`.
-  This larger subset is a harsher stress test and should be reported separately
-  from the FinQA-300 mechanism table.
-- A stronger non-API retrieval baseline suite now adds Open TF-IDF beside Open
-  BM25 and Open hybrid. The manifest is
-  `configs/experiments.finqa_300.local_planner_strong_retrieval_baselines.json`
-  and the generated tables live under
-  `paper/generated/finqa_300_local_planner_strong_retrieval_baselines/`. Full
-  EviGraph exact match is `0.403` for BM25, `0.380` for TF-IDF, and `0.400` for
-  hybrid. This makes BM25 look like a nontrivial local baseline rather than a
-  strawman, while still showing consistent graph-vs-direct gains across the
-  three open retrieval settings.
-- The first API-backed LLM Direct RAG pilot has completed for Kimi K2.6 on
-  FinQA-300 Open BM25 only. It is intentionally a spend-controlled pilot, not
-  the full three-setting LLM baseline. The manifest is
-  `configs/experiments.finqa_300.open_bm25.kimi_k26_direct_rag.json`, and the
-  output directory is `outputs/eval/finqa_300_kimi_k26_direct_rag_open_bm25`.
-  Exact match is `0.223`, answer support is `0.087`, and the dominant failure
-  mode is unsupported/refusal-style textual prediction (`206/233` failures).
-  This is useful as evidence that a direct external reader over the same Open
-  BM25 context is not enough; it should not be presented as a strong model
-  result without a better prompt/model sweep.
+  `configs/experiments.finqa_300.llm_direct_rag.json`; later API-backed runs
+  added Kimi pilot and GPT-5.4 Direct RAG outputs that should be reported
+  separately from local no-API baselines.
+  The paper narrative now centers on operation planner, verifier, evidence
+  graph, and Evidence State Optimization rather than rule patches.
+- A stronger FinQA-600 validation-scale subset is checked in and wired with
+  local-planner, neural retrieval, and retrieval-portfolio manifests. The
+  current stress story reports BM25 open retrieval at `0.377` and guarded
+  portfolio selection at `0.407`, with 18 paired wins and no paired losses.
+  This larger subset should be reported separately from the FinQA-300 mechanism
+  table.
+- Strong retrieval baselines now include BM25, TF-IDF, sentence-transformer
+  dense retrieval, neural hybrid retrieval, and retrieval-portfolio selection.
+  This makes BM25 a nontrivial local baseline rather than a strawman and keeps
+  the open-retrieval story separate from oracle-doc/source-rerank analysis.
+- API-backed direct-reader baselines now include Kimi pilot results and a
+  GPT-5.4 Direct RAG comparison. GPT-5.4 is the stronger paper-facing contrast:
+  it can match or exceed exact match while showing much lower verifier-checked
+  answer support, which supports the EM/support-gap argument.
 - The latest local planner mechanism pass is table-ops v21. The manifest is
   `configs/experiments.finqa_300.local_planner_table_ops_v21.json`, outputs
   are in `outputs/eval/finqa_300_local_planner_table_ops_v21`, and generated
@@ -272,10 +265,15 @@ The acceptance script writes:
 - `outputs/eval/mvp0_acceptance/acceptance_report.json`
 - `outputs/eval/mvp0_acceptance/acceptance_report.md`
 
-## Latest FinQA Smoke Metrics
+## Archived FinQA Smoke Metrics
 
-The current checked-in FinQA validation subset uses 100 examples, seed 13, and
-records `source_doc` for oracle-document and source-rerank evaluation.
+This section preserves early smoke metrics for development provenance. Do not
+use these numbers as the current paper claim; the current paper-facing results
+are summarized in `docs/submission_artifact_index.md` and
+`docs/aaai_readiness.md`.
+
+The early checked-in FinQA validation subset used 100 examples, seed 13, and
+recorded `source_doc` for oracle-document and source-rerank evaluation.
 
 | setting | full EviGraph exact match |
 | --- | ---: |
@@ -286,9 +284,9 @@ records `source_doc` for oracle-document and source-rerank evaluation.
 
 These numbers are diagnostic smoke results, not final benchmark claims.
 
-The 300-example validation-scale run is now checked in as a reproducibility
-asset and documented in `docs/finqa_300_status.md`. It is a harder reality
-check than the 100-example smoke run:
+The first 300-example validation-scale run is also preserved as an archival
+reproducibility asset and documented in `docs/finqa_300_status.md`. It was a
+harder reality check than the 100-example smoke run:
 
 | setting | full EviGraph exact match |
 | --- | ---: |
@@ -297,10 +295,9 @@ check than the 100-example smoke run:
 | Open hybrid | 63/300 |
 | BM25 + source rerank | 82/300 |
 
-These 300-example numbers should be treated as diagnostic engineering evidence,
-not as the final paper claim. They show that support diagnostics are much
-stronger than raw exact match, and that the main unsolved issue is still
-operation and operand selection under realistic table variation.
+These archival 300-example numbers were diagnostic engineering evidence, not
+the final paper claim. Later table-operation, retrieval-portfolio, baseline,
+and portability runs supersede them for paper reporting.
 
 ## Main Bottleneck
 
@@ -685,5 +682,6 @@ BM25, and 0.477 BM25 plus source rerank.
 The source-rerank scoping pass prevents graph selection from reintroducing
 cross-document distractors once `source_doc`-matched candidates are available.
 It raises BM25 plus source rerank to 0.500 while keeping Oracle-doc at 0.500
-and Open BM25 at 0.403. All current performance floors are met, but the paper
-still needs external baselines and more margin.
+and Open BM25 at 0.403. All performance floors were met at that checkpoint;
+later work added external-reader baselines, stronger retrieval controls, and
+larger stress/portability checks.

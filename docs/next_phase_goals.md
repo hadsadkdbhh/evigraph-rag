@@ -1,12 +1,14 @@
 # Next Phase Goals
 
-Last updated: 2026-07-01
+Last updated: 2026-07-10
 
-This file defines the next research phase after the FinQA-300 experiment loop
-was closed as a reproducible artifact workflow. These are target gates for a
-credible AAAI-oriented project, not claims about the current system.
+This file preserves the gate-setting history after the FinQA-300 experiment
+loop was closed as a reproducible artifact workflow. The minimum gates below
+have been superseded by the current submission package; use
+`docs/submission_artifact_index.md` and `docs/aaai_readiness.md` for current
+paper-facing numbers.
 
-## Current Starting Point
+## Archived Starting Point
 
 Latest FinQA-300 local-planner exact match:
 
@@ -16,9 +18,10 @@ Latest FinQA-300 local-planner exact match:
 | Open BM25 full EviGraph | 0.403 |
 | BM25 + source-rerank full EviGraph | 0.510 |
 
-The engineering pipeline and experiment artifact closure are complete. The
-remaining work is research quality: stronger numerical reasoning, stronger
-open retrieval, baselines, ablations, and a cleaner paper narrative.
+The engineering pipeline and experiment artifact closure were already complete
+at this checkpoint. Later work added stronger baselines, ablations,
+confidence intervals, FinQA-600 retrieval-portfolio stress testing, and
+TAT-QA-50/100 portability checks.
 
 ## Phase Target Metrics
 
