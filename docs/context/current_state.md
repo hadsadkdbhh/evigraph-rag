@@ -1,6 +1,6 @@
-# EviGraph-RAG Working Context
+﻿# EviGraph-RAG Working Context
 
-Last updated: 2026-07-10
+Last updated: 2026-07-13
 
 This file is the durable context checkpoint for Codex. Read it before continuing
 project work after chat compaction or a new session. Keep it short, factual,
@@ -1417,9 +1417,61 @@ Keep the claim boundary strict:
   MiKTeX 25.12 plus Strawberry Perl: main PDF 8 pages total, References page 8,
   estimated main content 7/7 pages, supplement 6 pages.
 
+## Submission Experiment Closure Check
+
+The submission experiment closure is intentionally stricter than the current
+paper-writing checkpoint. As of 2026-07-13, the deterministic local-planner
+experiment package is closed: main results, component closure, retrieval
+portfolio, TAT-QA portability, method-ordering checks, failure diagnostics, and
+statistical reports all have checked artifacts.
+
+Current gate report:
+
+- Script: `scripts/check_experiment_closure.py`.
+- Report: `docs/experiments/submission_closure_check.md`.
+- Current overall status: PASS.
+- Passing gates:
+  - FinQA-600 v48 oracle-doc Full EviGraph: 0.503 EM.
+  - FinQA-600 v48 source-rerank Full EviGraph: 0.502 EM.
+  - FinQA-600 v48 open BM25 Full EviGraph: 0.377 EM.
+  - FinQA-600 v46 guarded retrieval portfolio: 0.407 EM.
+  - TAT-QA-100 v50 oracle-doc Full EviGraph: 0.520 EM.
+  - TAT-QA-100 v50 open BM25 Full EviGraph: 0.410 EM.
+  - FinQA-600 v48 component closure:
+    - Oracle-doc Full EviGraph: 0.503 EM.
+    - Open BM25 Full EviGraph: 0.377 EM.
+    - Source-rerank Full EviGraph: 0.502 EM.
+  - TAT-QA-100 v50 method closure:
+    - Oracle-doc Full EviGraph: 0.520 EM.
+    - Open BM25 Full EviGraph: 0.410 EM.
+
+Closure artifacts:
+
+- FinQA-600 component closure manifest:
+  `configs/experiments.finqa_600.submission_component_closure_v48.json`.
+- FinQA-600 component closure summary:
+  `outputs/eval/finqa_600_submission_component_closure_v48/summary.md`.
+- FinQA-600 component closure statistics:
+  `outputs/eval/finqa_600_submission_component_closure_v48/statistical_confidence.md`.
+- TAT-QA-100 method closure manifest:
+  `configs/experiments.tatqa_100.submission_method_closure_v50.json`.
+- TAT-QA-100 method closure summary:
+  `outputs/eval/tatqa_100_submission_method_closure_v50/summary.md`.
+
+Interpretation:
+
+- The deterministic experiment closure is submission-ready for the current
+  claim boundary.
+- Use the v48 component closure as the final component/ablation table.
+- Use v28 ablation only as historical development context.
+- FinQA-300 GPT-5.4 Direct RAG is a useful LLM baseline, but a FinQA-600 LLM
+  Direct RAG run is optional and budget-dependent rather than required for the
+  local deterministic closure.
+
 ## Git Note
 
 The attempted Headroom project integration was reverted on 2026-06-22. Do not
 re-add it to the EviGraph codebase unless explicitly requested as project code.
 Headroom cannot be installed into Codex's internal context manager from this
 repo; use this checkpoint file instead.
+

@@ -1,0 +1,85 @@
+{
+  "title": "EviGraph FinQA-600 Submission Component Closure v48",
+  "config": "configs/default_local_planner.yaml",
+  "output_dir": "outputs/eval/finqa_600_submission_component_closure_v48",
+  "datasets": [
+    {
+      "name": "finqa_600_subset",
+      "raw_questions": "data/raw/finqa_600_subset.jsonl",
+      "questions": "outputs/eval/finqa_600_submission_component_closure_v48/finqa_questions.jsonl",
+      "field_map": {
+        "id": "id",
+        "query": "question",
+        "answer": "answer",
+        "source_doc": "source_doc",
+        "task_type": "task_type"
+      },
+      "corpus": "data/finqa_600_corpus",
+      "build_index": true,
+      "index": "outputs/index/finqa_600_submission_component_closure_v48.json",
+      "chunk_size": 1200,
+      "chunk_overlap": 160,
+      "gate": {
+        "min_records": 600,
+        "min_source_doc_coverage": 1.0,
+        "fail_on_error": true
+      }
+    }
+  ],
+  "experiments": [
+    {
+      "name": "oracle_doc_component_closure_v48",
+      "type": "batch",
+      "retrieval_mode": "oracle_doc",
+      "methods": [
+        "direct_rag",
+        "retrieve_then_program",
+        "utility_only",
+        "evigraph_wo_operation_planner",
+        "evigraph_wo_risk",
+        "evigraph_wo_support",
+        "evigraph_wo_verifier",
+        "full_evigraph"
+      ],
+      "progress_every": 100
+    },
+    {
+      "name": "open_bm25_component_closure_v48",
+      "type": "batch",
+      "retrieval_mode": "open",
+      "methods": [
+        "direct_rag",
+        "retrieve_then_program",
+        "utility_only",
+        "evigraph_wo_operation_planner",
+        "evigraph_wo_risk",
+        "evigraph_wo_support",
+        "evigraph_wo_verifier",
+        "full_evigraph"
+      ],
+      "progress_every": 100
+    },
+    {
+      "name": "source_rerank_component_closure_v48",
+      "type": "batch",
+      "retrieval_mode": "source_rerank",
+      "methods": [
+        "direct_rag",
+        "retrieve_then_program",
+        "utility_only",
+        "evigraph_wo_operation_planner",
+        "evigraph_wo_risk",
+        "evigraph_wo_support",
+        "evigraph_wo_verifier",
+        "full_evigraph"
+      ],
+      "progress_every": 100
+    }
+  ],
+  "limitations": [
+    "This is the version-alignment closure run for the submission table.",
+    "It keeps only the component methods needed for the paper claim: direct context baseline, retrieve-then-program, utility-only selection, operation-planner ablation, risk ablation, support ablation, verifier ablation, and full EviGraph.",
+    "Oracle-doc, open BM25, and source-rerank are included so the component table is version-aligned across all paper settings.",
+    "The run is local and does not require LLM API credentials."
+  ]
+}
