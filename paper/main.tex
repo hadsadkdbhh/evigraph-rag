@@ -122,15 +122,15 @@ We define Evidence State Optimization (ESO) as the problem of searching \(\Omega
 Let \(\operatorname{Cov}(S,q)\) denote coverage of required query aspects, \(\operatorname{Risk}(S,q)\) aggregate source, temporal, operation, and conflict risks, \(\operatorname{Conn}(G_q[S])\) indicate whether the induced support graph is connected enough for the required reasoning chain, \(\operatorname{Exec}(S,q)\) indicate whether the required numerical operation can be executed over cited operands, and \(\operatorname{Ver}(S,q)\) indicate whether the answer trace passes verifier checks.
 The ideal Minimal Reliable Support Subgraph (MRSG) is:
 \[
-S^\star =
-\arg\min_{S\in\mathcal{S}_q} |S|
-\quad
+\begin{aligned}
+S^\star &= \arg\min_{S\in\mathcal{S}_q} |S| \\
 \text{s.t.}\quad
-\operatorname{Cov}(S,q)\ge \tau,\;
-\operatorname{Risk}(S,q)\le \delta,\;
-\operatorname{Conn}(G_q[S])=1,\;
-\operatorname{Exec}(S,q)=1,\;
+\operatorname{Cov}(S,q)&\ge \tau,\quad
+\operatorname{Risk}(S,q)\le \delta,\\
+\operatorname{Conn}(G_q[S])&=1,\quad
+\operatorname{Exec}(S,q)=1,\quad
 \operatorname{Ver}(S,q)=1.
+\end{aligned}
 \]
 Thus MRSG is the smallest evidence state that covers the needed information while satisfying graph, operation, and verification constraints.
 Exact constrained search over \(\mathcal{S}_q\) is combinatorial, so EviGraph-RAG uses a verifier-guided relaxation: greedily construct high-coverage, low-risk states under a node budget, execute candidate operations locally, and repair only diagnosed source, period, row, denominator, or operation failures.
@@ -162,12 +162,14 @@ Each node has an aspect utility \(u_{v,a}\in[0,1]\) for \(a\in\mathcal{A}_q\).
 Source, structural, temporal, operation, and conflict risks are propagated from \(G\) and the verifier diagnostics into node-level scores \(r^{\mathrm{src}}_v,r^{\mathrm{str}}_v,r^{\mathrm{tmp}}_v,r^{\mathrm{op}}_v,r^{\mathrm{conf}}_v\in[0,1]\).
 We define a risk discount
 \[
-\rho_v=\exp\left(
--\lambda_{\mathrm{src}}r^{\mathrm{src}}_v
+\rho_v=\exp\!\left(
+\begin{aligned}
+&-\lambda_{\mathrm{src}}r^{\mathrm{src}}_v
 -\lambda_{\mathrm{str}}r^{\mathrm{str}}_v
--\lambda_{\mathrm{tmp}}r^{\mathrm{tmp}}_v
--\lambda_{\mathrm{op}}r^{\mathrm{op}}_v
+-\lambda_{\mathrm{tmp}}r^{\mathrm{tmp}}_v\\
+&-\lambda_{\mathrm{op}}r^{\mathrm{op}}_v
 -\lambda_{\mathrm{conf}}r^{\mathrm{conf}}_v
+\end{aligned}
 \right)
 \]
 and risk-adjusted aspect coverage \(p_{v,a}=\rho_v u_{v,a}\).
@@ -267,29 +269,32 @@ We report a baseline ladder designed to answer the main reviewer question: wheth
 \textbf{Utility-only} selects evidence using utility without risk-aware graph control.
 We also report ablations that remove planner, verifier-grounded rejection, or support-subgraph extraction where applicable.
 
-The v28 component-ablation run shows that the operation planner contributes 7.3 exact-match points under oracle-document retrieval, 6.0 points under open BM25, and 7.7 points under source reranking over the no-planner ablation.
-Risk-aware graph selection is most visible against the utility-only selector: full EviGraph improves exact match by 3.3 points under oracle-document retrieval, 11.7 points under open BM25, and 10.3 points under source reranking.
-The strongest external reader baseline, GPT-5.4 Direct RAG over the same retrieval-order context, reaches 0.693 exact match under oracle-document retrieval, 0.523 under open BM25, and 0.690 under source reranking, but only 0.343, 0.273, and 0.340 answer support.
+The FinQA-600 v48 submission component-closure run shows that the operation planner contributes 5.8 exact-match points under oracle-document retrieval, 5.2 points under open BM25, and 5.8 points under source reranking over the no-planner ablation.
+Evidence-state selection is most visible against the utility-only selector: full EviGraph improves exact match by 2.5 points under oracle-document retrieval, 6.2 points under open BM25, and 6.2 points under source reranking.
+Full EviGraph also improves over retrieve-then-program by 1.8, 2.8, and 1.8 points respectively, with paired McNemar tests significant in all three settings.
+As an API-backed reader sanity check on FinQA-300, GPT-5.4 Direct RAG reaches 0.693 exact match under oracle-document retrieval, 0.523 under open BM25, and 0.690 under source reranking, but only 0.343, 0.273, and 0.340 answer support.
 Thus Table~\ref{tab:baseline-ladder} should be read as both an accuracy table and a grounding table: higher exact match does not necessarily mean better cited numerical support.
 
 \begin{table}[t]
 \centering
-\small
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{lrrrrrr}
 \toprule
 Method & \multicolumn{2}{c}{Oracle-doc} & \multicolumn{2}{c}{Open BM25} & \multicolumn{2}{c}{Source rerank} \\
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
  & EM & Sup. & EM & Sup. & EM & Sup. \\
 \midrule
-Direct RAG & 0.593 & 0.753 & 0.453 & 0.740 & 0.593 & 0.750 \\
-GPT-5.4 Direct RAG & 0.693 & 0.343 & 0.523 & 0.273 & 0.690 & 0.340 \\
-Retrieve-then-program & 0.640 & 0.807 & 0.483 & 0.803 & 0.640 & 0.803 \\
-Utility-only & 0.627 & 0.803 & 0.400 & 0.767 & 0.557 & 0.753 \\
-Full EviGraph (v28) & 0.660 & 0.833 & 0.517 & 0.840 & 0.660 & 0.833 \\
-Full EviGraph (v38) & 0.670 & 0.850 & 0.523 & 0.853 & 0.670 & 0.850 \\
+Direct RAG & 0.460 & 0.747 & 0.320 & 0.670 & 0.460 & 0.733 \\
+Retrieve-then-program & 0.485 & 0.797 & 0.348 & 0.727 & 0.483 & 0.782 \\
+Utility-only & 0.478 & 0.793 & 0.315 & 0.707 & 0.440 & 0.758 \\
+No operation planner & 0.445 & 0.748 & 0.325 & 0.707 & 0.443 & 0.748 \\
+Full EviGraph (v48) & 0.503 & 0.820 & 0.377 & 0.787 & 0.502 & 0.822 \\
 \bottomrule
 \end{tabular}
-\caption{Baseline ladder on the FinQA-300 diagnostic subset. Sup. denotes verifier-checked answer support. The component controls come from the v28 ablation run; the v38 row reports the latest failure-driven full-system checkpoint. GPT-5.4 Direct RAG is a strong external accuracy baseline; verifier diagnostics show that high exact match does not imply high cited support.}
+}
+\caption{Baseline ladder on the FinQA-600 submission component-closure subset. Sup. denotes verifier-checked answer support. Source rerank uses the provided source document as an analysis setting. GPT-5.4 Direct RAG is reported separately as an API-backed FinQA-300 sanity check; verifier diagnostics show that high exact match does not necessarily imply high cited support.}
 \label{tab:baseline-ladder}
 \end{table}
 
@@ -313,26 +318,19 @@ Table~\ref{tab:retrieval-portfolio-ablation} makes the tradeoff explicit: the co
 
 \input{generated/statistical_confidence/main_confidence_table}
 
-\begin{figure*}[t]
-\centering
-\includegraphics[width=\linewidth]{figures/experimental_story_panel.pdf}
-\caption{Experimental story panel. The results are organized around the paper's mechanism claim: component ablations show that planner and graph-based evidence selection matter, the FinQA-600 retrieval portfolio improves open-retrieval evidence-state choice, TAT-QA-50/100 checks show cross-format portability, and the EM/support scatter shows why exact match alone is insufficient for numerically grounded RAG.}
-\label{fig:experimental-story}
-\end{figure*}
-
 \paragraph{Retrieval coverage diagnostics.}
-The v28 manifest now emits retrieval diagnostics for every retrieval setting.
-On FinQA-300 Open BM25, the gold source appears in the retrieved top-\(8\) for 269/300 examples (0.897); among 145 errors, 115 still contain the gold source.
-On FinQA-600 Open BM25, source hit@8 is 515/600 (0.858), and errors split into 302 wrong answers with source evidence retrieved versus 82 wrong answers without source evidence.
+The v48 submission-closure manifest emits retrieval diagnostics for every retrieval setting.
+On FinQA-600 Open BM25, source hit@8 is 515/600 (0.858), while exact match is 226/600 (0.377).
+Among wrong answers, 293 still contain the gold source and 81 miss the source entirely; the gold answer number appears in the retrieved context for only 93/600 examples.
 Thus many failures occur after source exposure, making operand grounding and verifier-guided repair central.
 
 \paragraph{FinQA-600 stress subset.}
 To avoid overfitting the narrative to the 300-example diagnostic subset, we also construct a deterministic 600-example FinQA validation subset using the same seed and a larger sampling pool.
-Full EviGraph v43 obtains 0.503 exact match under oracle-document retrieval, 0.377 under open BM25, and 0.502 under source reranking.
+Full EviGraph v48 obtains 0.503 exact match under oracle-document retrieval, 0.377 under open BM25, and 0.502 under source reranking.
 Answer support remains substantially higher than exact match (0.820, 0.787, and 0.822), and operand-semantics checks remain high (0.970, 0.977, and 0.970), but supported wrong answers still expose unresolved operand ambiguity.
 This pressure test shows that operand grounding, not arithmetic execution, is the main generalization bottleneck.
 
-\input{generated/finqa_300_local_planner_table_ops_v21/finqa_results_tables}
+\input{generated/finqa_600_submission_component_closure_v48/finqa_main_tables}
 
 \paragraph{Public TAT-QA pilot and cross-format stress suite.}
 As a small public cross-benchmark pilot, we run the same manifest pipeline on 50 arithmetic examples sampled from the TAT-QA development set.
@@ -354,7 +352,7 @@ Full EviGraph answers all three examples correctly while top-\(K\) and utility-o
 \section{Failure Analysis}
 
 The manifest runner emits failure reports and row/operation diagnostics for every fixed run.
-Table~\ref{tab:finqa-failure-categories} reports unresolved categories for FinQA-300, and Table~\ref{tab:finqa-row-operation-diagnostics} decomposes wrong numeric answers into numerator, denominator, year/period, row-label, operation-type, and ambiguous-supported-wrong signals.
+The supplement reports unresolved failure categories and decomposes wrong numeric answers into numerator, denominator, year/period, row-label, operation-type, and ambiguous-supported-wrong signals.
 
 The main lesson is that residual errors are not dominated by arithmetic.
 Inspected repair rounds improved results by targeting small, named clusters: operand selection, percent-intent normalization, endpoint grounding, source-year compatibility, and narrow prose/table ratio cases.

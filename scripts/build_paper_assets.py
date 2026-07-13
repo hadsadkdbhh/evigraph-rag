@@ -37,6 +37,7 @@ def main() -> int:
             "finqa_600_local_v21",
             "finqa_600_local_ablation_v21",
             "finqa_600_local_ablation_v28",
+            "finqa_600_submission_component_closure_v48",
             "finqa_600_local_strong_retrieval_baselines_v21",
             "finqa_600_neural_retrieval_baselines_v21",
             "finqa_600_llm_direct_rag",

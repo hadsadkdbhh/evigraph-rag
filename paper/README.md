@@ -27,6 +27,16 @@ For the current FinQA-300 local-planner tables:
 python .\scripts\build_paper_assets.py --eval-dir .\outputs\eval\finqa_300_local_planner_table_ops_v21 --output-dir .\paper\generated\finqa_300_local_planner_table_ops_v21 --preset finqa_300_local
 ```
 
+For the current FinQA-600 submission component-closure tables:
+
+```powershell
+python .\scripts\build_paper_assets.py --eval-dir .\outputs\eval\finqa_600_submission_component_closure_v48 --output-dir .\paper\generated\finqa_600_submission_component_closure_v48 --preset finqa_600_submission_component_closure_v48
+```
+
+Use `finqa_main_tables.tex` in the main paper and keep
+`finqa_results_tables.tex` as the full diagnostic table bundle for appendix or
+artifact review.
+
 For the GPT-5.4 Direct RAG baseline tables, the results are split across
 `finqa_300_gpt54_direct_rag_open_bm25` and `finqa_300_gpt54_direct_rag_oracle_source`.
 Use the paper-anchor eval directory so the preset can resolve both sibling

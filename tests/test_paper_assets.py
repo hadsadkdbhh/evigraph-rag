@@ -55,6 +55,7 @@ class PaperAssetBuilderTest(unittest.TestCase):
             markdown = Path(paths["markdown"]).read_text(encoding="utf-8")
 
         self.assertIn("\\label{tab:finqa-diagnostic-results}", latex)
+        self.assertIn("\\resizebox{\\columnwidth}{!}{%", latex)
         self.assertIn("Oracle-doc & Full EviGraph", latex)
         self.assertIn("Open BM25", markdown)
         self.assertIn("Open hybrid", markdown)

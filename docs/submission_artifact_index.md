@@ -1,6 +1,6 @@
 # Submission Artifact Index
 
-Last updated: 2026-07-10
+Last updated: 2026-07-13
 
 This file maps the current EviGraph-RAG submission story to reproducible
 artifacts, commands, and reporting boundaries. Use it as the first stop before
@@ -40,32 +40,33 @@ Unsafe claims:
 
 ## Current Reportable Results
 
-### FinQA-300 Mechanism Table
+### FinQA-600 Submission Component Closure
 
 Artifact:
 
-- `paper/generated/finqa_300_local_planner_ablation_v28/finqa_results_tables.tex`
-- `paper/generated/finqa_300_local_planner_ablation_v28/finqa_results_summary.md`
+- `paper/generated/finqa_600_submission_component_closure_v48/finqa_results_tables.tex`
+- `paper/generated/finqa_600_submission_component_closure_v48/finqa_results_summary.md`
+- `docs/experiments/snapshots/finqa_600_submission_component_closure_v48_statistics.md`
 
 Main Full EviGraph numbers:
 
 | setting | EM | answer support |
 | --- | ---: | ---: |
-| Oracle-doc | 0.660 | 0.830 |
-| Open BM25 | 0.520 | 0.840 |
-| BM25 + source rerank | 0.660 | 0.830 |
+| Oracle-doc | 0.503 | 0.820 |
+| Open BM25 | 0.377 | 0.787 |
+| BM25 + source rerank | 0.502 | 0.822 |
 
 Component contribution highlights:
 
 | setting | planner delta EM | support-graph delta EM | graph vs utility-only EM |
 | --- | ---: | ---: | ---: |
-| Oracle-doc | +0.070 | +0.020 | +0.030 |
-| Open BM25 | +0.060 | +0.040 | +0.120 |
-| BM25 + source rerank | +0.080 | +0.020 | +0.100 |
+| Oracle-doc | +0.058 | +0.017 | +0.025 |
+| Open BM25 | +0.052 | +0.028 | +0.062 |
+| BM25 + source rerank | +0.058 | -0.003 | +0.062 |
 
 Reporting role:
 
-- Primary mechanism/ablation table.
+- Primary mechanism/ablation table for the deterministic submission closure.
 - Use to argue that operation planning, support selection, and verification
   matter separately.
 
@@ -183,16 +184,16 @@ Use this for:
   exact schemas, trace-style case studies, metrics definitions, implementation
   details, and official-template compile notes.
 
-### FinQA-300 Mechanism/Ablation Table
+### FinQA-600 Submission Component Closure Table
 
 ```powershell
-python .\scripts\run_manifest.py --manifest .\configs\experiments.finqa_300.local_planner_ablation_v28.json
-python .\scripts\build_paper_assets.py --eval-dir .\outputs\eval\finqa_300_local_planner_ablation_v28 --output-dir .\paper\generated\finqa_300_local_planner_ablation_v28 --preset finqa_300_local_ablation_v28
+python .\scripts\run_manifest.py --manifest .\configs\experiments.finqa_600.submission_component_closure_v48.json
+python .\scripts\build_paper_assets.py --eval-dir .\outputs\eval\finqa_600_submission_component_closure_v48 --output-dir .\paper\generated\finqa_600_submission_component_closure_v48 --preset finqa_600_submission_component_closure_v48
 ```
 
 Use this for:
 
-- Main FinQA-300 baseline ladder.
+- Main FinQA-600 baseline ladder.
 - Operation-planner, verifier, risk, and support-graph ablations.
 - Failure categories and row/operation diagnostic tables.
 
