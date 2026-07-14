@@ -1,6 +1,8 @@
 \begin{table}[t]
 \centering
-\small
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{llrrrr}
 \toprule
 Setting & Method & n & EM & Support & Source hit@8 \\
@@ -9,6 +11,7 @@ Oracle-doc & Full EviGraph v50 & 100 & 0.520 & 0.750 & -- \\
 Open BM25 & Full EviGraph v50 & 100 & 0.410 & 0.850 & 0.900 \\
 \bottomrule
 \end{tabular}
+}
 \caption{TAT-QA-100 portability check. The fixed-seed subset contains 100 arithmetic TAT-QA development examples generated with the same adapter as the TAT-QA-50 pilot. The run is used only as a cross-format portability check: Full EviGraph remains above the planned 0.45 oracle-document and 0.35 open-BM25 gates, while open exact match remains below source exposure.}
 \label{tab:tatqa-100-portability}
 \end{table}

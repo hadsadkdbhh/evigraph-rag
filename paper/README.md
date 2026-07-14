@@ -65,3 +65,13 @@ powershell -ExecutionPolicy Bypass -File ..\scripts\check_aaai_page_budget.ps1 -
 The official AAAI style rejects XeTeX/Tectonic, so bundled Tectonic is not a
 valid final page-count substitute. On the current Windows setup, MiKTeX plus
 Strawberry Perl compiles the official template successfully.
+
+Run the final no-API submission engineering gate from the repository root:
+
+```powershell
+python .\scripts\check_submission_pipeline.py
+```
+
+This wraps the unit tests, experiment closure check, official page-budget
+compile, supplement compile, required artifact checks, and LaTeX undefined
+reference scan.

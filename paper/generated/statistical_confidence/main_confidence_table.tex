@@ -1,6 +1,8 @@
 \begin{table}[t]
 \centering
-\small
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{llrr}
 \toprule
 Setting & Method & EM & 95\% Wilson CI \\
@@ -13,6 +15,7 @@ Stress suite & Top-\(K\) & 0.333 & [0.061, 0.792] \\
 Stress suite & Full EviGraph & 1.000 & [0.438, 1.000] \\
 \bottomrule
 \end{tabular}
+}
 \caption{Confidence intervals for the current main and sanity-check results. The FinQA-600 portfolio improves over its BM25 primary with 18 paired wins and 0 losses (exact McNemar \(p<0.001\)). The FinQA-300 portfolio sanity check has 3 wins and 0 losses but is not significant at conventional levels because only 18 examples are switched. The three-example stress suite is a cross-benchmark smoke test, so its interval is intentionally wide.}
 \label{tab:confidence}
 \end{table}

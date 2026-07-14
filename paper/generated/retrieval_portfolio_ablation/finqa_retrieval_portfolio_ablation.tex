@@ -1,6 +1,8 @@
 \begin{table}[t]
 \centering
-\small
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{lrrrrr}
 \toprule
 Selector & EM & 95\% CI & Switches & Wins & Losses \\
@@ -17,6 +19,7 @@ Neural-hybrid, Full EviGraph & 0.507 & [0.450, 0.563] & 300 & -- & -- \\
 Guarded confidence portfolio, Full EviGraph & 0.503 & [0.447, 0.560] & 18 & 3 & 0 \\
 \bottomrule
 \end{tabular}
+}
 \caption{Retrieval-portfolio ablation. The FinQA-600 block uses the v43 BM25 top-8 and neural-hybrid top-16 Full EviGraph runs; the portfolio selector is no-gold and chooses between completed evidence states using prediction, calculation, query coverage, year coverage, and verifier/support flags. The FinQA-300 block is a cross-setting sanity check using the v21 neural retrieval baseline outputs, not the main stress setting.}
 \label{tab:retrieval-portfolio-ablation}
 \end{table}

@@ -1,10 +1,14 @@
 # Project Status
 
-Last updated: 2026-07-10
+Last updated: 2026-07-14
 
 ## Current Stage
 
-- Engineering pipeline: complete for MVP0 reproducibility.
+- Engineering pipeline: 100% complete for the current no-API submission package.
+  The final gate is `python scripts/check_submission_pipeline.py`; it runs unit
+  tests, submission experiment closure, official AAAI main/supplement compile,
+  page-budget checks, required artifact checks, and LaTeX undefined-reference
+  scans.
 - MVP0 experiment loop: complete for toy, stress, 100-example FinQA smoke, and a
   300-example FinQA validation-scale diagnostic run.
 - FinQA-300 experiment loop: 100% complete as an artifact-closure workflow.
@@ -116,6 +120,17 @@ path first, it fails with an explicit instruction to run `--refresh-results`.
 The pipeline now ends with an experiment-closure gate. That gate validates the
 three 300-row evaluation CSVs, failure reports, row/operation diagnostics,
 dataset inspection/gate artifacts, experiment card, and generated paper tables.
+
+The final no-API submission engineering gate is:
+
+```powershell
+python scripts/check_submission_pipeline.py
+```
+
+The latest verified run passed all gates with 401 unit tests OK, submission
+experiment closure PASS, official AAAI page-budget PASS, supplement compile
+PASS, required artifact checks PASS, and no unresolved LaTeX references or
+citations. The report is written to `docs/submission_pipeline_check.md`.
 
 The 2026-06-30 repair refresh passed the targeted dataset run and unit tests
 (`241 tests OK`). The refreshed FinQA-300 local-planner exact-match results are

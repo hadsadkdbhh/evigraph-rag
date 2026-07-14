@@ -162,6 +162,17 @@ To refresh all local submission-suite results, run:
 python scripts/run_pipeline.py --suite submission --refresh-results --skip-llm-direct-rag
 ```
 
+For the final no-API engineering submission gate, run:
+
+```powershell
+python scripts/check_submission_pipeline.py
+```
+
+This is the strict handoff check for the current paper package. It runs the unit
+tests, validates the submission experiment closure, compiles the official AAAI
+main paper and supplement, checks the page budget, verifies required paper and
+experiment artifacts, and rejects unresolved LaTeX references or citations.
+
 Expected current FinQA-300 exact-match results:
 
 | setting | full EviGraph EM |
