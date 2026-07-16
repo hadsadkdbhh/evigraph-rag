@@ -12,9 +12,14 @@ param(
     [string]$ImageBaseUrl = $env:AF_IMAGE_BASE_URL,
     [string]$ImageModel = $env:AF_IMAGE_MODEL,
     [string]$SvgModel = $env:AF_SVG_MODEL,
+    [string]$ImageSize = $env:AF_IMAGE_SIZE,
+    [switch]$DisableAutoUpscale,
+    [string]$SamPrompt = $env:AF_SAM_PROMPT,
+    [string]$MinScore = $env:AF_MIN_SCORE,
     [string]$SamBackend = $env:AF_SAM_BACKEND,
     [string]$SamApiKey = $env:AF_SAM_API_KEY,
-    [string]$ReferenceImage = ""
+    [string]$ReferenceImage = "",
+    [switch]$NoIconReplacement
 )
 
 $ErrorActionPreference = "Stop"
@@ -57,6 +62,9 @@ if ([string]::IsNullOrWhiteSpace($ImageApiKey)) { $ImageApiKey = Get-EnvValue "A
 if ([string]::IsNullOrWhiteSpace($ImageBaseUrl)) { $ImageBaseUrl = Get-EnvValue "AF_IMAGE_BASE_URL" }
 if ([string]::IsNullOrWhiteSpace($ImageModel)) { $ImageModel = Get-EnvValue "AF_IMAGE_MODEL" }
 if ([string]::IsNullOrWhiteSpace($SvgModel)) { $SvgModel = Get-EnvValue "AF_SVG_MODEL" }
+if ([string]::IsNullOrWhiteSpace($ImageSize)) { $ImageSize = Get-EnvValue "AF_IMAGE_SIZE" }
+if ([string]::IsNullOrWhiteSpace($SamPrompt)) { $SamPrompt = Get-EnvValue "AF_SAM_PROMPT" }
+if ([string]::IsNullOrWhiteSpace($MinScore)) { $MinScore = Get-EnvValue "AF_MIN_SCORE" }
 if ([string]::IsNullOrWhiteSpace($SamBackend)) { $SamBackend = Get-EnvValue "AF_SAM_BACKEND" }
 if ([string]::IsNullOrWhiteSpace($SamApiKey)) { $SamApiKey = Get-EnvValue "AF_SAM_API_KEY" }
 
@@ -120,6 +128,12 @@ if ([string]::IsNullOrWhiteSpace($Provider)) {
 if ([string]::IsNullOrWhiteSpace($SamBackend)) {
     $SamBackend = "roboflow"
 }
+if ([string]::IsNullOrWhiteSpace($SamPrompt)) {
+    $SamPrompt = "icon,robot,animal,person"
+}
+if ([string]::IsNullOrWhiteSpace($MinScore)) {
+    $MinScore = "0.0"
+}
 if ([string]::IsNullOrWhiteSpace($SamApiKey)) {
     if ($SamBackend -eq "roboflow") {
         $SamApiKey = Get-EnvValue "ROBOFLOW_API_KEY"
@@ -158,7 +172,14 @@ if ($Provider -eq "custom" -and $BaseUrl -match "teio\.me") {
     if ([string]::IsNullOrWhiteSpace($SvgModel)) {
         $SvgModel = "gpt-5.4"
     }
+    if ([string]::IsNullOrWhiteSpace($ImageSize)) {
+        $ImageSize = "1K"
+    }
     Write-Host "Detected teio.me custom provider; using image model '$ImageModel' and SVG model '$SvgModel'."
+}
+if ($NoIconReplacement) {
+    $MinScore = "1.01"
+    Write-Host "NoIconReplacement enabled; SAM boxes will be suppressed to skip RMBG icon extraction."
 }
 if (($SamBackend -eq "roboflow" -or $SamBackend -eq "fal") -and [string]::IsNullOrWhiteSpace($SamApiKey)) {
     throw "SAM backend '$SamBackend' requires a key. Set ROBOFLOW_API_KEY, FAL_KEY, or AF_SAM_API_KEY."
@@ -204,6 +225,18 @@ if (-not [string]::IsNullOrWhiteSpace($ImageModel)) {
 if (-not [string]::IsNullOrWhiteSpace($SvgModel)) {
     $args += @("--svg_model", $SvgModel)
 }
+if (-not [string]::IsNullOrWhiteSpace($ImageSize)) {
+    $args += @("--image_size", $ImageSize)
+}
+if ($DisableAutoUpscale -or ($Provider -eq "custom" -and $BaseUrl -match "teio\.me")) {
+    $args += @("--disable_auto_upscale")
+}
+if (-not [string]::IsNullOrWhiteSpace($SamPrompt)) {
+    $args += @("--sam_prompt", $SamPrompt)
+}
+if (-not [string]::IsNullOrWhiteSpace($MinScore)) {
+    $args += @("--min_score", $MinScore)
+}
 if (-not [string]::IsNullOrWhiteSpace($SamApiKey)) {
     $args += @("--sam_api_key", $SamApiKey)
 }
@@ -218,6 +251,10 @@ if ($Mode -eq "regenerate") {
         "--reference_image_path", $ReferenceImage
     )
 } else {
+    if (-not $NoIconReplacement -and [string]::IsNullOrWhiteSpace((Get-EnvValue "HF_TOKEN"))) {
+        Write-Host "HF_TOKEN is not set; enabling NoIconReplacement for import mode to avoid RMBG-2.0 gated-model failure."
+        $args += @("--min_score", "1.01")
+    }
     $args += @(
         "--input_figure_path", $inputFigure
     )
